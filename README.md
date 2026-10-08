@@ -20,7 +20,7 @@ Early. This is what exists today:
 - Database schema for every table (Drizzle, Postgres)
 - Environment variable validation
 - Invite code rules, with tests
-- First piece of the scoring engine (weights, skill math, match rate), with tests
+- Scoring engine so far: weights, skill math, match rate and the skill matcher (aliases, similar terms, tricky names like C++ and Go), with tests
 
 Not built yet: sign in, resume parsing, the scan flow and report, the tracker, the builder, the extension.
 
