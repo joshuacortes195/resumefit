@@ -184,6 +184,8 @@ function SkillsCard({ title, skills }: { title: string; skills: SkillMatch[] }) 
               <tr key={skill.name} className="border-b border-border last:border-0">
                 <td className="py-2">
                   {skill.name}
+                  {/* nice to have skills count a bit less */}
+                  {skill.importance === "preferred" && <span className="ml-2 text-xs text-muted">nice to have</span>}
                   {/* half credit note for similar terms */}
                   {skill.match === "related" && <span className="ml-2 text-xs text-warning">similar term found</span>}
                 </td>

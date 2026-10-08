@@ -51,10 +51,40 @@ function hasAny(text: string, terms: string[]): boolean {
   return terms.some((term) => termPattern(term).test(text));
 }
 
+// headings and phrases that mark skills as optional
+const PREFERRED_HEADING = /\b(preferred|nice to have|nice-to-haves?|bonus|desired|pluses)\b/i;
+const PREFERRED_PHRASE = /\b(is a plus|are a plus|a plus|nice to have|preferred|bonus points?|ideally)\b/i;
+// headings that switch back to the must haves
+const REQUIRED_HEADING = /\b(requirements?|required|minimum|basic qualifications|must have|responsibilities|what you.ll do|what you will do)\b/i;
+
+// keeps only the parts of the job description that are must haves
+export function requiredText(jdText: string): string {
+  const kept: string[] = [];
+  let optional = false;
+  for (const line of jdText.split(/\r?\n/)) {
+    const trimmed = line.trim();
+    // short lines are treated as headings that flip the mode
+    if (trimmed.length > 0 && trimmed.length <= 60) {
+      if (PREFERRED_HEADING.test(trimmed)) {
+        optional = true;
+        continue;
+      }
+      if (REQUIRED_HEADING.test(trimmed)) optional = false;
+    }
+    if (optional) continue;
+    // a sentence can also call itself optional, like "GraphQL is a plus"
+    const sentences = line.split(/(?<=[.!?])\s+/).filter((sentence) => !PREFERRED_PHRASE.test(sentence));
+    kept.push(sentences.join(" "));
+  }
+  return kept.join("\n");
+}
+
 // builds the skill rows for the report, one row per skill the job description asks for
 export function matchSkills(jdText: string, resumeText: string, skills: SkillTerm[], category: SkillMatch["category"]): SkillMatch[] {
   const jdCounts = countSkills(jdText, skills);
   const resumeCounts = countSkills(resumeText, skills);
+  // skills that only show up in the optional parts count as preferred
+  const requiredCounts = countSkills(requiredText(jdText), skills);
 
   const rows: SkillMatch[] = [];
   for (const skill of skills) {
@@ -68,11 +98,14 @@ export function matchSkills(jdText: string, resumeText: string, skills: SkillTer
     if (resumeCount > 0) match = "exact";
     else if (hasAny(resumeText, skill.related ?? [])) match = "related";
 
-    // everything counts as required until the job description sections are detected
-    rows.push({ name: skill.name, category, importance: "required", jdCount, resumeCount, match });
+    const importance = requiredCounts.has(skill.name) ? "required" : "preferred";
+    rows.push({ name: skill.name, category, importance, jdCount, resumeCount, match });
   }
 
-  // missing skills first, then the ones the job mentions most
+  // missing skills first, then the ones the job mentions most, required before preferred
   const order = { missing: 0, related: 1, exact: 2 } as const;
-  return rows.sort((a, b) => order[a.match] - order[b.match] || b.jdCount - a.jdCount || a.name.localeCompare(b.name));
+  const rank = { required: 0, preferred: 1 } as const;
+  return rows.sort(
+    (a, b) => order[a.match] - order[b.match] || b.jdCount - a.jdCount || rank[a.importance] - rank[b.importance] || a.name.localeCompare(b.name),
+  );
 }

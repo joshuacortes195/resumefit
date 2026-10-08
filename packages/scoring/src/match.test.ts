@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { countSkills, matchSkills, type SkillTerm } from "./match";
+import { countSkills, matchSkills, requiredText, type SkillTerm } from "./match";
 
 // small skill list for the tests
 const SKILLS: SkillTerm[] = [
@@ -70,5 +70,36 @@ describe("matchSkills", () => {
   it("puts missing skills first and matched ones last", () => {
     expect(rows[0]?.name).toBe("Kubernetes");
     expect(rows.at(-1)?.name).toBe("Go");
+  });
+});
+
+describe("required and preferred skills", () => {
+  const jd = `Requirements
+Strong Go and PostgreSQL experience.
+
+Nice to have
+Kubernetes
+C++ for our older services
+
+What you'll do
+Write C# tools. Excel is a plus.`;
+
+  it("drops optional sections and lines from the must haves", () => {
+    const text = requiredText(jd);
+    expect(text).toContain("Go and PostgreSQL");
+    expect(text).toContain("Write C# tools");
+    expect(text).not.toContain("Kubernetes");
+    expect(text).not.toContain("Excel");
+  });
+
+  it("labels each skill by where the job mentions it", () => {
+    const rows = matchSkills(jd, "", SKILLS, "hard");
+    const importance = Object.fromEntries(rows.map((row) => [row.name, row.importance]));
+    expect(importance).toMatchObject({ Go: "required", PostgreSQL: "required", "C#": "required", Kubernetes: "preferred", "C++": "preferred", Excel: "preferred" });
+  });
+
+  it("treats everything as required when there are no optional parts", () => {
+    const rows = matchSkills("We need Go and Kubernetes.", "", SKILLS, "hard");
+    expect(rows.every((row) => row.importance === "required")).toBe(true);
   });
 });
