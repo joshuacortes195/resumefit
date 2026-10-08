@@ -1,17 +1,17 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Bricolage_Grotesque, Instrument_Sans } from "next/font/google";
 import { ThemeProvider } from "@/components/theme-provider";
 import "./globals.css";
 
-// main font for the app
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+// main font for body text
+const bodyFont = Instrument_Sans({
+  variable: "--font-body",
   subsets: ["latin"],
 });
 
-// font for code and numbers
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+// font for headings
+const headingFont = Bricolage_Grotesque({
+  variable: "--font-heading",
   subsets: ["latin"],
 });
 
@@ -24,7 +24,7 @@ export const metadata: Metadata = {
 // wraps every page with fonts and the theme
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" suppressHydrationWarning className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}>
+    <html lang="en" suppressHydrationWarning className={`${bodyFont.variable} ${headingFont.variable} h-full antialiased`}>
       <body className="min-h-full font-sans">
         <ThemeProvider>{children}</ThemeProvider>
       </body>

@@ -6,7 +6,7 @@ export const metadata = { title: "Sign in" };
 export default function SignInPage() {
   return (
     <main className="flex min-h-screen items-center justify-center p-4">
-      <div className="w-full max-w-sm rounded-xl border border-border bg-surface p-6 shadow-sm">
+      <div className="w-full max-w-sm animate-rise rounded-2xl border border-border bg-surface p-6">
         <Logo />
         <h1 className="mt-6 text-xl font-semibold tracking-tight">Sign in</h1>
         <p className="mt-1 text-sm text-muted">ResumeFit is invite only for now. New here? Enter the code you were given.</p>
@@ -34,7 +34,7 @@ export default function SignInPage() {
           </div>
 
           {/* disabled until auth is connected */}
-          <button type="submit" disabled className="w-full rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60">
+          <button type="submit" disabled className="w-full rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-on-primary disabled:opacity-60">
             Email me a sign in link
           </button>
           <p className="text-center text-xs text-muted">Sign in turns on once the database and auth keys are added.</p>

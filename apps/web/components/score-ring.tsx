@@ -1,3 +1,4 @@
+import type { CSSProperties } from "react";
 import { scoreBand } from "@resumefit/scoring";
 
 // ring sizes in pixels
@@ -19,8 +20,8 @@ export function ScoreRing({ score, size = "md", label = "Match rate" }: ScoreRin
   const stroke = size === "lg" ? 12 : size === "md" ? 7 : 5;
   const radius = (pixels - stroke) / 2;
   const circumference = 2 * Math.PI * radius;
-  // how much of the ring to fill in
-  const filled = (value / 100) * circumference;
+  // how much of the ring to leave empty
+  const gap = circumference - (value / 100) * circumference;
 
   return (
     <div
@@ -29,29 +30,35 @@ export function ScoreRing({ score, size = "md", label = "Match rate" }: ScoreRin
       aria-valuemin={0}
       aria-valuemax={100}
       aria-valuenow={value}
-      className="relative inline-flex items-center justify-center"
+      className="relative inline-flex shrink-0 items-center justify-center"
       style={{ width: pixels, height: pixels }}
     >
       <svg width={pixels} height={pixels} className="-rotate-90" aria-hidden>
         {/* grey track */}
         <circle cx={pixels / 2} cy={pixels / 2} r={radius} fill="none" stroke="var(--border)" strokeWidth={stroke} />
-        {/* colored fill */}
-        <circle
-          cx={pixels / 2}
-          cy={pixels / 2}
-          r={radius}
-          fill="none"
-          stroke={COLORS[scoreBand(value)]}
-          strokeWidth={stroke}
-          strokeLinecap="round"
-          strokeDasharray={`${filled} ${circumference}`}
-          className="transition-[stroke-dasharray] duration-700"
-        />
+        {/* colored fill, draws itself in when the ring shows up */}
+        {value > 0 && (
+          <circle
+            cx={pixels / 2}
+            cy={pixels / 2}
+            r={radius}
+            fill="none"
+            stroke={COLORS[scoreBand(value)]}
+            strokeWidth={stroke}
+            strokeLinecap="round"
+            strokeDasharray={circumference}
+            strokeDashoffset={gap}
+            className="animate-ring transition-[stroke-dashoffset] duration-700"
+            style={{ "--ring-length": circumference } as CSSProperties}
+          />
+        )}
       </svg>
       {/* number in the middle */}
-      <span className={`absolute font-semibold tabular-nums ${size === "lg" ? "text-3xl" : size === "md" ? "text-base" : "text-xs"}`}>
+      <span
+        className={`absolute animate-fade font-display font-semibold tabular-nums ${size === "lg" ? "text-4xl" : size === "md" ? "text-base" : "text-xs"}`}
+      >
         {value}
-        {size !== "sm" && "%"}
+        {size !== "sm" && <span className={size === "lg" ? "text-xl text-muted" : ""}>%</span>}
       </span>
     </div>
   );

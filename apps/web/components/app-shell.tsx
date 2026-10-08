@@ -25,7 +25,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex min-h-screen flex-col">
       {/* top bar */}
-      <header className="sticky top-0 z-30 flex h-14 items-center gap-2 border-b border-border bg-surface px-3 print:hidden">
+      <header className="sticky top-0 z-30 flex h-14 items-center gap-2 border-b border-border bg-surface/85 px-3 backdrop-blur print:hidden">
         {/* hamburger, phones only */}
         <button
           type="button"
@@ -60,15 +60,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               aria-haspopup="menu"
               aria-expanded={menuOpen}
               onClick={() => setMenuOpen((value) => !value)}
-              className="flex size-9 items-center justify-center rounded-full bg-primary-soft text-primary"
+              className="flex size-9 items-center justify-center rounded-full bg-primary-soft text-primary transition-transform duration-150 active:scale-95"
             >
               <UserRound className="size-5" aria-hidden />
             </button>
             {menuOpen && (
-              <div role="menu" className="absolute right-0 mt-2 w-44 rounded-xl border border-border bg-surface p-1 shadow-lg">
+              <div role="menu" className="absolute right-0 mt-2 w-44 origin-top-right animate-pop rounded-xl border border-border bg-surface p-1 shadow-lg">
                 {ACCOUNT_LINKS.map((link) => (
                   <Link
-                    key={link.href}
+                    key={link.label}
                     href={link.href}
                     role="menuitem"
                     onClick={() => setMenuOpen(false)}
@@ -86,7 +86,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <div className="flex flex-1">
         {/* desktop sidebar */}
         <aside
-          className={`sticky top-14 hidden h-[calc(100vh-3.5rem)] shrink-0 border-r border-border bg-surface transition-[width] md:block print:hidden ${
+          className={`sticky top-14 hidden h-[calc(100vh-3.5rem)] shrink-0 border-r border-border bg-surface transition-[width] duration-200 ease-settle md:block print:hidden ${
             collapsed ? "w-16" : "w-60"
           }`}
         >
@@ -96,8 +96,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         {/* mobile drawer with a dark backdrop behind it */}
         {drawerOpen && (
           <div className="fixed inset-0 z-40 md:hidden" role="dialog" aria-modal="true" aria-label="Menu">
-            <button type="button" aria-label="Close menu" onClick={() => setDrawerOpen(false)} className="absolute inset-0 bg-black/50" />
-            <aside className="relative flex h-full w-64 flex-col bg-surface shadow-xl">
+            <button type="button" aria-label="Close menu" onClick={() => setDrawerOpen(false)} className="absolute inset-0 animate-fade bg-black/50" />
+            <aside className="relative flex h-full w-64 animate-drawer flex-col bg-surface shadow-xl">
               <div className="flex h-14 items-center justify-between border-b border-border px-3">
                 <Logo />
                 <button
