@@ -22,7 +22,9 @@ Early. This is what exists today:
 - Invite code rules, with tests
 - Scoring engine so far: weights, skill math, match rate the skill matcher (aliases, similar terms, tricky names like C++ and Go) , plain text resume reading (sections, contact details, measurable results), searchability and recruiter tip checks, and one scan function that ties them into a match rate, with tests
 
-Not built yet: sign in, resume parsing, the scan flow and report, the tracker, the builder, the extension.
+- New Scan page: paste a resume and a job description and get the match rate, skills tables and findings, all in the browser
+
+Not built yet: sign in, file upload and PDF or DOCX parsing, saved scans and the full report page, the tracker, the builder, the extension.
 
 ## Layout
 

@@ -1,9 +1,14 @@
-import { Plus } from "lucide-react";
-import { PageStub } from "@/components/page-stub";
+import { ScanForm } from "@/components/scan-form";
 
 export const metadata = { title: "New Scan" };
 
-// new scan page, placeholder until the scan flow is built
+// new scan page, paste a resume and a job description and get the report
 export default function NewScanPage() {
-  return <PageStub title="New Scan" blurb="Upload a resume, paste a job description and get your match rate." icon={Plus} />;
+  return (
+    <div className="mx-auto max-w-5xl">
+      <h1 className="text-3xl font-semibold">New Scan</h1>
+      <p className="mt-1 mb-6 text-muted">Paste your resume and a job description to see your match rate and what to fix.</p>
+      <ScanForm />
+    </div>
+  );
 }
