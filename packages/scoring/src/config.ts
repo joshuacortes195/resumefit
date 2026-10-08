@@ -20,3 +20,10 @@ export const SCORE_BANDS = {
   good: 75,
   okay: 40,
 };
+
+// limits for the recruiter tip checks
+export const CHECK_CONFIG = {
+  minMeasurableResults: 5,
+  minWords: 300,
+  maxWords: 1000,
+};
