@@ -6,6 +6,7 @@ import { scanResume, type ScanResult } from "@resumefit/scoring";
 import type { ScoreCategory, SkillMatch } from "@resumefit/shared";
 import { HARD_SKILLS, SOFT_SKILLS } from "@resumefit/skills-data";
 import { ScoreRing } from "@/components/score-ring";
+import { SAMPLE_JD, SAMPLE_JOB_TITLE, SAMPLE_RESUME } from "@/lib/sample-scan";
 
 // the bars under the score, in report order
 const CATEGORIES: { key: ScoreCategory; label: string }[] = [
@@ -36,6 +37,15 @@ export function ScanForm() {
     event.preventDefault();
     if (!ready) return;
     setResult(scanResume({ resumeText, jdText, jobTitle, hardSkills: HARD_SKILLS, softSkills: SOFT_SKILLS }));
+    setScanCount((count) => count + 1);
+  }
+
+  // fills the form with the example and scans it right away
+  function handleSample() {
+    setResumeText(SAMPLE_RESUME);
+    setJdText(SAMPLE_JD);
+    setJobTitle(SAMPLE_JOB_TITLE);
+    setResult(scanResume({ resumeText: SAMPLE_RESUME, jdText: SAMPLE_JD, jobTitle: SAMPLE_JOB_TITLE, hardSkills: HARD_SKILLS, softSkills: SOFT_SKILLS }));
     setScanCount((count) => count + 1);
   }
 
@@ -92,6 +102,14 @@ export function ScanForm() {
           >
             <ScanSearch className="size-4" aria-hidden />
             Scan
+          </button>
+          {/* shows a full report without pasting anything */}
+          <button
+            type="button"
+            onClick={handleSample}
+            className="rounded-lg border border-border px-4 py-2.5 text-sm font-semibold transition duration-150 hover:bg-primary-soft active:scale-[0.98]"
+          >
+            Try a sample
           </button>
         </div>
         <p className="mt-3 text-xs text-muted">Scanning happens in your browser. File upload is coming, for now paste the text.</p>
