@@ -15,7 +15,7 @@ const ERRORS: Record<string, string> = {
 };
 
 // sign in screen
-export default function SignInPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
+export default function SignInPage({ searchParams }: { searchParams: Promise<{ error?: string; invite?: string }> }) {
   return (
     <main className="flex min-h-screen items-center justify-center p-4">
       <div className="w-full max-w-sm animate-rise rounded-2xl border border-border bg-surface p-6">
@@ -38,8 +38,8 @@ export default function SignInPage({ searchParams }: { searchParams: Promise<{ e
 }
 
 // the form when sign in is set up, a note when the app is running on your own machine
-async function SignInBody({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
-  const { error } = await searchParams;
+async function SignInBody({ searchParams }: { searchParams: Promise<{ error?: string; invite?: string }> }) {
+  const { error, invite } = await searchParams;
   if (authMode() === "local") {
     return (
       <>
@@ -54,7 +54,7 @@ async function SignInBody({ searchParams }: { searchParams: Promise<{ error?: st
   return (
     <>
       <p className="mt-1 text-sm text-muted">{inviteOnly ? "ResumeFit is invite only for now. New here? Enter the code you were given." : "No password needed. We email you a link."}</p>
-      <SignInForm inviteOnly={inviteOnly} error={error ? (ERRORS[error] ?? error.slice(0, 200)) : null} />
+      <SignInForm inviteOnly={inviteOnly} invite={(invite ?? "").slice(0, 60)} error={error ? (ERRORS[error] ?? error.slice(0, 200)) : null} />
     </>
   );
 }

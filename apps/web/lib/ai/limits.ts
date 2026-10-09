@@ -40,7 +40,9 @@ export async function usedToday(feature?: AiFeature, userId?: string): Promise<n
 
 // how many uses of a feature someone has left today, null when it is not capped
 export async function remainingToday(userId: string, feature: AiFeature): Promise<number | null> {
-  const cap = DAILY_CAPS[feature];
+  // the admin can change the caps, so the saved ones win over the built in ones
+  const { dailyCaps } = await import("@/lib/data/settings");
+  const cap = (await dailyCaps())[feature];
   if (cap === null) return null;
   return Math.max(0, cap - (await usedToday(feature, userId)));
 }

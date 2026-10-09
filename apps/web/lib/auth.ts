@@ -42,3 +42,8 @@ export async function getCurrentUser(): Promise<CurrentUser> {
   const { hostedUser } = await import("@/lib/auth-hosted");
   return hostedUser();
 }
+
+// used after the local account is deleted, so a fresh one is made on the next visit
+export function forgetLocalUser(): void {
+  globalForAuth.localUser = undefined;
+}

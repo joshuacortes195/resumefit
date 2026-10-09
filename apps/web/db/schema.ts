@@ -307,3 +307,10 @@ export const extensionTokens = pgTable(
   },
   (table) => [index("extension_tokens_user_idx").on(table.userId)],
 );
+
+// settings the admin can change without a deploy, like daily caps and feature switches
+export const appSettings = pgTable("app_settings", {
+  key: text("key").primaryKey(),
+  value: jsonb("value").notNull(),
+  updatedAt,
+});

@@ -14,6 +14,8 @@ type SessionProps = {
   title: string;
   questions: InterviewQuestion[];
   answers: (PracticeAnswer | null)[];
+  // false when the admin has switched voice answers off
+  voice: boolean;
 };
 
 // friendly names for the kinds of question
@@ -35,7 +37,7 @@ function speechRecognition(): (new () => Recognition) | null {
 }
 
 // a practice interview: one question at a time, then a summary
-export function InterviewSession({ id, title, questions, answers: initial }: SessionProps) {
+export function InterviewSession({ id, title, questions, answers: initial, voice }: SessionProps) {
   const [answers, setAnswers] = useState(initial);
   const firstOpen = initial.findIndex((answer) => !answer);
   const [index, setIndex] = useState(firstOpen === -1 ? questions.length : firstOpen);
@@ -53,9 +55,9 @@ export function InterviewSession({ id, title, questions, answers: initial }: Ses
   // voice answers are only offered where the browser can do them
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setCanSpeak(speechRecognition() !== null);
+    setCanSpeak(voice && speechRecognition() !== null);
     return () => recognition.current?.stop();
-  }, []);
+  }, [voice]);
 
   // counts the seconds while the microphone is on
   useEffect(() => {

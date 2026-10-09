@@ -11,5 +11,7 @@ export default defineConfig({
     include: ["packages/*/src/**/*.test.ts", "apps/web/lib/**/*.test.ts", "apps/extension/src/**/*.test.ts"],
     // data tests run on a throwaway database that only lives in memory
     env: { LOCAL_DATA_DIR: "memory" },
+    // the first test in each data file waits for its database to be set up
+    testTimeout: 30_000,
   },
 });

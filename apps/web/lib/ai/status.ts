@@ -1,6 +1,7 @@
 import { and, eq } from "drizzle-orm";
 import { getDb, schema } from "@/db";
-import { AI_FEATURES, DAILY_CAPS, usedToday, type AiFeature } from "@/lib/ai/limits";
+import { AI_FEATURES, usedToday, type AiFeature } from "@/lib/ai/limits";
+import { dailyCaps } from "@/lib/data/settings";
 import { providerHealth, readyProviders } from "@/lib/ai/router";
 
 // what the settings page shows about the writing helpers
@@ -28,8 +29,10 @@ export async function aiStatus(userId: string): Promise<AiStatus> {
   const names = new Set(ready.map((provider) => provider.name));
 
   const remaining: AiStatus["remaining"] = {};
+  // the caps the admin set, not just the built in ones
+  const caps = await dailyCaps();
   for (const feature of AI_FEATURES) {
-    const cap = DAILY_CAPS[feature];
+    const cap = caps[feature];
     if (cap !== null) remaining[feature] = Math.max(0, cap - (await usedToday(feature, userId)));
   }
 

@@ -6,7 +6,7 @@ import { signInWithEmail, signInWithGoogle, type SignInState } from "@/app/actio
 import { INPUT, PRIMARY_BUTTON, SECONDARY_BUTTON } from "@/components/ui/buttons";
 
 // email link or google, with the invite code for first timers
-export function SignInForm({ inviteOnly, error }: { inviteOnly: boolean; error: string | null }) {
+export function SignInForm({ inviteOnly, error, invite }: { inviteOnly: boolean; error: string | null; invite: string }) {
   const [state, action, pending] = useActionState<SignInState, FormData>(signInWithEmail, {});
 
   // once the link is on its way, say so instead of showing the form again
@@ -32,7 +32,7 @@ export function SignInForm({ inviteOnly, error }: { inviteOnly: boolean; error: 
       {inviteOnly && (
         <label className="block text-sm font-medium">
           Invite code <span className="font-normal text-muted">(first time only)</span>
-          <input name="invite" type="text" autoComplete="off" className={`${INPUT} mt-1 font-normal uppercase`} />
+          <input name="invite" type="text" autoComplete="off" defaultValue={invite} className={`${INPUT} mt-1 font-normal uppercase`} />
         </label>
       )}
       {problem && (

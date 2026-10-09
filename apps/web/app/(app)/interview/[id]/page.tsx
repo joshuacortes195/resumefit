@@ -6,6 +6,7 @@ import { LINK_BUTTON } from "@/components/ui/buttons";
 import { ReportSkeleton } from "@/components/ui/skeleton";
 import { getCurrentUser } from "@/lib/auth";
 import { getPracticeSession } from "@/lib/data/practice";
+import { featureFlags } from "@/lib/data/settings";
 
 export const metadata = { title: "Interview Practice" };
 
@@ -34,7 +35,7 @@ async function SessionLoader({ params }: { params: Promise<{ id: string }> }) {
         </Link>
       </p>
       <h1 className="mt-1 mb-6 text-3xl font-semibold">{title}</h1>
-      <InterviewSession key={session.id} id={session.id} title={title} questions={session.questions} answers={session.questions.map((_, index) => session.answers[index] ?? null)} />
+      <InterviewSession key={session.id} voice={(await featureFlags()).interviewVoice} id={session.id} title={title} questions={session.questions} answers={session.questions.map((_, index) => session.answers[index] ?? null)} />
     </>
   );
 }
