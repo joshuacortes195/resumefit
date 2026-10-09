@@ -66,9 +66,22 @@ describe("scanResume", () => {
     expect(byId["email"]?.passed).toBe(false);
   });
 
-  it("skips the job title check when no title is given", () => {
+  it("guesses the job title from the posting when none is typed in", () => {
     const result = scanResume({ resumeText: TAILORED, jdText: JD, hardSkills: HARD, softSkills: SOFT });
-    expect(result.checks.some((check) => check.id === "job-title")).toBe(false);
+    expect(result.jobTitle).toBe("Frontend Engineer");
+    expect(result.checks.find((check) => check.id === "job-title")).toMatchObject({ passed: true });
+  });
+
+  it("gives a custom skill its own row and rescans with it", () => {
+    const result = scanResume({ resumeText: TAILORED, jdText: JD, hardSkills: HARD, softSkills: SOFT, customSkills: [{ name: "Storybook", category: "hard" }] });
+    expect(result.hardSkills.find((skill) => skill.name === "Storybook")).toMatchObject({ match: "missing", jdCount: 1, importance: "required" });
+    expect(result.issuesToFix.hardSkills).toBe(1);
+  });
+
+  it("leaves skills in the benefits section out of the report", () => {
+    const withPerks = `${JD}\n\nBenefits\nFree Docker and GraphQL training`;
+    const result = scanResume({ resumeText: TAILORED, jdText: withPerks, hardSkills: [...HARD, { name: "Docker" }, { name: "GraphQL" }], softSkills: SOFT });
+    expect(result.hardSkills.map((skill) => skill.name)).not.toContain("Docker");
   });
 
   it("gives the same answer every time", () => {

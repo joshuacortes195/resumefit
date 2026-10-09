@@ -1,5 +1,16 @@
 import { describe, expect, it } from "vitest";
-import { detectSections, extractContact, isMeasurable, measurableResults, wordCount } from "./parse";
+import {
+  detectSections,
+  extractContact,
+  findDegreeLevels,
+  highestDegree,
+  isMeasurable,
+  measurableResults,
+  parseEducation,
+  parseExperience,
+  parseResume,
+  wordCount,
+} from "./parse";
 
 // plain text resume used across the tests
 const RESUME = `Jordan Lee
@@ -84,5 +95,76 @@ describe("measurable results", () => {
 describe("wordCount", () => {
   it("counts words across lines", () => {
     expect(wordCount("one two\nthree   four")).toBe(4);
+  });
+});
+
+// a fixed "today" so Present always means the same month
+const TODAY = new Date(2026, 5, 15);
+
+describe("parseExperience", () => {
+  it("reads title, company, dates and bullets", () => {
+    const jobs = parseExperience(
+      ["Software Engineer, Acme Corp", "Jan 2023 - Present", "• Cut page load time by 40%", "• Mentored new hires", "Junior Developer | Corner Studio | Austin, TX | Jun 2021 - Dec 2022", "- Built 12 client sites"],
+      TODAY,
+    );
+    expect(jobs).toHaveLength(2);
+    expect(jobs[0]).toMatchObject({ title: "Software Engineer", company: "Acme Corp", bullets: ["Cut page load time by 40%", "Mentored new hires"] });
+    expect(jobs[0]?.dates?.end.present).toBe(true);
+    expect(jobs[1]).toMatchObject({ title: "Junior Developer", company: "Corner Studio", location: "Austin, TX", bullets: ["Built 12 client sites"] });
+  });
+
+  it("works out which part is the title when the company comes first", () => {
+    const [job] = parseExperience(["Brightside Labs — Product Manager", "03/2020 - 08/2022"], TODAY);
+    expect(job).toMatchObject({ title: "Product Manager", company: "Brightside Labs" });
+  });
+
+  it("splits jobs that have no bullets", () => {
+    const jobs = parseExperience(["Barista, Corner Cafe", "2019 - 2021", "Cashier, Fresh Mart", "2017 - 2019"], TODAY);
+    expect(jobs.map((job) => job.title)).toEqual(["Barista", "Cashier"]);
+  });
+
+  it("keeps a job even when it has no dates", () => {
+    const [job] = parseExperience(["Frontend Engineer, Acme Corp", "• Shipped things"], TODAY);
+    expect(job).toMatchObject({ title: "Frontend Engineer", dates: null });
+  });
+});
+
+describe("parseEducation", () => {
+  it("reads the degree, field, school and year", () => {
+    expect(parseEducation(["B.S. Computer Science, State University, 2021"])).toEqual([
+      { level: "Bachelor's", field: "Computer Science", school: "State University", graduationYear: 2021 },
+    ]);
+  });
+
+  it("handles a school on one line and the degree on the next", () => {
+    const [entry] = parseEducation(["University of Texas at Austin", "Master of Science in Data Science, May 2023"]);
+    expect(entry).toMatchObject({ level: "Master's", field: "Data Science", school: "University of Texas at Austin", graduationYear: 2023 });
+  });
+
+  it("splits two degrees and finds the highest", () => {
+    const entries = parseEducation(["MBA, Stanford University, 2020", "BA Economics, Boston College, Boston, MA, 2014"]);
+    expect(entries.map((entry) => entry.level)).toEqual(["MBA", "Bachelor's"]);
+    expect(highestDegree(entries)).toBe("MBA");
+  });
+
+  it("does not mistake a state code for a degree", () => {
+    expect(findDegreeLevels("Northeastern University, Boston, MA")).toEqual([]);
+    expect(findDegreeLevels("Ph.D. in Physics")).toEqual(["PhD"]);
+    expect(findDegreeLevels("Associate of Arts")).toEqual(["Associate"]);
+  });
+});
+
+describe("parseResume", () => {
+  it("pulls the whole resume together", () => {
+    const parsed = parseResume(RESUME, TODAY);
+    expect(parsed.experience[0]).toMatchObject({ title: "Software Engineer", company: "Acme Corp" });
+    expect(parsed.education[0]?.level).toBe("Bachelor's");
+    // jan 2023 to june 2026
+    expect(parsed.yearsExperience).toBe(3.5);
+    expect(parsed.measurableResults).toHaveLength(2);
+  });
+
+  it("leaves years empty when there are no dates", () => {
+    expect(parseResume("Work Experience\nBarista, Corner Cafe\n• Made drinks", TODAY).yearsExperience).toBeNull();
   });
 });

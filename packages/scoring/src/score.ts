@@ -31,9 +31,11 @@ export function skillScore(skills: SkillMatch[]): number {
 }
 
 // share of checks that passed, 0 to 1
-export function checkScore(checks: { passed: boolean }[]): number {
-  if (checks.length === 0) return 1;
-  return checks.filter((check) => check.passed).length / checks.length;
+export function checkScore(checks: { passed: boolean; info?: boolean }[]): number {
+  // notes are shown in the report but never count
+  const scored = checks.filter((check) => !check.info);
+  if (scored.length === 0) return 1;
+  return scored.filter((check) => check.passed).length / scored.length;
 }
 
 // rolls the five category scores into the final match rate, 0 to 100

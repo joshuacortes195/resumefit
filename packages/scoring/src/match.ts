@@ -80,7 +80,14 @@ export function requiredText(jdText: string): string {
 }
 
 // builds the skill rows for the report, one row per skill the job description asks for
-export function matchSkills(jdText: string, resumeText: string, skills: SkillTerm[], category: SkillMatch["category"]): SkillMatch[] {
+export function matchSkills(
+  jdText: string,
+  resumeText: string,
+  skills: SkillTerm[],
+  category: SkillMatch["category"],
+  // skills the user added by hand, these get a row even when the job never mentions them
+  forced: Set<string> = new Set(),
+): SkillMatch[] {
   const jdCounts = countSkills(jdText, skills);
   const resumeCounts = countSkills(resumeText, skills);
   // skills that only show up in the optional parts count as preferred
@@ -88,7 +95,8 @@ export function matchSkills(jdText: string, resumeText: string, skills: SkillTer
 
   const rows: SkillMatch[] = [];
   for (const skill of skills) {
-    const jdCount = jdCounts.get(skill.name) ?? 0;
+    const isForced = forced.has(skill.name);
+    const jdCount = Math.max(jdCounts.get(skill.name) ?? 0, isForced ? 1 : 0);
     // skills the job never mentions are not part of the report
     if (jdCount === 0) continue;
 
@@ -98,7 +106,7 @@ export function matchSkills(jdText: string, resumeText: string, skills: SkillTer
     if (resumeCount > 0) match = "exact";
     else if (hasAny(resumeText, skill.related ?? [])) match = "related";
 
-    const importance = requiredCounts.has(skill.name) ? "required" : "preferred";
+    const importance = requiredCounts.has(skill.name) || isForced ? "required" : "preferred";
     rows.push({ name: skill.name, category, importance, jdCount, resumeCount, match });
   }
 
