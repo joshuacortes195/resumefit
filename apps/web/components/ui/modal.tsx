@@ -16,18 +16,31 @@ type ModalProps = {
 export function Modal({ open, onClose, title, children, size = "md" }: ModalProps) {
   const ref = useRef<HTMLDialogElement>(null);
 
+  // true while we close the dialog ourselves, so that does not count as the user closing it
+  const quiet = useRef(false);
+
   // opens and closes the dialog to match the open prop
   useEffect(() => {
     const dialog = ref.current;
     if (!dialog) return;
     if (open && !dialog.open) dialog.showModal();
     if (!open && dialog.open) dialog.close();
+    // when the page it sits on goes away or is tucked into the background, the dialog must not keep blocking the screen
+    return () => {
+      if (!dialog.open) return;
+      // the close event arrives a moment later, the flag is cleared when it does
+      quiet.current = true;
+      dialog.close();
+    };
   }, [open]);
 
   return (
     <dialog
       ref={ref}
-      onClose={onClose}
+      onClose={() => {
+        if (quiet.current) quiet.current = false;
+        else onClose();
+      }}
       // a click on the dark area around the box closes it
       onClick={(event) => event.target === ref.current && onClose()}
       aria-label={title}

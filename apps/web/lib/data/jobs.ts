@@ -1,4 +1,4 @@
-import { and, asc, count, eq, gte, max } from "drizzle-orm";
+import { and, asc, count, desc, eq, gte, inArray, max } from "drizzle-orm";
 import type { JobStatus } from "@resumefit/shared";
 import { getDb, schema } from "@/db";
 
@@ -81,4 +81,150 @@ export async function nextInterview(userId: string): Promise<{ datetime: Date; t
     .orderBy(asc(schema.interviews.datetime))
     .limit(1);
   return row?.datetime ? { ...row, datetime: row.datetime } : null;
+}
+
+// a job as the board shows it, with the score of its latest scan
+export type BoardJob = Pick<JobRow, "id" | "title" | "company" | "status" | "position" | "archived" | "createdAt" | "url"> & { matchRate: number | null };
+
+// every job for the board, in column order
+export async function listJobs(userId: string, archived = false): Promise<BoardJob[]> {
+  const db = await getDb();
+  const rows = await db
+    .select({
+      id: schema.jobs.id,
+      title: schema.jobs.title,
+      company: schema.jobs.company,
+      status: schema.jobs.status,
+      position: schema.jobs.position,
+      archived: schema.jobs.archived,
+      createdAt: schema.jobs.createdAt,
+      url: schema.jobs.url,
+    })
+    .from(schema.jobs)
+    .where(and(eq(schema.jobs.userId, userId), eq(schema.jobs.archived, archived)))
+    .orderBy(asc(schema.jobs.position), asc(schema.jobs.createdAt));
+  const scores = await latestScores(userId, rows.map((row) => row.id));
+  return rows.map((row) => ({ ...row, matchRate: scores.get(row.id)?.matchRate ?? null }));
+}
+
+// the newest scan of each job, plus how many scans it has had
+export async function latestScores(userId: string, jobIds: string[]): Promise<Map<string, { matchRate: number; scanId: string; scans: number }>> {
+  const scores = new Map<string, { matchRate: number; scanId: string; scans: number }>();
+  if (jobIds.length === 0) return scores;
+  const db = await getDb();
+  const rows = await db
+    .select({ id: schema.scans.id, jobId: schema.scans.jobId, matchRate: schema.scans.matchRate })
+    .from(schema.scans)
+    .where(and(eq(schema.scans.userId, userId), inArray(schema.scans.jobId, jobIds)))
+    .orderBy(desc(schema.scans.createdAt));
+  for (const row of rows) {
+    if (!row.jobId) continue;
+    const seen = scores.get(row.jobId);
+    // rows come newest first, so the first one we see for a job is its latest
+    if (seen) seen.scans += 1;
+    else scores.set(row.jobId, { matchRate: row.matchRate, scanId: row.id, scans: 1 });
+  }
+  return scores;
+}
+
+// the fields of a job that can be edited from its card
+export type JobChanges = Partial<Pick<JobRow, "title" | "company" | "location" | "url" | "salary" | "description" | "dateApplied" | "notes" | "status" | "archived" | "resumeId">>;
+
+// saves edits to a job
+export async function updateJob(userId: string, id: string, changes: JobChanges): Promise<JobRow | null> {
+  const db = await getDb();
+  const [row] = await db
+    .update(schema.jobs)
+    .set(changes)
+    .where(and(eq(schema.jobs.id, id), eq(schema.jobs.userId, userId)))
+    .returning();
+  return row ?? null;
+}
+
+// drops a card into a column, orderedIds is that column from top to bottom after the move
+export async function moveJob(userId: string, id: string, status: JobStatus, orderedIds: string[], today: string): Promise<void> {
+  const db = await getDb();
+  await db.transaction(async (tx) => {
+    const [job] = await tx
+      .select({ status: schema.jobs.status, dateApplied: schema.jobs.dateApplied })
+      .from(schema.jobs)
+      .where(and(eq(schema.jobs.id, id), eq(schema.jobs.userId, userId)))
+      .limit(1);
+    if (!job) return;
+    // a card that lands in applied for the first time gets today's date
+    const dateApplied = status === "applied" && !job.dateApplied ? today : job.dateApplied;
+    await tx.update(schema.jobs).set({ status, dateApplied }).where(and(eq(schema.jobs.id, id), eq(schema.jobs.userId, userId)));
+    // renumber the column so the order sticks
+    for (const [position, jobId] of orderedIds.entries()) {
+      await tx.update(schema.jobs).set({ position }).where(and(eq(schema.jobs.id, jobId), eq(schema.jobs.userId, userId), eq(schema.jobs.status, status)));
+    }
+  });
+}
+
+// deletes a job and everything hanging off it
+export async function deleteJob(userId: string, id: string): Promise<void> {
+  const db = await getDb();
+  await db.delete(schema.jobs).where(and(eq(schema.jobs.id, id), eq(schema.jobs.userId, userId)));
+}
+
+export type InterviewRow = typeof schema.interviews.$inferSelect;
+export type NewInterview = Pick<InterviewRow, "type" | "datetime" | "interviewerName" | "phone" | "email" | "meetingLink" | "description">;
+
+// the interviews for a job, soonest first
+export async function listInterviews(userId: string, jobId: string): Promise<InterviewRow[]> {
+  if (!(await getJob(userId, jobId))) return [];
+  const db = await getDb();
+  return db.select().from(schema.interviews).where(eq(schema.interviews.jobId, jobId)).orderBy(asc(schema.interviews.datetime));
+}
+
+// adds an interview to a job the user owns
+export async function addInterview(userId: string, jobId: string, interview: NewInterview): Promise<InterviewRow | null> {
+  if (!(await getJob(userId, jobId))) return null;
+  const db = await getDb();
+  const [row] = await db
+    .insert(schema.interviews)
+    .values({ jobId, ...interview })
+    .returning();
+  return row ?? null;
+}
+
+// changes an interview, only when its job belongs to the user
+export async function updateInterview(userId: string, id: string, changes: Partial<NewInterview & { thankYouNote: string | null }>): Promise<void> {
+  const db = await getDb();
+  const [found] = await db.select({ jobId: schema.interviews.jobId }).from(schema.interviews).where(eq(schema.interviews.id, id)).limit(1);
+  if (!found || !(await getJob(userId, found.jobId))) return;
+  await db.update(schema.interviews).set(changes).where(eq(schema.interviews.id, id));
+}
+
+// removes an interview, only when its job belongs to the user
+export async function deleteInterview(userId: string, id: string): Promise<void> {
+  const db = await getDb();
+  const [found] = await db.select({ jobId: schema.interviews.jobId }).from(schema.interviews).where(eq(schema.interviews.id, id)).limit(1);
+  if (!found || !(await getJob(userId, found.jobId))) return;
+  await db.delete(schema.interviews).where(eq(schema.interviews.id, id));
+}
+
+// the cover letter saved to a job, if there is one
+export async function getCoverLetter(userId: string, jobId: string): Promise<{ id: string; content: string; tone: string | null } | null> {
+  const db = await getDb();
+  const [row] = await db
+    .select({ id: schema.coverLetters.id, content: schema.coverLetters.content, tone: schema.coverLetters.tone })
+    .from(schema.coverLetters)
+    .where(and(eq(schema.coverLetters.userId, userId), eq(schema.coverLetters.jobId, jobId)))
+    .orderBy(desc(schema.coverLetters.createdAt))
+    .limit(1);
+  return row ?? null;
+}
+
+// saves the cover letter for a job, replacing the one that was there
+export async function saveCoverLetter(userId: string, jobId: string, content: string, tone: string | null = null): Promise<void> {
+  if (!(await getJob(userId, jobId))) return;
+  const db = await getDb();
+  const existing = await getCoverLetter(userId, jobId);
+  if (existing) {
+    await db.update(schema.coverLetters).set({ content, tone: tone ?? existing.tone }).where(eq(schema.coverLetters.id, existing.id));
+    return;
+  }
+  const [row] = await db.insert(schema.coverLetters).values({ userId, jobId, content, tone }).returning({ id: schema.coverLetters.id });
+  if (row) await db.update(schema.jobs).set({ coverLetterId: row.id }).where(eq(schema.jobs.id, jobId));
 }

@@ -11,6 +11,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { EmptyState } from "@/components/ui/empty-state";
 import { StatusSelect } from "@/components/ui/status-select";
 import type { ScanListItem } from "@/lib/data/scans";
+import { localToday } from "@/lib/job-tabs";
 
 type ScanHistoryProps = {
   items: ScanListItem[];
@@ -163,7 +164,7 @@ export function ScanHistory({ items, total, page, pageSize, search, sort, archiv
                     <span className="line-clamp-2 text-muted">{item.snippet}</span>
                   </td>
                   <td className="py-3 pr-4">
-                    <StatusSelect label={`Status of ${item.jobTitle ?? "this job"}`} value={item.jobStatus} disabled={pending} onChange={(status) => run(() => setScanStatus(item.id, status))} />
+                    <StatusSelect label={`Status of ${item.jobTitle ?? "this job"}`} value={item.jobStatus} disabled={pending} onChange={(status) => run(() => setScanStatus(item.id, status, localToday()))} />
                   </td>
                   <td className="whitespace-nowrap py-3 pr-4 text-muted">{DATE.format(new Date(item.createdAt))}</td>
                   <td className="py-3 pr-4">

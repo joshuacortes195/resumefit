@@ -14,6 +14,8 @@ type ScanFormProps = {
   resumes: ResumeOption[];
   // set when rescanning, the job description is reused so only the resume step shows
   rescan?: { scanId: string; jdText: string };
+  // set when scanning for a job on the tracker, its details are filled in already
+  job?: { id: string; jdText: string; title: string; company: string; url: string };
 };
 
 // the three ways to bring a resume
@@ -26,15 +28,15 @@ const PROGRESS = ["Reading your resume", "Finding skills", "Scoring"];
 const TEXTAREA = `${INPUT} h-64 resize-y p-3`;
 
 // pick a resume and paste a job description, then run the scan
-export function ScanForm({ resumes, rescan }: ScanFormProps) {
+export function ScanForm({ resumes, rescan, job }: ScanFormProps) {
   const router = useRouter();
   const base = resumes.find((resume) => resume.isBase) ?? resumes[0];
   const [source, setSource] = useState<Source>("upload");
   const [file, setFile] = useState<File | null>(null);
   const [resumeText, setResumeText] = useState("");
   const [resumeId, setResumeId] = useState(base?.id ?? "");
-  const [jdText, setJdText] = useState("");
-  const [showDetails, setShowDetails] = useState(false);
+  const [jdText, setJdText] = useState(job?.jdText ?? "");
+  const [showDetails, setShowDetails] = useState(job !== undefined);
   const [pending, setPending] = useState(false);
   const [step, setStep] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -66,6 +68,7 @@ export function ScanForm({ resumes, rescan }: ScanFormProps) {
       form.set("jdText", rescan.jdText);
       form.set("previousScanId", rescan.scanId);
     }
+    if (job) form.set("jobId", job.id);
 
     setPending(true);
     setStep(0);
@@ -176,15 +179,15 @@ export function ScanForm({ resumes, rescan }: ScanFormProps) {
           <div className={`grid gap-3 sm:grid-cols-3 ${showDetails ? "mt-3 animate-rise" : "hidden"}`}>
             <label className="text-sm font-medium">
               Job title
-              <input name="jobTitle" className={`${INPUT} mt-1 font-normal`} />
+              <input name="jobTitle" defaultValue={job?.title} className={`${INPUT} mt-1 font-normal`} />
             </label>
             <label className="text-sm font-medium">
               Company
-              <input name="company" className={`${INPUT} mt-1 font-normal`} />
+              <input name="company" defaultValue={job?.company} className={`${INPUT} mt-1 font-normal`} />
             </label>
             <label className="text-sm font-medium">
               Job posting link
-              <input name="jobUrl" type="url" placeholder="https://" className={`${INPUT} mt-1 font-normal`} />
+              <input name="jobUrl" type="url" defaultValue={job?.url} placeholder="https://" className={`${INPUT} mt-1 font-normal`} />
             </label>
           </div>
         </div>

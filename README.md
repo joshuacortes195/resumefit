@@ -12,19 +12,18 @@ A free tool for matching a resume to a job description, tracking applications an
 
 ## Status
 
-Early. This is what exists today:
+Working today:
 
-- pnpm monorepo with the web app and three shared packages
-- App shell: collapsible sidebar, mobile drawer, top bar, light and dark mode
-- Dashboard layout and a placeholder page for every section
-- Database schema for every table (Drizzle, Postgres)
-- Environment variable validation
-- Invite code rules, with tests
-- Scoring engine so far: weights, skill math, match rate the skill matcher (aliases, similar terms, tricky names like C++ and Go) , plain text resume reading (sections, contact details, measurable results), searchability and recruiter tip checks, and one scan function that ties them into a match rate, with tests
+- **Scans**: upload a PDF or DOCX, paste text or pick a saved resume, add a job description and get a saved match report
+- **Match report**: match rate gauge, searchability, hard and soft skills tables, recruiter tips and formatting checks, the job description with skills marked up, add your own skills, edit and rescan with the score change, guided tour, print view and a sample report
+- **Resume reading**: text in reading order from PDF and DOCX, plus layout details (columns, tables, images, fonts, margins, headers and footers, page size)
+- **Scan history**: search, sort, paging, archive, bulk delete, status that stays in sync with the tracker
+- **Job tracker**: drag and drop board, and a card for each job with the job details, resume, cover letter, interviews (with calendar links) and notes that save as you type
+- **Resume manager**: star a base resume, rename, preview, duplicate, download, delete
+- **Dashboard**: new scan form, latest scan, tracker counts and next interview
+- Runs with no accounts at all: without a `DATABASE_URL` the app keeps a local database and uploads in `apps/web/.data`
 
-- New Scan page: paste a resume and a job description and get the match rate, skills tables and findings, all in the browser
-
-Not built yet: sign in, file upload and PDF or DOCX parsing, saved scans and the full report page, the tracker, the builder, the extension.
+Not built yet: sign in for the hosted version, the writing helpers (rewrite suggestions, cover letters, interview practice), the resume builder, the LinkedIn page and the Chrome extension.
 
 ## Layout
 
@@ -46,7 +45,7 @@ cp .env.example apps/web/.env.local
 pnpm dev
 ```
 
-Open http://localhost:3000. The app shell runs without any keys filled in.
+Open http://localhost:3000. Everything that is built runs without any keys filled in. Your data stays in `apps/web/.data` until you point `DATABASE_URL` at a hosted database.
 
 ## Scripts
 
@@ -57,6 +56,7 @@ Open http://localhost:3000. The app shell runs without any keys filled in.
 | `pnpm typecheck` | type check every package |
 | `pnpm lint` | lint the web app |
 | `pnpm test` | run unit tests |
+| `pnpm test:e2e` | build the app and click through it in a real browser (run `pnpm exec playwright install chromium` once first) |
 | `pnpm db:generate` | create a migration from the schema |
 | `pnpm db:migrate` | apply migrations to the database in `DATABASE_URL` |
 

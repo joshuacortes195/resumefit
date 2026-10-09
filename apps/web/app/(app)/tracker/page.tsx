@@ -1,12 +1,6 @@
-import { PageStub } from "@/components/page-stub";
-import { navItem } from "@/lib/nav";
+export const metadata = { title: "Job Tracker" };
 
-// sidebar entry this page belongs to
-const item = navItem("/tracker");
-
-export const metadata = { title: item.label };
-
-// job tracker page, placeholder until the feature is built
+// the board itself lives in the layout, so there is nothing extra to show here
 export default function TrackerPage() {
-  return <PageStub title={item.label} blurb={item.blurb} icon={item.icon} />;
+  return null;
 }

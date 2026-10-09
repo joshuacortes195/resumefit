@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { getCurrentUser } from "@/lib/auth";
+import { getJob, updateJob } from "@/lib/data/jobs";
 import { createScan, DAILY_SCAN_LIMIT, getScan, scansToday } from "@/lib/data/scans";
 import { errorResponse, field, RequestError, resolveResume } from "@/lib/scan-request";
 
@@ -25,6 +26,10 @@ export async function POST(request: Request): Promise<Response> {
     const previousId = field(form, "previousScanId");
     const previous = previousId ? await getScan(user.id, previousId) : null;
 
+    // a scan started from a tracker card stays attached to that card
+    const jobId = field(form, "jobId");
+    const card = jobId ? await getJob(user.id, jobId) : null;
+
     const resume = await resolveResume(user.id, form);
     const scan = await createScan(user.id, {
       resumeId: resume.resumeId,
@@ -34,8 +39,10 @@ export async function POST(request: Request): Promise<Response> {
       jobTitle: job.data.jobTitle ?? previous?.jobTitle,
       company: job.data.company ?? previous?.company,
       jobUrl: job.data.jobUrl ?? previous?.jobUrl,
-      jobId: previous?.jobId,
+      jobId: card?.id ?? previous?.jobId,
     });
+    // the card remembers the resume it was last scanned with
+    if (card) await updateJob(user.id, card.id, { resumeId: resume.resumeId, description: card.description || scan.jdText });
     return Response.json({ id: scan.id });
   } catch (error) {
     return errorResponse(error);

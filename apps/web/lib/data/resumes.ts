@@ -134,4 +134,36 @@ export async function deleteResume(userId: string, id: string): Promise<void> {
   const db = await getDb();
   await db.delete(schema.resumes).where(and(eq(schema.resumes.userId, userId), eq(schema.resumes.id, id)));
   if (resume.filePath) await deleteFile(resume.filePath);
+  // when the base resume is deleted, the most recent one left takes its place
+  if (resume.isBase) {
+    const [next] = await db.select({ id: schema.resumes.id }).from(schema.resumes).where(eq(schema.resumes.userId, userId)).orderBy(desc(schema.resumes.updatedAt)).limit(1);
+    if (next) await db.update(schema.resumes).set({ isBase: true }).where(eq(schema.resumes.id, next.id));
+  }
+}
+
+// a resume as the manager table shows it, with the job it was made for
+export type ManagedResume = ResumeSummary & { jobTitle: string | null; jobCompany: string | null; words: number };
+
+// every resume with its linked job, for the resume manager
+export async function listManagedResumes(userId: string): Promise<ManagedResume[]> {
+  const db = await getDb();
+  const rows = await db
+    .select({
+      id: schema.resumes.id,
+      name: schema.resumes.name,
+      isBase: schema.resumes.isBase,
+      source: schema.resumes.source,
+      fileType: schema.resumes.fileType,
+      linkedJobId: schema.resumes.linkedJobId,
+      createdAt: schema.resumes.createdAt,
+      updatedAt: schema.resumes.updatedAt,
+      rawText: schema.resumes.rawText,
+      jobTitle: schema.jobs.title,
+      jobCompany: schema.jobs.company,
+    })
+    .from(schema.resumes)
+    .leftJoin(schema.jobs, eq(schema.resumes.linkedJobId, schema.jobs.id))
+    .where(eq(schema.resumes.userId, userId))
+    .orderBy(desc(schema.resumes.isBase), desc(schema.resumes.updatedAt));
+  return rows.map(({ rawText, ...row }) => ({ ...row, words: (rawText ?? "").split(/\s+/).filter(Boolean).length }));
 }

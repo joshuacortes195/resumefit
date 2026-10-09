@@ -129,8 +129,9 @@ export async function trackScan(scanId: string): Promise<ActionResult & { jobId?
 }
 
 // moves a tracked scan's job to another stage, tracking it first if needed
-export async function setScanStatus(scanId: string, status: string): Promise<ActionResult> {
+export async function setScanStatus(scanId: string, status: string, today: string): Promise<ActionResult> {
   const parsed = z.enum(JOB_STATUSES).safeParse(status);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(today)) return fail("That date does not look right.");
   if (!parsed.success) return fail("Pick a status from the list.");
   const tracked = await trackScan(scanId);
   if (!tracked.ok || !tracked.jobId) return tracked;
@@ -138,7 +139,7 @@ export async function setScanStatus(scanId: string, status: string): Promise<Act
   const db = await getDb();
   await db
     .update(schema.jobs)
-    .set({ status: parsed.data, dateApplied: parsed.data === "applied" ? new Date().toISOString().slice(0, 10) : undefined })
+    .set({ status: parsed.data, dateApplied: parsed.data === "applied" ? today : undefined })
     .where(and(eq(schema.jobs.id, tracked.jobId), eq(schema.jobs.userId, user.id)));
   refresh(scanId);
   revalidatePath("/tracker");
