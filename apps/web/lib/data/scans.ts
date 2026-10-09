@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { and, asc, count, desc, eq, gte, ilike, inArray, lt, or } from "drizzle-orm";
-import { scanResume, type DegreeLevel, type LayoutMeta, type ScanResult } from "@resumefit/scoring";
+import { scanResume, type DegreeLevel, type JdHints, type LayoutMeta, type ScanResult } from "@resumefit/scoring";
 import { HARD_SKILLS, SOFT_SKILLS } from "@resumefit/skills-data";
 import { getDb, schema } from "@/db";
 
@@ -51,6 +51,8 @@ type ScanInputs = {
   layout?: LayoutMeta | null;
   // when the scan was first made, so "Present" always means the same month
   today?: Date;
+  // extra facts about the posting from the optional smarter read
+  hints?: JdHints | null;
 };
 
 // runs the scoring engine with the full skill lists plus the user's own skills
@@ -67,9 +69,44 @@ export function runScan(inputs: ScanInputs, dictionary: CustomSkill[] = []): Sca
     customSkills: inputs.customSkills,
     layout: inputs.layout,
     today: inputs.today,
+    hints: inputs.hints,
     hardSkills: [...HARD_SKILLS, ...fresh(own("hard"))],
     softSkills: [...SOFT_SKILLS, ...fresh(own("soft"))],
   });
+}
+
+// the saved smarter read of a posting, in the shape the scoring engine takes
+export async function cachedHints(jdHash: string): Promise<JdHints | null> {
+  const db = await getDb();
+  const [row] = await db.select({ aiExtraction: schema.jdAnalysisCache.aiExtraction }).from(schema.jdAnalysisCache).where(eq(schema.jdAnalysisCache.jdHash, jdHash)).limit(1);
+  return row ? toHints(row.aiExtraction as StoredExtraction) : null;
+}
+
+// the parts of a saved read that we use
+type StoredExtraction = {
+  job_title?: string | null;
+  company?: string | null;
+  years_required_min?: number | null;
+  education_required?: string | null;
+  education_preferred?: string | null;
+  hard_skills?: { name: string }[];
+  soft_skills?: { name: string }[];
+  tools?: string[];
+  certifications?: string[];
+};
+
+// maps a saved read onto the hints the scoring engine takes
+export function toHints(extraction: StoredExtraction): JdHints {
+  return {
+    jobTitle: extraction.job_title,
+    company: extraction.company,
+    yearsRequired: extraction.years_required_min,
+    educationRequired: extraction.education_required,
+    educationPreferred: extraction.education_preferred,
+    // tools and certifications are hard skills as far as the report goes
+    hardSkills: [...(extraction.hard_skills ?? []).map((skill) => skill.name), ...(extraction.tools ?? []), ...(extraction.certifications ?? [])],
+    softSkills: (extraction.soft_skills ?? []).map((skill) => skill.name),
+  };
 }
 
 // turns a database row into a typed scan
@@ -98,13 +135,14 @@ export type NewScan = {
   company?: string | null;
   jobUrl?: string | null;
   jobId?: string | null;
+  hints?: JdHints | null;
 };
 
 // runs a scan and saves it
 export async function createScan(userId: string, input: NewScan): Promise<SavedScan> {
   const db = await getDb();
   const today = new Date();
-  const report = runScan({ resumeText: input.resumeText, jdText: input.jdText, jobTitle: input.jobTitle, jobUrl: input.jobUrl, layout: input.layout, today }, await getDictionary(userId));
+  const report = runScan({ resumeText: input.resumeText, jdText: input.jdText, jobTitle: input.jobTitle, jobUrl: input.jobUrl, layout: input.layout, today, hints: input.hints }, await getDictionary(userId));
   const [row] = await db
     .insert(schema.scans)
     .values({
@@ -180,6 +218,8 @@ export async function updateScan(userId: string, id: string, changes: ScanChange
       customSkills: next.customSkills,
       layout: scan.layoutMeta,
       today: scan.createdAt,
+      // reuse the saved read of this posting, if there is one
+      hints: await cachedHints(hashJd(next.jdText)),
     },
     await getDictionary(userId),
   );

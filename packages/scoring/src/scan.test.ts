@@ -84,6 +84,21 @@ describe("scanResume", () => {
     expect(result.hardSkills.map((skill) => skill.name)).not.toContain("Docker");
   });
 
+  it("uses hints to fill gaps but never over our own read", () => {
+    const jd = "Come build things with us.\nYou will write TypeScript and use Storybook and Chromatic every day.";
+    const hints = { jobTitle: "UI Engineer", yearsRequired: 4, educationRequired: "Bachelor's", hardSkills: ["Storybook", "TypeScript", "experience", "Rust"], softSkills: ["Communication"] };
+    const result = scanResume({ resumeText: TAILORED, jdText: jd, hardSkills: HARD, softSkills: SOFT, hints });
+    expect(result.jobTitle).toBe("UI Engineer");
+    expect(result.jd.yearsRequired).toBe(4);
+    expect(result.jd.educationRequired).toBe("Bachelor's");
+    // storybook is new and in the posting, rust is not in the posting, typescript was already known
+    expect(result.hardSkills.map((skill) => skill.name).sort()).toEqual(["Storybook", "TypeScript"]);
+    expect(result.softSkills).toEqual([]);
+
+    // a title we can read ourselves is kept
+    expect(scanResume({ resumeText: TAILORED, jdText: JD, hardSkills: HARD, softSkills: SOFT, hints }).jobTitle).toBe("Frontend Engineer");
+  });
+
   it("gives the same answer every time", () => {
     const input = { resumeText: TAILORED, jdText: JD, hardSkills: HARD, softSkills: SOFT };
     expect(scanResume(input)).toEqual(scanResume(input));

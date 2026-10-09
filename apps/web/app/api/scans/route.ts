@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { jdHints } from "@/lib/ai/jd";
 import { getCurrentUser } from "@/lib/auth";
 import { getJob, updateJob } from "@/lib/data/jobs";
 import { createScan, DAILY_SCAN_LIMIT, getScan, scansToday } from "@/lib/data/scans";
@@ -31,7 +32,10 @@ export async function POST(request: Request): Promise<Response> {
     const card = jobId ? await getJob(user.id, jobId) : null;
 
     const resume = await resolveResume(user.id, form);
+    // an optional smarter read of the posting, the scan carries on without it when it is not there
+    const hints = await jdHints(user.id, job.data.jdText);
     const scan = await createScan(user.id, {
+      hints,
       resumeId: resume.resumeId,
       resumeText: resume.text,
       layout: resume.layout,

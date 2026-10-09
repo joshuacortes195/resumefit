@@ -11,7 +11,7 @@ import { ThemeToggle } from "@/components/theme-toggle";
 const ACCOUNT_LINKS = [
   { label: "Profile", href: "/settings" },
   
-  { label: "AI settings", href: "/settings" },
+  { label: "AI settings", href: "/settings#ai" },
   { label: "Sign out", href: "/sign-in" },
 ];
 
