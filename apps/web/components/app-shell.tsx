@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { Menu, PanelLeft, UserRound, X } from "lucide-react";
+import { signOut } from "@/app/actions/auth";
 import { Logo } from "@/components/logo";
 import { Sidebar } from "@/components/sidebar";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -12,7 +13,6 @@ const ACCOUNT_LINKS = [
   { label: "Profile", href: "/settings#profile" },
   { label: "Settings", href: "/settings" },
   { label: "AI settings", href: "/settings#ai" },
-  { label: "Sign out", href: "/sign-in" },
 ];
 
 // top bar, sidebar and the page area for every signed in page
@@ -77,6 +77,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     {link.label}
                   </Link>
                 ))}
+                {/* sign out is a real action, not a link */}
+                <form action={signOut}>
+                  <button type="submit" role="menuitem" className="block w-full rounded-lg px-3 py-2 text-left text-sm hover:bg-primary-soft">
+                    Sign out
+                  </button>
+                </form>
               </div>
             )}
           </div>
