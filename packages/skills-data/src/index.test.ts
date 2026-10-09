@@ -18,7 +18,7 @@ describe("skill lists", () => {
   });
 
   it("has a useful number of skills", () => {
-    expect(HARD_SKILLS.length).toBeGreaterThan(150);
+    expect(HARD_SKILLS.length).toBeGreaterThan(5000);
     expect(SOFT_SKILLS.length).toBeGreaterThan(30);
   });
 });

@@ -3,8 +3,7 @@
 import { useDeferredValue, useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { ArrowRight, Briefcase, Check, Columns2, Copy, Download, PenLine, Plus, Save, Sparkles, Undo2, X } from "lucide-react";
-import { parseResume, scanResume, type JdHints, type LayoutMeta } from "@resumefit/scoring";
-import { HARD_SKILLS, SOFT_SKILLS } from "@resumefit/skills-data";
+import { parseResume, scanResume, type JdHints, type LayoutMeta, type SkillTerm } from "@resumefit/scoring";
 import { trackScan } from "@/app/actions/scans";
 import { generateBullets, generateSuggestions, saveOptimizedResume } from "@/app/actions/writing";
 import { AiNotice } from "@/components/ai-notice";
@@ -25,7 +24,8 @@ export type WorkspaceScan = {
   targetTitle: string | null;
   educationOverride: string | null;
   customSkills: { name: string; category: "hard" | "soft" }[];
-  dictionary: { name: string; category: "hard" | "soft" }[];
+  // only the skills this job mentions, with their other spellings. the full list is thousands long and stays on the server
+  skills: { hard: SkillTerm[]; soft: SkillTerm[] };
   hints: JdHints | null;
   layout: LayoutMeta | null;
   createdAt: string;
@@ -63,7 +63,6 @@ export function Workspace({ scan, saved, ai }: WorkspaceProps) {
 
   // scores a version of the resume with the same settings the scan used
   const score = (text: string) => {
-    const own = (category: "hard" | "soft") => scan.dictionary.filter((skill) => skill.category === category).map((skill) => ({ name: skill.name }));
     return scanResume({
       resumeText: text,
       jdText: scan.jdText,
@@ -73,8 +72,8 @@ export function Workspace({ scan, saved, ai }: WorkspaceProps) {
       hints: scan.hints,
       layout: scan.layout,
       today: new Date(scan.createdAt),
-      hardSkills: [...HARD_SKILLS, ...own("hard")],
-      softSkills: [...SOFT_SKILLS, ...own("soft")],
+      hardSkills: scan.skills.hard,
+      softSkills: scan.skills.soft,
     });
   };
 

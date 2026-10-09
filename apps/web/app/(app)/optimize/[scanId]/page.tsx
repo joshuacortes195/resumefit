@@ -1,5 +1,7 @@
 import { Suspense } from "react";
 import { notFound } from "next/navigation";
+import { countSkills, type SkillTerm } from "@resumefit/scoring";
+import { HARD_SKILLS, SOFT_SKILLS } from "@resumefit/skills-data";
 import { Workspace } from "@/components/optimize/workspace";
 import { ReportSkeleton } from "@/components/ui/skeleton";
 import { remainingToday } from "@/lib/ai/limits";
@@ -17,6 +19,16 @@ export default function OptimizePage({ params }: { params: Promise<{ scanId: str
       <WorkspaceLoader params={params} />
     </Suspense>
   );
+}
+
+// the skills this job description mentions, which is all the browser needs to rescore the resume
+function jobSkills(jdText: string, dictionary: { name: string; category: "hard" | "soft" }[]) {
+  const own = (category: "hard" | "soft") => dictionary.filter((skill) => skill.category === category).map((skill) => ({ name: skill.name }));
+  const mentioned = (skills: SkillTerm[]) => {
+    const names = new Set(countSkills(jdText, skills).keys());
+    return skills.filter((skill) => names.has(skill.name));
+  };
+  return { hard: mentioned([...HARD_SKILLS, ...own("hard")]), soft: mentioned([...SOFT_SKILLS, ...own("soft")]) };
 }
 
 // loads the scan and everything needed to rescore it in the browser
@@ -47,7 +59,7 @@ async function WorkspaceLoader({ params }: { params: Promise<{ scanId: string }>
         targetTitle: scan.jobTitleOverride,
         educationOverride: scan.educationOverride,
         customSkills: scan.customSkills,
-        dictionary,
+        skills: jobSkills(scan.jdText, dictionary),
         hints,
         layout: scan.layoutMeta,
         createdAt: scan.createdAt.toISOString(),

@@ -25,19 +25,36 @@ function termPattern(term: string): RegExp {
   return new RegExp(`(?<![${SKILL_CHARS}])${body}(?![${SKILL_CHARS}])`, exactCase ? "g" : "gi");
 }
 
+// one way of writing a skill, with what is needed to look for it quickly
+type Spelling = { term: string; name: string; start: string; pattern: RegExp };
+
+// the spellings of each skill list, worked out once. the lists run to thousands of entries and are reused on every scan
+const spellingCache = new WeakMap<SkillTerm[], Spelling[]>();
+
+// every spelling of every skill, longest first so "Node.js" is taken before "Node"
+function spellingsOf(skills: SkillTerm[]): Spelling[] {
+  let spellings = spellingCache.get(skills);
+  if (!spellings) {
+    spellings = skills
+      .flatMap((skill) => [skill.name, ...(skill.aliases ?? [])].map((term) => ({ term, name: skill.name, start: (term.trim().toLowerCase().split(/[\s-]/)[0] ?? "").trim(), pattern: termPattern(term) })))
+      .sort((a, b) => b.term.length - a.term.length);
+    spellingCache.set(skills, spellings);
+  }
+  return spellings;
+}
+
 // counts how many times each skill shows up in a piece of text
 export function countSkills(text: string, skills: SkillTerm[]): Map<string, number> {
-  // every spelling of every skill, longest first so "Node.js" is taken before "Node"
-  const spellings = skills
-    .flatMap((skill) => [skill.name, ...(skill.aliases ?? [])].map((term) => ({ term, name: skill.name })))
-    .sort((a, b) => b.term.length - a.term.length);
-
   const counts = new Map<string, number>();
+  const lower = text.toLowerCase();
   let remaining = text;
-  for (const { term, name } of spellings) {
+  for (const { name, start, pattern } of spellingsOf(skills)) {
+    // a spelling whose first word is nowhere in the text cannot be there, which rules out nearly all of them cheaply
+    if (!lower.includes(start)) continue;
     let found = 0;
+    pattern.lastIndex = 0;
     // blank out each hit so a shorter spelling cannot count the same words again
-    remaining = remaining.replace(termPattern(term), (hit) => {
+    remaining = remaining.replace(pattern, (hit) => {
       found += 1;
       return " ".repeat(hit.length);
     });
@@ -123,15 +140,14 @@ export type SkillSpan = { start: number; end: number; name: string };
 
 // finds every skill mention with its position, so the text can be shown with highlights
 export function findSkillSpans(text: string, skills: SkillTerm[]): SkillSpan[] {
-  const spellings = skills
-    .flatMap((skill) => [skill.name, ...(skill.aliases ?? [])].map((term) => ({ term, name: skill.name })))
-    .sort((a, b) => b.term.length - a.term.length);
-
   const spans: SkillSpan[] = [];
+  const lower = text.toLowerCase();
   let remaining = text;
-  for (const { term, name } of spellings) {
+  for (const { name, start, pattern } of spellingsOf(skills)) {
+    if (!lower.includes(start)) continue;
+    pattern.lastIndex = 0;
     // blank out each hit so a shorter spelling cannot mark the same words again
-    remaining = remaining.replace(termPattern(term), (hit, offset: number) => {
+    remaining = remaining.replace(pattern, (hit, offset: number) => {
       spans.push({ start: offset, end: offset + hit.length, name });
       return " ".repeat(hit.length);
     });

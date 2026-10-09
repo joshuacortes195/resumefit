@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { BookOpen, Check, Download, Plus, Redo2, ScanSearch, ShieldCheck, Sparkles, Undo2, X } from "lucide-react";
 import { parseResume, searchabilityChecks, formattingChecks, type Check as ReportCheck } from "@resumefit/scoring";
-import { HARD_SKILLS, SOFT_SKILLS } from "@resumefit/skills-data";
+import { CURATED_HARD_SKILLS, SOFT_SKILLS } from "@resumefit/skills-data/curated";
 import { saveBuilder, skillsFromJob, writeBullets, writeSummary } from "@/app/actions/builder";
 import { AiNotice } from "@/components/ai-notice";
 import { Field, ItemControls, LineList, move } from "@/components/builder/fields";
@@ -411,8 +411,8 @@ function BulletWriter({ job, ai, remaining, onUsed, onAdd }: { job: BuilderData[
   );
 }
 
-// every skill we know by name, offered as you type
-const KNOWN_SKILLS = [...HARD_SKILLS, ...SOFT_SKILLS].map((skill) => skill.name).sort((a, b) => a.localeCompare(b));
+// the hand picked skills, offered as you type. the full list is thousands long and stays on the server
+const KNOWN_SKILLS = [...CURATED_HARD_SKILLS, ...SOFT_SKILLS].map((skill) => skill.name).sort((a, b) => a.localeCompare(b));
 
 // step 3: skills as tags
 function SkillsStep({ data, onChange }: StepProps) {
