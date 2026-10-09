@@ -1,0 +1,25 @@
+<!doctype html>
+<html>
+  <head><title>Careers at Lakeside Clinic</title></head>
+  <body>
+    <form class="newsletter"><input type="search" name="q" placeholder="Search jobs" /></form>
+    <form id="apply">
+      <p><label>Your name <input name="applicant" /></label></p>
+      <p><input name="contact_email" placeholder="Email address" required /></p>
+      <p><input aria-label="Mobile number" name="f_3" /></p>
+      <p><span>Zip code</span><input name="f_4" /></p>
+      <p><label for="st">State</label><select id="st" name="f_5"><option value="">Choose</option><option value="CO">Colorado</option><option value="TX">Texas</option></select></p>
+      <p><label for="start">When can you start?</label><input id="start" type="date" name="f_6" /></p>
+      <p><label for="pay">Expected salary</label><input id="pay" name="f_7" /></p>
+      <p><label for="cv">Upload your CV</label><input id="cv" type="file" name="f_8" /></p>
+      <fieldset><legend>Disability status</legend>
+        <label><input type="radio" name="f_9" value="y" /> Yes, I have a disability</label>
+        <label><input type="radio" name="f_9" value="n" /> No, I do not have a disability</label>
+        <label><input type="radio" name="f_9" value="x" /> Prefer not to say</label>
+      </fieldset>
+      <p><label><input type="checkbox" name="terms" /> I agree to the terms</label></p>
+      <p><label for="pw">Create a password</label><input id="pw" type="password" name="pw" /></p>
+      <button type="submit" id="send">Send application</button>
+    </form>
+  </body>
+</html>

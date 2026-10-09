@@ -293,3 +293,17 @@ export const userAiKeys = pgTable(
   },
   (table) => [primaryKey({ columns: [table.userId, table.provider] })],
 );
+
+// keys that let the browser extension act for a user, only a hash of each one is kept
+export const extensionTokens = pgTable(
+  "extension_tokens",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: ownerId(),
+    tokenHash: text("token_hash").notNull().unique(),
+    lastUsedAt: timestamp("last_used_at", { withTimezone: true }),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    createdAt,
+  },
+  (table) => [index("extension_tokens_user_idx").on(table.userId)],
+);

@@ -9,8 +9,8 @@ import { ThemeToggle } from "@/components/theme-toggle";
 
 // links inside the avatar menu
 const ACCOUNT_LINKS = [
-  { label: "Profile", href: "/settings" },
-  
+  { label: "Profile", href: "/settings#profile" },
+  { label: "Settings", href: "/settings" },
   { label: "AI settings", href: "/settings#ai" },
   { label: "Sign out", href: "/sign-in" },
 ];

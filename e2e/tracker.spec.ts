@@ -131,7 +131,9 @@ test("manage saved resumes", async ({ page }) => {
   await expect(page).toHaveURL(/\/scans\/[0-9a-f-]{36}$/);
 
   await page.goto("/resumes");
-  const row = page.getByRole("row", { name: /Pasted resume/ }).first();
+  // other tests paste resumes too, so find ours by its length
+  const words = `${RESUME}\nSkills\nSQL, Tableau, Python`.split(/\s+/).filter(Boolean).length;
+  const row = page.getByRole("row", { name: /Pasted resume/ }).filter({ hasText: `${words} words` });
   await expect(row).toBeVisible();
 
   // rename it in place

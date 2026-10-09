@@ -15,6 +15,13 @@
       "when": 1791523754598,
       "tag": "0001_gifted_silverclaw",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1791527930610,
+      "tag": "0002_workable_william_stryker",
+      "breakpoints": true
     }
   ]
 }

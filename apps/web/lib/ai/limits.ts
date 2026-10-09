@@ -2,7 +2,7 @@ import { and, count, eq, gte } from "drizzle-orm";
 import { getDb, schema } from "@/db";
 
 // the things people can ask the writing helpers to do
-export const AI_FEATURES = ["optimize", "cover-letter", "bullets", "linkedin", "interview", "thank-you", "jd-extraction", "builder"] as const;
+export const AI_FEATURES = ["optimize", "cover-letter", "bullets", "linkedin", "interview", "thank-you", "jd-extraction", "builder", "screening"] as const;
 export type AiFeature = (typeof AI_FEATURES)[number];
 
 // how many times a day one person can use each feature, null means no cap
@@ -14,6 +14,7 @@ export const DAILY_CAPS: Record<AiFeature, number | null> = {
   interview: 40,
   "thank-you": 10,
   builder: 30,
+  screening: 30,
   // reading a job description is cached and shared, so it is not capped per person
   "jd-extraction": null,
 };

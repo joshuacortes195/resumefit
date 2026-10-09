@@ -8,7 +8,7 @@ export default defineConfig({
     alias: { "@": path.resolve(import.meta.dirname, "apps/web") },
   },
   test: {
-    include: ["packages/*/src/**/*.test.ts", "apps/web/lib/**/*.test.ts"],
+    include: ["packages/*/src/**/*.test.ts", "apps/web/lib/**/*.test.ts", "apps/extension/src/**/*.test.ts"],
     // data tests run on a throwaway database that only lives in memory
     env: { LOCAL_DATA_DIR: "memory" },
   },

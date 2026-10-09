@@ -18,7 +18,7 @@ export default defineConfig({
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
   // builds the app and starts it on a throwaway database that only lives in memory
   webServer: {
-    command: `pnpm --filter web build && pnpm --filter web start --port ${PORT}`,
+    command: `pnpm --filter @resumefit/extension build && pnpm --filter web build && pnpm --filter web start --port ${PORT}`,
     url: `http://localhost:${PORT}/sign-in`,
     timeout: 180_000,
     reuseExistingServer: false,

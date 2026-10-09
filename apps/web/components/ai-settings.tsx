@@ -16,6 +16,7 @@ const FEATURE_NAMES: Record<string, string> = {
   interview: "Interview feedback",
   "thank-you": "Thank-you notes",
   builder: "Resume builder help",
+  screening: "Application answers",
 };
 
 // the ai part of the settings page: what is set up, what is left today, and your own key

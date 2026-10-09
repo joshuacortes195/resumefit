@@ -25,3 +25,6 @@ next-env.d.ts
 # browser test output
 test-results
 playwright-report
+
+# built extension
+apps/extension/dist
