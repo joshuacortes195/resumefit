@@ -10,7 +10,10 @@
     "test": "vitest run",
     "db:generate": "pnpm --filter web db:generate",
     "db:migrate": "pnpm --filter web db:migrate",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "seed": "pnpm --filter web seed",
+    "build:extension": "pnpm --filter @resumefit/extension build",
+    "build:skills": "pnpm --filter @resumefit/skills-data build:skills"
   },
   "devDependencies": {
     "@playwright/test": "^1.64.0",

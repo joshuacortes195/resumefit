@@ -2,70 +2,118 @@
 
 A free tool for matching a resume to a job description, tracking applications and filling out application forms faster. I built it for me and my friends, so there are no paywalls, credits or locked features.
 
-## What it does (and what's planned)
+## What it does
 
-- **Match report**: scores a resume against a job description across hard skills, soft skills, searchability, recruiter tips and formatting.
-- **Job tracker**: Kanban board from Saved to Offer with notes, interviews and cover letters per job.
-- **Resume builder and manager**: build clean single column resumes and keep every version.
-- **Optional writing help**: rewrite suggestions, cover letters and interview practice on free model tiers. The match score never depends on it.
-- **Chrome extension**: fills application forms, you review and click submit yourself.
+- **Scans**: upload a PDF or DOCX, paste text or pick a saved resume, add a job description and get a match report.
+- **Match report**: a match rate out of 100, with searchability, hard skills, soft skills, recruiter tips and formatting each broken down into pass or fail findings. The job description is shown with found and missing skills marked up. Add your own skills, edit and rescan, and see how the score moved.
+- **Optimize**: line by line rewrite suggestions you accept or reject, with the match rate updating as you go. Anything that would add a skill your resume does not mention has to be confirmed first.
+- **Cover letters, thank-you notes and interview practice**: drafts built only from what is in your resume, and feedback on practice answers.
+- **Job tracker**: a drag and drop board from Saved to Offer, with notes, interviews, a cover letter and the resume used for each job.
+- **Resume builder and manager**: eight single column templates, a step by step editor with a live preview, PDF and Word export, and every version kept in one place.
+- **LinkedIn Optimizer**: scores your profile against the jobs you want and lists the keywords it is missing.
+- **Chrome extension**: save or scan a job from the page you are on, and autofill application forms. You always review and press submit yourself.
 
-## Status
-
-Working today:
-
-- **Scans**: upload a PDF or DOCX, paste text or pick a saved resume, add a job description and get a saved match report
-- **Match report**: match rate gauge, searchability, hard and soft skills tables, recruiter tips and formatting checks, the job description with skills marked up, add your own skills, edit and rescan with the score change, guided tour, print view and a sample report
-- **Resume reading**: text in reading order from PDF and DOCX, plus layout details (columns, tables, images, fonts, margins, headers and footers, page size)
-- **Scan history**: search, sort, paging, archive, bulk delete, status that stays in sync with the tracker
-- **Job tracker**: drag and drop board, and a card for each job with the job details, resume, cover letter, interviews (with calendar links) and notes that save as you type
-- **Resume manager**: star a base resume, rename, preview, duplicate, download, delete
-- **Dashboard**: new scan form, latest scan, tracker counts and next interview
-- Runs with no accounts at all: without a `DATABASE_URL` the app keeps a local database and uploads in `apps/web/.data`
-
-Not built yet: sign in for the hosted version, the writing helpers (rewrite suggestions, cover letters, interview practice), the resume builder, the LinkedIn page and the Chrome extension.
+The match score is plain code with no language model behind it, so it works with nothing set up and always gives the same answer for the same input. The writing features run on free tiers only (Google Gemini, then Groq, then Cloudflare Workers AI) and the app keeps working when they are off or busy.
 
 ## Layout
 
 ```
 apps/web              Next.js app (App Router, Tailwind)
+apps/extension        Chrome extension (Manifest V3, side panel)
 packages/scoring      match rate engine, plain TypeScript, runs in the browser and on the server
 packages/skills-data  skill lists and alias maps
 packages/shared       types and zod schemas shared across the app
+e2e                   browser tests
 ```
 
-## Getting started
+## Run it on your own computer
 
-You need Node 22+ and pnpm 10.
+You need Node 22+ and pnpm 10. No accounts or keys are needed.
 
 ```bash
 corepack enable pnpm
 pnpm install
-cp .env.example apps/web/.env.local
 pnpm dev
 ```
 
-Open http://localhost:3000. Everything that is built runs without any keys filled in. Your data stays in `apps/web/.data` until you point `DATABASE_URL` at a hosted database.
+Open http://localhost:3000. Without a `DATABASE_URL` the app keeps a local database and your uploads in `apps/web/.data`, and there is no sign in. To start with some demo data, run `pnpm seed` once.
+
+To try the writing features locally, get a free Gemini key from [Google AI Studio](https://aistudio.google.com/apikey) and paste it into the key box in Settings. No card is needed.
 
 ## Scripts
 
 | Command | What it does |
 | --- | --- |
 | `pnpm dev` | run the web app locally |
-| `pnpm build` | production build |
+| `pnpm build` | production build of the web app |
+| `pnpm build:extension` | build the Chrome extension into `apps/extension/dist` |
 | `pnpm typecheck` | type check every package |
 | `pnpm lint` | lint the web app |
 | `pnpm test` | run unit tests |
-| `pnpm test:e2e` | build the app and click through it in a real browser (run `pnpm exec playwright install chromium` once first) |
+| `pnpm test:e2e` | build the app and the extension and click through them in a real browser (run `pnpm exec playwright install chromium` once first) |
+| `pnpm seed` | add demo data to the local database |
 | `pnpm db:generate` | create a migration from the schema |
 | `pnpm db:migrate` | apply migrations to the database in `DATABASE_URL` |
+| `pnpm build:skills` | rebuild the skills list from O*NET |
 
-## Accounts you'll need (all free)
+## Put it online (all free)
 
-- **Supabase**: database, auth and file storage. Copy the project URL, anon key, service role key and the pooled connection string into `.env.local`.
-- **Google AI Studio**: a free Gemini API key for the writing features.
-- **Groq** and **Cloudflare**: optional free fallbacks.
-- **Vercel**: hosting on the Hobby plan.
+You need a GitHub account (the code is already there), a Supabase account and a Vercel account. None of them ask for a card.
+
+### 1. Supabase: database, sign in and file storage
+
+1. Create a project at [supabase.com](https://supabase.com). Pick a strong database password and save it somewhere.
+2. **Database**: under Connect, copy the **Transaction pooler** connection string and put your password into it. This is `DATABASE_URL`.
+3. **Create the tables**: on your computer, run this once from the project folder, with your own string in place of the dots:
+   ```bash
+   DATABASE_URL="postgresql://..." pnpm db:migrate
+   ```
+   Run it again whenever you pull changes that add a migration.
+4. **Keys**: under Project Settings, API, copy the project URL (`NEXT_PUBLIC_SUPABASE_URL`), the anon public key (`NEXT_PUBLIC_SUPABASE_ANON_KEY`) and the service role key (`SUPABASE_SERVICE_ROLE_KEY`). The service role key is a secret. It only ever goes into Vercel.
+5. **Storage**: under Storage, create a bucket called `resumes` and leave **Public bucket** switched off.
+6. **Sign in**: under Authentication, URL Configuration, set the Site URL to your Vercel address (you get it in the next step, so come back here) and add `https://your-app.vercel.app/auth/callback` to the Redirect URLs. Email sign in links work out of the box. Google is optional: turn it on under Authentication, Providers and follow Supabase's steps.
+
+The migrations switch on row level security for every table with no policies, which means the public key cannot read anything. Only the app's own database connection can.
+
+### 2. Vercel: hosting
+
+1. At [vercel.com](https://vercel.com), choose Add New, Project, and import the GitHub repository.
+2. Set **Root Directory** to `apps/web`. Leave the build settings as they are.
+3. Add these environment variables:
+
+   | Name | Value |
+   | --- | --- |
+   | `DATABASE_URL` | the pooler string from Supabase |
+   | `NEXT_PUBLIC_SUPABASE_URL` | the project URL |
+   | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | the anon public key |
+   | `SUPABASE_SERVICE_ROLE_KEY` | the service role key |
+   | `NEXT_PUBLIC_APP_URL` | your Vercel address, like `https://your-app.vercel.app` |
+   | `ENCRYPTION_KEY` | 64 random characters, from `openssl rand -hex 32` |
+   | `INVITE_ONLY` | `true` |
+   | `GEMINI_API_KEY` | optional, a free key from Google AI Studio that everyone shares |
+   | `GROQ_API_KEY` | optional fallback, free at console.groq.com |
+   | `CF_ACCOUNT_ID`, `CF_API_TOKEN` | optional fallback, Cloudflare Workers AI |
+
+4. Deploy. After this, every push to `main` deploys by itself.
+5. Go back to Supabase and put the real Vercel address into the Site URL and Redirect URLs.
+
+### 3. First sign in and inviting friends
+
+The first person to sign in becomes the admin and needs no invite code, so sign in yourself first. Then open Settings, follow the link to the admin page and create invite codes. Copy link gives you a sign in link with the code already filled in.
+
+Keep `ENCRYPTION_KEY` safe and do not change it later. It locks the API keys people save, and a new one would make those unreadable.
+
+## The Chrome extension
+
+It is not in the Chrome Web Store, so it is loaded by hand:
+
+1. Run `pnpm build:extension`.
+2. Open `chrome://extensions`, turn on **Developer mode**, press **Load unpacked** and pick `apps/extension/dist`.
+3. In the web app, open Chrome Extension in the menu and press **Connect extension**. Paste the code it shows into the extension's side panel.
+
+To share it with friends, zip the `dist` folder and send it to them. If your app does not live on a `vercel.app` address, add its address to `externally_connectable` in `apps/extension/public/manifest.json` and rebuild. The paste a code way of connecting works on any address.
+
+What it will and will not do is spelled out on the Chrome Extension page in the app. The short version: it fills forms, it never submits them.
 
 ## Scoring
 
@@ -79,4 +127,18 @@ matchRate = round(100 * (
 ))
 ```
 
-Skills the job description repeats count more, required skills get a 1.5x boost, and a similar term gets half credit. The weights live in `packages/scoring/src/config.ts`. Aim for 75%+.
+Skills the job description repeats count more, required skills get a 1.5x boost, and a similar term gets half credit. The weights and every threshold live in `packages/scoring/src/config.ts`. Aim for 75%+.
+
+## Skills data
+
+The hard skills list is a hand picked core of about 190 skills with aliases and related terms (`packages/skills-data/src/curated.ts`), plus about 6,500 tools and technologies from the O*NET database (`onet-skills.json`, built by `scripts/build-skills.ts`). Product names that are also everyday words are left out so they do not match ordinary sentences.
+
+This project includes information from the [O*NET 30.0 Database](https://www.onetcenter.org/database.html) by the U.S. Department of Labor, Employment and Training Administration (USDOL/ETA), used under the [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) license. O*NET® is a trademark of USDOL/ETA. The data has been filtered and reshaped for this project. USDOL/ETA has not approved, endorsed or tested these changes.
+
+## Privacy, in short
+
+- Every query is scoped to the signed in person. Uploaded files sit in a private bucket.
+- Before any text goes to a model provider, names, emails, phone numbers, addresses and links are swapped for placeholders, and put back afterwards.
+- People can download everything they have stored, or delete their account and all of it, from Settings.
+
+The full version is at `/privacy` in the app.
