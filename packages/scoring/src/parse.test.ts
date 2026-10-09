@@ -123,6 +123,14 @@ describe("parseExperience", () => {
     expect(jobs.map((job) => job.title)).toEqual(["Barista", "Cashier"]);
   });
 
+  it("keeps a place on its own line with the job above it", () => {
+    const jobs = parseExperience(["Frontend Engineer, Acme Corp\tJan 2023 - Present", "Austin, TX", "• Shipped things", "Junior Developer, Corner Studio\tJun 2021 - Dec 2022", "Remote"], TODAY);
+    expect(jobs.map((job) => [job.title, job.location])).toEqual([
+      ["Frontend Engineer", "Austin, TX"],
+      ["Junior Developer", "Remote"],
+    ]);
+  });
+
   it("keeps a job even when it has no dates", () => {
     const [job] = parseExperience(["Frontend Engineer, Acme Corp", "• Shipped things"], TODAY);
     expect(job).toMatchObject({ title: "Frontend Engineer", dates: null });

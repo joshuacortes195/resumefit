@@ -1,4 +1,6 @@
 import { getCurrentUser } from "@/lib/auth";
+import { builderPdf } from "@/lib/builder/export-pdf";
+import { toBuilderResume } from "@/lib/data/builder";
 import { getResume } from "@/lib/data/resumes";
 import { loadFile } from "@/lib/storage";
 
@@ -13,6 +15,12 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
   const user = await getCurrentUser();
   const resume = /^[0-9a-f-]{36}$/i.test(id) ? await getResume(user.id, id) : null;
   if (!resume) return new Response("Resume not found", { status: 404 });
+
+  // resumes made in the builder are drawn fresh from their template
+  if (resume.builderData) {
+    const { data, settings } = toBuilderResume(resume);
+    return new Response(Buffer.from(await builderPdf(data, settings)), { headers: { "Content-Type": "application/pdf", "Content-Disposition": `attachment; filename="${safeName(resume.name)}.pdf"` } });
+  }
 
   const bytes = resume.filePath ? await loadFile(resume.filePath) : null;
   if (bytes && resume.fileType) {

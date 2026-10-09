@@ -11,7 +11,8 @@ export type SectionKind =
   | "awards"
   | "publications"
   | "volunteer"
-  | "leadership";
+  | "leadership"
+  | "languages";
 
 // one section of the resume with the lines under its heading
 export type ResumeSection = {
@@ -40,13 +41,14 @@ const STANDARD_HEADINGS: Record<SectionKind, string[]> = {
   summary: ["summary", "professional summary", "profile", "objective", "career objective", "about"],
   experience: ["experience", "work experience", "work history", "professional experience", "employment", "employment history"],
   education: ["education", "academic background", "education and training"],
-  skills: ["skills", "technical skills", "core competencies", "core skills", "skills and tools"],
+  skills: ["skills", "technical skills", "core competencies", "core skills", "skills and tools", "top skills", "key skills"],
   projects: ["projects", "personal projects", "selected projects"],
   certifications: ["certifications", "licenses and certifications", "certificates"],
   awards: ["awards", "honors", "honors and awards", "achievements"],
   publications: ["publications"],
   volunteer: ["volunteer", "volunteering", "volunteer experience", "community involvement"],
   leadership: ["leadership", "leadership experience", "activities", "extracurricular activities"],
+  languages: ["languages", "language skills"],
 };
 
 // creative heading names we still understand but flag in the report
@@ -212,7 +214,7 @@ export function looksLikeTitle(text: string): boolean {
 
 // what separates the title, company and place on a job heading line
 const HEADER_SPLIT = /\s+[|·•—–@]\s+|\s+-\s+|,\s+|\s+at\s+|\t+|\s{3,}/;
-const PLACE = /^(?:remote|hybrid|on-?site|[A-Z][A-Za-z.]+(?: [A-Z][A-Za-z.]+){0,2},? [A-Z]{2}|[A-Z][A-Za-z.]+(?: [A-Z][A-Za-z.]+){0,2}, [A-Z][a-z]+)$/;
+const PLACE = /^(?:[Rr]emote|[Hh]ybrid|[Oo]n-?[Ss]ite|[A-Z][A-Za-z.]+(?: [A-Z][A-Za-z.]+){0,2},? [A-Z]{2}|[A-Z][A-Za-z.]+(?: [A-Z][A-Za-z.]+){0,2}, [A-Z][a-z]+)$/;
 
 // turns the heading lines of one job into a title, company, place and dates
 function readJobHeader(header: string[], today: Date): ExperienceEntry {
@@ -269,7 +271,8 @@ export function parseExperience(lines: string[], today: Date = new Date()): Expe
       // a second heading that already has its dates means the next job has started
       const hasDates = header.some((entry) => findDateRange(entry, today));
       const hasName = header.some((entry) => entry.replace(findDateRange(entry, today)?.text ?? "", "").trim().length > 2);
-      if (hasDates && hasName) startEntry();
+      // a line that is only a place, like "Austin, TX", still belongs to the job above it
+      if (hasDates && hasName && !PLACE.test(line.trim())) startEntry();
       header.push(line);
       continue;
     }

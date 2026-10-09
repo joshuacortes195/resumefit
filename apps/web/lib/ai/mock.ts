@@ -35,5 +35,10 @@ export const mockCall: ProviderCall = async ({ system, prompt }) => {
     const interviewer = prompt.match(/Interviewer: (.*)/)?.[1] ?? "there";
     text = `Hi ${interviewer},\n\nThank you for the conversation today. I am still very interested in the role.\n\nBest,\nThe applicant`;
   }
+  else if (system.startsWith("You turn a person's short description")) {
+    text = JSON.stringify({ bullets: ["Served [N] customers a day at a busy counter", "Trained [N] new team members on the register"] });
+  } else if (system.startsWith("You write the summary")) {
+    text = "Frontend engineer with four years of experience building fast, accessible web apps.";
+  }
   return { text, tokensIn: 1, tokensOut: 1 };
 };
