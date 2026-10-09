@@ -8,7 +8,8 @@ import { ScoreRing } from "@/components/score-ring";
 import { CARD, LINK_BUTTON } from "@/components/ui/buttons";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getCurrentUser } from "@/lib/auth";
-import { jobCounts, nextInterview } from "@/lib/data/jobs";
+import { getCoverLetter, jobCounts, nextInterview } from "@/lib/data/jobs";
+import { listLinkedinReports } from "@/lib/data/practice";
 import { latestScan } from "@/lib/data/scans";
 
 export const metadata = { title: "Dashboard" };
@@ -49,11 +50,9 @@ export default function DashboardPage() {
         {/* linkedin card */}
         <section className={`${CARD} p-6`}>
           <h2 className="font-semibold">LinkedIn report</h2>
-          <p className="mt-4 text-sm text-muted">Score your profile against the jobs you want and see which keywords are missing.</p>
-          <Link href="/linkedin" className={`mt-4 inline-flex items-center gap-2 text-sm ${LINK_BUTTON}`}>
-            <UserSearch className="size-4" aria-hidden />
-            Optimize LinkedIn
-          </Link>
+          <Suspense fallback={<Skeleton className="mt-4 h-16" />}>
+            <LinkedinCard />
+          </Suspense>
         </section>
 
         {/* tracker counts card */}
@@ -105,6 +104,8 @@ async function LatestScan() {
   }
 
   const { issuesToFix } = scan.report;
+  // the cover letter chip turns green once the job this scan belongs to has one
+  const letter = scan.jobId ? await getCoverLetter(user.id, scan.jobId) : null;
   const clean = (issues: number) => (issues === 0 ? "good" : "bad");
   return (
     <Link href={`/scans/${scan.id}`} className="group mt-4 block">
@@ -121,10 +122,32 @@ async function LatestScan() {
         <Chip label="Searchability" state={clean(issuesToFix.searchability)} />
         <Chip label="Formatting" state={clean(issuesToFix.formatting)} />
         <Chip label="Skills match" state={clean(issuesToFix.hardSkills + issuesToFix.softSkills)} />
-        <Chip label="Cover letter" state="none" />
+        <Chip label="Cover letter" state={letter?.content.trim() ? "good" : "none"} />
         <Chip label="Recruiter tips" state={clean(issuesToFix.recruiterTips)} />
       </ul>
     </Link>
+  );
+}
+
+// the latest linkedin score, or a nudge to get one
+async function LinkedinCard() {
+  const user = await getCurrentUser();
+  const [latest] = await listLinkedinReports(user.id);
+  return (
+    <>
+      {latest ? (
+        <Link href={`/linkedin/${latest.id}`} className="group mt-4 flex items-center gap-4">
+          <ScoreRing score={latest.score} label="LinkedIn score" />
+          <span className="min-w-0 flex-1 truncate text-sm text-muted group-hover:text-foreground">{latest.headline || "Your latest profile report"}</span>
+        </Link>
+      ) : (
+        <p className="mt-4 text-sm text-muted">Score your profile against the jobs you want and see which keywords are missing.</p>
+      )}
+      <Link href="/linkedin" className={`mt-4 inline-flex items-center gap-2 text-sm ${LINK_BUTTON}`}>
+        <UserSearch className="size-4" aria-hidden />
+        Optimize LinkedIn
+      </Link>
+    </>
   );
 }
 

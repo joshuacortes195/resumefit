@@ -11,6 +11,7 @@ A free tool for matching a resume to a job description, tracking applications an
 - **Job tracker**: a drag and drop board from Saved to Offer, with notes, interviews, a cover letter and the resume used for each job.
 - **Resume builder and manager**: eight single column templates, a step by step editor with a live preview, PDF and Word export, and every version kept in one place.
 - **LinkedIn Optimizer**: scores your profile against the jobs you want and lists the keywords it is missing.
+- **Find Jobs** (optional, off until an admin switches it on): open roles from the public job boards of a handful of companies, ranked against your resume.
 - **Chrome extension**: save or scan a job from the page you are on, and autofill application forms. You always review and press submit yourself.
 
 The match score is plain code with no language model behind it, so it works with nothing set up and always gives the same answer for the same input. The writing features run on free tiers only (Google Gemini, then Groq, then Cloudflare Workers AI) and the app keeps working when they are off or busy.
