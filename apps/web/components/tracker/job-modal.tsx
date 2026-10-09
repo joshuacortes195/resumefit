@@ -3,15 +3,17 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Archive, ArchiveRestore, CalendarPlus, Check, Download, ScanSearch, Trash2 } from "lucide-react";
+import { Archive, ArchiveRestore, CalendarPlus, Check, Download, ScanSearch, Sparkles, Trash2 } from "lucide-react";
 import type { JobStatus } from "@resumefit/shared";
 import { addJobInterview, removeInterview, removeJob, saveJobCoverLetter, saveJobDetails, saveJobNotes, saveThankYouNote, setJobArchived, setJobResume, setJobStatus } from "@/app/actions/jobs";
 import type { ActionResult } from "@/app/actions/scans";
+import { generateCoverLetter, generateThankYou } from "@/app/actions/writing";
 import { ScoreRing } from "@/components/score-ring";
 import { INPUT, LINK_BUTTON, PRIMARY_BUTTON, SECONDARY_BUTTON } from "@/components/ui/buttons";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Modal } from "@/components/ui/modal";
 import { StatusSelect } from "@/components/ui/status-select";
+import { LENGTHS, TONES, type Length, type Tone } from "@/lib/ai/prompts/letters";
 import { googleCalendarUrl, icsFile } from "@/lib/calendar";
 import { JOB_TABS, localToday, type JobTab } from "@/lib/job-tabs";
 
@@ -86,6 +88,12 @@ export function JobModal({ data, tab }: { data: JobModalData; tab: JobTab }) {
       <div className="-mt-2 flex flex-wrap items-center gap-3">
         {data.score ? <ScoreRing score={data.score.matchRate} size="sm" /> : null}
         <p className="min-w-0 flex-1 truncate text-sm text-muted">{job.company ?? "Company not set"}</p>
+        {data.score && (
+          <Link href={`/optimize/${data.score.scanId}`} className={`${SECONDARY_BUTTON} px-3 py-1.5`}>
+            <Sparkles className="size-4" aria-hidden />
+            AI Optimize
+          </Link>
+        )}
         <Link href={`/scans/new?job=${job.id}`} className={`${SECONDARY_BUTTON} px-3 py-1.5`}>
           <ScanSearch className="size-4" aria-hidden />
           Scan
@@ -261,8 +269,51 @@ function ResumeTabPanel({ data, pending, run }: PanelProps) {
 // cover letter tab: a plain editor
 function CoverLetterPanel({ data, pending, run }: PanelProps) {
   const [content, setContent] = useState(data.coverLetter);
+  const [tone, setTone] = useState<Tone>("Professional");
+  const [length, setLength] = useState<Length>("Standard");
+  const [problem, setProblem] = useState<string | null>(null);
+  const [writing, startWriting] = useTransition();
+
+  // drafts a letter from the job's resume and description
+  function draft() {
+    setProblem(null);
+    startWriting(async () => {
+      const result = await generateCoverLetter({ jobId: data.job.id, tone, length });
+      if (result.ok) setContent(result.letter);
+      else setProblem(result.error);
+    });
+  }
+
   return (
     <div className="space-y-3">
+      {/* draft one from the resume and job description on this card */}
+      <div className="flex flex-wrap items-end gap-2 rounded-xl bg-background p-3">
+        <label className="text-xs font-medium">
+          Tone
+          <select value={tone} onChange={(event) => setTone(event.target.value as Tone)} className={`${INPUT} mt-1 bg-surface py-1.5`}>
+            {TONES.map((option) => (
+              <option key={option}>{option}</option>
+            ))}
+          </select>
+        </label>
+        <label className="text-xs font-medium">
+          Length
+          <select value={length} onChange={(event) => setLength(event.target.value as Length)} className={`${INPUT} mt-1 bg-surface py-1.5`}>
+            {(Object.keys(LENGTHS) as Length[]).map((option) => (
+              <option key={option}>{option}</option>
+            ))}
+          </select>
+        </label>
+        <button type="button" disabled={writing} onClick={draft} className={`${SECONDARY_BUTTON} px-3 py-2`}>
+          <Sparkles className="size-4" aria-hidden />
+          {writing ? "Writing..." : content.trim() ? "Write a new draft" : "Generate with AI"}
+        </button>
+        {problem && (
+          <p role="alert" className="w-full text-sm text-danger">
+            {problem}
+          </p>
+        )}
+      </div>
       <textarea aria-label="Cover letter" value={content} onChange={(event) => setContent(event.target.value)} placeholder="Write or paste your cover letter for this job." className={`${INPUT} h-80 resize-y p-3 leading-6`} />
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-xs text-muted">{content.trim() ? `${content.trim().split(/\s+/).length} words` : "Most cover letters run 150 to 350 words."}</p>
@@ -426,6 +477,19 @@ function InterviewsPanel({ data, pending, run }: PanelProps) {
 function ThankYouNote({ jobId, interviewId, note, pending, run }: { jobId: string; interviewId: string; note: string; pending: boolean; run: PanelProps["run"] }) {
   const [open, setOpen] = useState(note !== "");
   const [text, setText] = useState(note);
+  const [problem, setProblem] = useState<string | null>(null);
+  const [writing, startWriting] = useTransition();
+
+  // drafts a note from the interview details on this card
+  function draft() {
+    setProblem(null);
+    startWriting(async () => {
+      const result = await generateThankYou(jobId, interviewId);
+      if (result.ok) setText(result.note);
+      else setProblem(result.error);
+    });
+  }
+
   if (!open) {
     return (
       <button type="button" onClick={() => setOpen(true)} className={`mt-3 block text-sm ${LINK_BUTTON}`}>
@@ -436,7 +500,16 @@ function ThankYouNote({ jobId, interviewId, note, pending, run }: { jobId: strin
   return (
     <div className="mt-3 space-y-2">
       <textarea aria-label="Thank-you note" value={text} onChange={(event) => setText(event.target.value)} placeholder="Write a short thank you to send after the interview." className={`${INPUT} h-28 resize-y`} />
-      <div className="flex gap-2">
+      {problem && (
+        <p role="alert" className="text-sm text-danger">
+          {problem}
+        </p>
+      )}
+      <div className="flex flex-wrap gap-2">
+        <button type="button" disabled={writing} onClick={draft} className={`${SECONDARY_BUTTON} px-3 py-1.5`}>
+          <Sparkles className="size-3.5" aria-hidden />
+          {writing ? "Writing..." : "Draft with AI"}
+        </button>
         <button type="button" disabled={pending} onClick={() => run(() => saveThankYouNote(jobId, interviewId, text))} className={`${SECONDARY_BUTTON} px-3 py-1.5`}>
           Save note
         </button>

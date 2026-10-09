@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowDown, ArrowUp, Briefcase, Check, Compass, Cpu, Pencil, Printer, RefreshCw } from "lucide-react";
+import { ArrowDown, ArrowUp, Briefcase, Check, Compass, Cpu, Pencil, Printer, RefreshCw, Sparkles } from "lucide-react";
 import { DEGREE_LEVELS } from "@resumefit/scoring";
 import type { ScoreCategory } from "@resumefit/shared";
 import { addSkill, removeSkill, renameScan, setRequiredEducation, setTargetTitle, trackScan, updateJobDescription, type ActionResult } from "@/app/actions/scans";
@@ -251,17 +251,23 @@ export function Report({ data, resumes }: { data: ReportData; resumes: ResumeOpt
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3">
           <p className="text-sm">
             <strong>{readOnly ? "This is a sample." : "Ready to improve your match?"}</strong>{" "}
-            <span className="text-muted">{readOnly ? "Scan your own resume to get a report like this." : "Update your resume, then upload it again to see the new score."}</span>
+            <span className="text-muted">{readOnly ? "Scan your own resume to get a report like this." : "Get rewrite suggestions, or upload an updated version to see the new score."}</span>
           </p>
           {readOnly ? (
             <Link href="/scans/new" className={PRIMARY_BUTTON}>
               Scan my resume
             </Link>
           ) : (
-            <button type="button" onClick={() => open("rescan")} className={PRIMARY_BUTTON}>
-              <RefreshCw className="size-4" aria-hidden />
-              Upload and rescan
-            </button>
+            <div className="flex flex-wrap gap-2">
+              <Link href={`/optimize/${data.id}`} className={PRIMARY_BUTTON}>
+                <Sparkles className="size-4" aria-hidden />
+                AI Optimize
+              </Link>
+              <button type="button" onClick={() => open("rescan")} className={SECONDARY_BUTTON}>
+                <RefreshCw className="size-4" aria-hidden />
+                Upload and rescan
+              </button>
+            </div>
           )}
         </div>
       </div>

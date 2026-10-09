@@ -3,6 +3,7 @@ import { z } from "zod";
 import { getDb, schema } from "@/db";
 import { decrypt } from "@/lib/ai/crypto";
 import { globalCapReached, logUsage, remainingToday, type AiFeature } from "@/lib/ai/limits";
+import { mockCall } from "@/lib/ai/mock";
 import { encryptionSecret } from "@/lib/ai/secret";
 import { cloudflareCall, DEFAULT_MODELS, geminiCall, groqCall, PROVIDERS, ProviderError, type ProviderCall, type ProviderName } from "@/lib/ai/providers";
 import { aiProviderOrder, serverEnv } from "@/lib/env";
@@ -67,6 +68,8 @@ function record(name: string, error?: ProviderError | Error) {
 export async function readyProviders(userId?: string): Promise<ReadyProvider[]> {
   const env = serverEnv();
   const ready: ReadyProvider[] = [];
+  // the browser tests switch this on so they never need a real key
+  if (process.env.AI_MOCK === "1") return [{ name: "gemini", call: mockCall, model: "mock", fastModel: "mock" }];
 
   // someone who saved their own gemini key gets it tried before the shared ones
   const secret = encryptionSecret();

@@ -22,6 +22,7 @@ export default defineConfig({
     url: `http://localhost:${PORT}/sign-in`,
     timeout: 180_000,
     reuseExistingServer: false,
-    env: { LOCAL_DATA_DIR: "memory" },
+    // the writing features answer from a built in stand in, so no keys are needed
+    env: { LOCAL_DATA_DIR: "memory", AI_MOCK: "1" },
   },
 });

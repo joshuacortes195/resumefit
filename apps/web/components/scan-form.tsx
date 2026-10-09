@@ -3,9 +3,9 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ChevronDown, LoaderCircle, ScanSearch, Star } from "lucide-react";
+import { ChevronDown, LoaderCircle, ScanSearch, Sparkles, Star } from "lucide-react";
 import { Dropzone } from "@/components/scan/dropzone";
-import { INPUT, LINK_BUTTON, PRIMARY_BUTTON } from "@/components/ui/buttons";
+import { INPUT, LINK_BUTTON, PRIMARY_BUTTON, SECONDARY_BUTTON } from "@/components/ui/buttons";
 
 // a saved resume as the picker shows it
 export type ResumeOption = { id: string; name: string; isBase: boolean };
@@ -14,6 +14,8 @@ type ScanFormProps = {
   resumes: ResumeOption[];
   // set when rescanning, the job description is reused so only the resume step shows
   rescan?: { scanId: string; jdText: string };
+  // optimize sends people straight into the workspace when the scan is done
+  next?: "optimize";
   // set when scanning for a job on the tracker, its details are filled in already
   job?: { id: string; jdText: string; title: string; company: string; url: string };
 };
@@ -28,7 +30,7 @@ const PROGRESS = ["Reading your resume", "Finding skills", "Scoring"];
 const TEXTAREA = `${INPUT} h-64 resize-y p-3`;
 
 // pick a resume and paste a job description, then run the scan
-export function ScanForm({ resumes, rescan, job }: ScanFormProps) {
+export function ScanForm({ resumes, rescan, job, next }: ScanFormProps) {
   const router = useRouter();
   const base = resumes.find((resume) => resume.isBase) ?? resumes[0];
   const [source, setSource] = useState<Source>("upload");
@@ -55,6 +57,9 @@ export function ScanForm({ resumes, rescan, job }: ScanFormProps) {
   // sends everything to the server and opens the report when it is ready
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    // the button that was pressed says where to go afterwards
+    const pressed = (event.nativeEvent as SubmitEvent).submitter?.getAttribute("value");
+    const goOptimize = pressed === "optimize" || (pressed === null && next === "optimize");
     if (!hasResume || !hasJob || pending) return;
     const form = new FormData(event.currentTarget);
     // only send the resume from the tab that is showing
@@ -77,7 +82,7 @@ export function ScanForm({ resumes, rescan, job }: ScanFormProps) {
       const response = await fetch("/api/scans", { method: "POST", body: form });
       const result = (await response.json()) as { id?: string; error?: string };
       if (!response.ok || !result.id) throw new Error(result.error ?? "Something went wrong. Try again.");
-      router.push(`/scans/${result.id}`);
+      router.push(goOptimize ? `/optimize/${result.id}` : `/scans/${result.id}`);
     } catch (problem) {
       setError(problem instanceof Error ? problem.message : "Something went wrong. Try again.");
       setPending(false);
@@ -201,10 +206,17 @@ export function ScanForm({ resumes, rescan, job }: ScanFormProps) {
 
       {/* scan button, plus a way to see an example first */}
       <div className="mt-5 flex flex-wrap items-center gap-4">
-        <button type="submit" disabled={!hasResume || !hasJob || pending} className={PRIMARY_BUTTON}>
-          {pending ? <LoaderCircle className="size-4 animate-spin" aria-hidden /> : <ScanSearch className="size-4" aria-hidden />}
-          <span aria-live="polite">{pending ? `${PROGRESS[step]}...` : rescan ? "Rescan" : "Scan"}</span>
+        <button type="submit" value={next === "optimize" ? "optimize" : "scan"} disabled={!hasResume || !hasJob || pending} className={PRIMARY_BUTTON}>
+          {pending ? <LoaderCircle className="size-4 animate-spin" aria-hidden /> : next === "optimize" ? <Sparkles className="size-4" aria-hidden /> : <ScanSearch className="size-4" aria-hidden />}
+          <span aria-live="polite">{pending ? `${PROGRESS[step]}...` : rescan ? "Rescan" : next === "optimize" ? "AI Optimize" : "Scan"}</span>
         </button>
+        {/* scan first, then go straight to the rewrite suggestions */}
+        {!rescan && next !== "optimize" && (
+          <button type="submit" value="optimize" disabled={!hasResume || !hasJob || pending} className={SECONDARY_BUTTON}>
+            <Sparkles className="size-4" aria-hidden />
+            AI Optimize
+          </button>
+        )}
         {!rescan && (
           <Link href="/scans/sample" className={`text-sm ${LINK_BUTTON}`}>
             View a sample scan
