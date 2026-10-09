@@ -15,13 +15,17 @@
     "@resumefit/scoring": "workspace:*",
     "@resumefit/shared": "workspace:*",
     "@resumefit/skills-data": "workspace:*",
+    "docx": "^9.9.0",
     "drizzle-orm": "^0.45.4",
+    "fast-xml-parser": "^5.11.2",
+    "jszip": "^3.10.2",
     "lucide-react": "^1.53.0",
     "next": "16.4.0",
     "next-themes": "^0.4.6",
     "postgres": "^3.4.9",
     "react": "19.3.0",
     "react-dom": "19.3.0",
+    "unpdf": "^1.8.1",
     "zod": "^4.6.5"
   },
   "devDependencies": {
@@ -32,6 +36,7 @@
     "drizzle-kit": "^0.31.11",
     "eslint": "^9",
     "eslint-config-next": "16.4.0",
+    "pdf-lib": "^1.17.1",
     "tailwindcss": "^4",
     "typescript": "^5"
   }
