@@ -1,4 +1,4 @@
-import { and, desc, eq } from "drizzle-orm";
+import { and, count, desc, eq, gte } from "drizzle-orm";
 import { parseResume, type LayoutMeta } from "@resumefit/scoring";
 import type { ResumeSource } from "@resumefit/shared";
 import { getDb, schema } from "@/db";
@@ -48,6 +48,19 @@ export async function getResume(userId: string, id: string): Promise<ResumeRow |
     .where(and(eq(schema.resumes.id, id), eq(schema.resumes.userId, userId)))
     .limit(1);
   return row ?? null;
+}
+
+// how many new resumes one person can add in a day, just to stop a runaway script filling the storage
+export const DAILY_RESUME_LIMIT = 100;
+
+// how many resumes this person added in the last day
+export async function resumesToday(userId: string): Promise<number> {
+  const db = await getDb();
+  const [row] = await db
+    .select({ total: count() })
+    .from(schema.resumes)
+    .where(and(eq(schema.resumes.userId, userId), gte(schema.resumes.createdAt, new Date(Date.now() - 86_400_000))));
+  return row?.total ?? 0;
 }
 
 // saves a resume, or hands back the one we already have with the exact same text

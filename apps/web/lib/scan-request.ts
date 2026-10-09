@@ -1,6 +1,6 @@
 import { z } from "zod";
 import type { LayoutMeta } from "@resumefit/scoring";
-import { getResume, saveResume } from "@/lib/data/resumes";
+import { DAILY_RESUME_LIMIT, getResume, resumesToday, saveResume } from "@/lib/data/resumes";
 import { FileError, readResumeFile } from "@/lib/files";
 
 // a problem with what was sent that we can explain to the user
@@ -29,6 +29,9 @@ export async function resolveResume(userId: string, form: FormData, linkedJobId?
   const file = form.get("file");
   const resumeId = field(form, "resumeId");
   const resumeText = field(form, "resumeText");
+
+  // picking a saved resume is always fine, adding new ones has a generous daily limit
+  if (!resumeId && (await resumesToday(userId)) >= DAILY_RESUME_LIMIT) throw new RequestError(`You have added ${DAILY_RESUME_LIMIT} resumes in the last day. Pick one of your saved resumes, or try again tomorrow.`, 429);
 
   // a file that was just uploaded
   if (file instanceof File && file.size > 0) {

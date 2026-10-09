@@ -132,11 +132,11 @@ export function AutoApply({ jobs, applications, profileReady, extensionConnected
                 {jobs.map((job) => {
                   const host = new URL(job.url).hostname.replace(/^www\./, "");
                   return (
-                    <li key={job.id} className={`${CARD} flex items-center gap-4 p-4`}>
+                    <li key={job.id} className={`${CARD} flex flex-wrap items-center gap-x-4 gap-y-3 p-4`}>
                       {/* the site's own icon, straight from the site */}
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img src={`https://${host}/favicon.ico`} alt="" width={32} height={32} className="size-8 shrink-0 rounded" onError={(event) => (event.currentTarget.style.visibility = "hidden")} />
-                      <div className="min-w-0 flex-1">
+                      <div className="min-w-32 flex-1">
                         <Link href={`/tracker/${job.id}/job`} className="block truncate font-semibold hover:text-primary">
                           {job.title}
                         </Link>

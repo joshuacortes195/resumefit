@@ -75,8 +75,9 @@ function CardFace({ job, lifted = false }: { job: BoardJob; lifted?: boolean }) 
 function JobCard({ job, archived }: { job: BoardJob; archived: boolean }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: job.id, disabled: archived });
   return (
-    <li ref={setNodeRef} style={{ transform: CSS.Transform.toString(transform), transition }} className={isDragging ? "opacity-40" : ""} {...attributes} {...listeners}>
-      <Link href={`/tracker/${job.id}/job`} draggable={false} className="block rounded-xl transition-transform duration-150 hover:-translate-y-0.5">
+    <li ref={setNodeRef} style={{ transform: CSS.Transform.toString(transform), transition }} className={isDragging ? "opacity-40" : ""}>
+      {/* the link is the thing you grab. it stays a link, so enter opens the job and space picks the card up */}
+      <Link href={`/tracker/${job.id}/job`} draggable={false} className="block rounded-xl transition-transform duration-150 hover:-translate-y-0.5" {...attributes} role={undefined} {...listeners}>
         <CardFace job={job} />
       </Link>
     </li>
@@ -123,8 +124,8 @@ export function Board({ jobs: serverJobs, archived }: { jobs: BoardJob[]; archiv
     setJobs(serverJobs);
   }, [serverJobs]);
 
-  // a small drag distance so a plain click still opens the card, plus keyboard dragging
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }), useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }));
+  // a small drag distance so a plain click still opens the card. on the keyboard, space picks a card up and drops it
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }), useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates, keyboardCodes: { start: ["Space"], cancel: ["Escape"], end: ["Space", "Enter"] } }));
 
   const matches = (job: BoardJob) => `${job.title} ${job.company ?? ""}`.toLowerCase().includes(query.trim().toLowerCase());
   const inColumn = (status: JobStatus, list = jobs) => list.filter((job) => job.status === status);
