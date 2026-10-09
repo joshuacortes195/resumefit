@@ -81,7 +81,8 @@ export function findDateRange(line: string, today: Date = new Date()): DateRange
 
 // the last plain year on a line, used for graduation dates
 export function findYear(line: string): number | null {
-  const years = dateTokens(line, new Date()).filter((token) => !token.date.present);
+  // "Present" is thrown away here, so the date it would stand for does not matter
+  const years = dateTokens(line, new Date(0)).filter((token) => !token.date.present);
   return years.at(-1)?.date.year ?? null;
 }
 

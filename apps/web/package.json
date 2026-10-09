@@ -12,6 +12,7 @@
     "db:migrate": "drizzle-kit migrate"
   },
   "dependencies": {
+    "@electric-sql/pglite": "^0.5.8",
     "@resumefit/scoring": "workspace:*",
     "@resumefit/shared": "workspace:*",
     "@resumefit/skills-data": "workspace:*",

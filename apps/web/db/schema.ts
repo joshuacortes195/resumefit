@@ -88,6 +88,8 @@ export const profiles = pgTable("profiles", {
   eeoDisability: text("eeo_disability").notNull().default("Decline to self-identify"),
   // saved answers to common screening questions
   qaBank: jsonb("qa_bank").notNull().default([]),
+  // skills the user added to their own dictionary, checked on every scan
+  customSkills: jsonb("custom_skills").notNull().default([]),
   updatedAt,
 });
 
@@ -153,6 +155,10 @@ export const scans = pgTable(
     userId: ownerId(),
     resumeId: uuid("resume_id").references(() => resumes.id, { onDelete: "set null" }),
     jobId: uuid("job_id").references(() => jobs.id, { onDelete: "set null" }),
+    // shown as the report title, both can be edited
+    jobTitle: text("job_title"),
+    company: text("company"),
+    jobUrl: text("job_url"),
     jdText: text("jd_text").notNull(),
     jdHash: text("jd_hash").notNull(),
     resumeTextSnapshot: text("resume_text_snapshot").notNull(),
@@ -162,6 +168,10 @@ export const scans = pgTable(
     report: jsonb("report").notNull(),
     jobTitleOverride: text("job_title_override"),
     educationOverride: text("education_override"),
+    // skills added by hand on the report page
+    customSkills: jsonb("custom_skills").notNull().default([]),
+    // layout of the file that was scanned, kept so the scan can be rerun after the resume is deleted
+    layoutMeta: jsonb("layout_meta"),
     archived: boolean("archived").notNull().default(false),
     createdAt,
   },

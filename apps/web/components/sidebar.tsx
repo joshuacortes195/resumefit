@@ -1,5 +1,6 @@
 "use client";
 
+import { Suspense } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Plus } from "lucide-react";
@@ -13,9 +14,22 @@ type SidebarProps = {
 };
 
 // the list of links down the left side
-export function Sidebar({ collapsed = false, onNavigate }: SidebarProps) {
-  const pathname = usePathname();
+export function Sidebar(props: SidebarProps) {
+  // the current page is only known in the browser, so the links show without a highlight until then
+  return (
+    <Suspense fallback={<SidebarLinks {...props} pathname="" />}>
+      <CurrentSidebar {...props} />
+    </Suspense>
+  );
+}
 
+// reads which page we are on and highlights its link
+function CurrentSidebar(props: SidebarProps) {
+  return <SidebarLinks {...props} pathname={usePathname()} />;
+}
+
+// the links themselves
+function SidebarLinks({ collapsed = false, onNavigate, pathname }: SidebarProps & { pathname: string }) {
   return (
     <nav aria-label="Main" className="flex h-full flex-col gap-0.5 overflow-y-auto p-3">
       {/* new scan button at the top, the plus turns a little on hover */}

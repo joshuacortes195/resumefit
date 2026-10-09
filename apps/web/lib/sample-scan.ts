@@ -1,6 +1,7 @@
 // made up resume and job posting so new users can see a report without pasting anything
 
 export const SAMPLE_JOB_TITLE = "Frontend Engineer";
+export const SAMPLE_COMPANY = "Brightside Labs";
 
 export const SAMPLE_RESUME = `Jordan Lee
 Austin, TX | jordan.lee@example.com | (512) 555-0142
@@ -35,6 +36,7 @@ We are looking for a Frontend Engineer to build fast, accessible product feature
 
 Requirements
 3+ years of experience with TypeScript and React
+Bachelor's degree in Computer Science or a related field
 Strong HTML and CSS skills, including responsive design
 Experience with unit testing and code review
 Comfortable working with REST APIs and Git

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { countSkills, matchSkills, requiredText, type SkillTerm } from "./match";
+import { countSkills, findSkillSpans, matchSkills, requiredText, type SkillTerm } from "./match";
 
 // small skill list for the tests
 const SKILLS: SkillTerm[] = [
@@ -101,5 +101,17 @@ Write C# tools. Excel is a plus.`;
   it("treats everything as required when there are no optional parts", () => {
     const rows = matchSkills("We need Go and Kubernetes.", "", SKILLS, "hard");
     expect(rows.every((row) => row.importance === "required")).toBe(true);
+  });
+});
+
+describe("findSkillSpans", () => {
+  it("returns where each mention sits, longest spelling first", () => {
+    const text = "We use Node.js and node, plus k8s.";
+    const spans = findSkillSpans(text, [{ name: "Node.js", aliases: ["Node"] }, { name: "Kubernetes", aliases: ["k8s"] }]);
+    expect(spans.map((span) => [text.slice(span.start, span.end), span.name])).toEqual([
+      ["Node.js", "Node.js"],
+      ["node", "Node.js"],
+      ["k8s", "Kubernetes"],
+    ]);
   });
 });

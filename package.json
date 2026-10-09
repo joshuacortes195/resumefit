@@ -9,9 +9,11 @@
     "lint": "pnpm --filter web lint",
     "test": "vitest run",
     "db:generate": "pnpm --filter web db:generate",
-    "db:migrate": "pnpm --filter web db:migrate"
+    "db:migrate": "pnpm --filter web db:migrate",
+    "test:e2e": "playwright test"
   },
   "devDependencies": {
+    "@playwright/test": "^1.64.0",
     "typescript": "^5.9.3",
     "vitest": "^5.0.3"
   }

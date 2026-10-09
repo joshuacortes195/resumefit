@@ -1,0 +1,67 @@
+import { z } from "zod";
+import type { LayoutMeta } from "@resumefit/scoring";
+import { getResume, saveResume } from "@/lib/data/resumes";
+import { FileError, readResumeFile } from "@/lib/files";
+
+// a problem with what was sent that we can explain to the user
+export class RequestError extends Error {
+  constructor(
+    message: string,
+    public status = 400,
+  ) {
+    super(message);
+  }
+}
+
+// the resume a request points at, read and saved, ready to scan
+export type ResolvedResume = { resumeId: string; text: string; layout: LayoutMeta | null };
+
+// a form field as trimmed text, empty fields come back as undefined
+export function field(form: FormData, name: string): string | undefined {
+  const value = form.get(name);
+  return typeof value === "string" && value.trim() ? value.trim() : undefined;
+}
+
+const resumeTextSchema = z.string().min(50, "That resume looks too short. Paste the full text.").max(60_000, "That resume is too long to scan.");
+
+// works out which resume a form is about: an uploaded file, pasted text or a saved one
+export async function resolveResume(userId: string, form: FormData, linkedJobId?: string | null): Promise<ResolvedResume> {
+  const file = form.get("file");
+  const resumeId = field(form, "resumeId");
+  const resumeText = field(form, "resumeText");
+
+  // a file that was just uploaded
+  if (file instanceof File && file.size > 0) {
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    try {
+      const { text, layout } = await readResumeFile(bytes, file.name);
+      const name = field(form, "resumeName") ?? file.name.replace(/\.[a-z0-9]+$/i, "");
+      const saved = await saveResume(userId, { name, text, layout, file: { bytes, type: layout.fileType }, linkedJobId });
+      return { resumeId: saved.id, text, layout: (saved.layoutMeta as LayoutMeta | null) ?? layout };
+    } catch (error) {
+      if (error instanceof FileError) throw new RequestError(error.message);
+      throw error;
+    }
+  }
+
+  // one picked from the saved resumes
+  if (resumeId) {
+    const saved = await getResume(userId, resumeId);
+    if (!saved?.rawText) throw new RequestError("We could not find that resume. Pick another one or upload it again.", 404);
+    return { resumeId: saved.id, text: saved.rawText, layout: (saved.layoutMeta as LayoutMeta | null) ?? null };
+  }
+
+  // text pasted into the box
+  const parsed = resumeTextSchema.safeParse(resumeText ?? "");
+  if (!parsed.success) throw new RequestError(resumeText ? (parsed.error.issues[0]?.message ?? "Check your resume text.") : "Add a resume first. Upload a file, paste the text or pick a saved one.");
+  const name = field(form, "resumeName") ?? `Pasted resume, ${new Date().toLocaleDateString("en-US", { month: "short", day: "numeric" })}`;
+  const saved = await saveResume(userId, { name, text: parsed.data, linkedJobId });
+  return { resumeId: saved.id, text: parsed.data, layout: null };
+}
+
+// turns anything thrown in a route into a json answer the form can show
+export function errorResponse(error: unknown): Response {
+  if (error instanceof RequestError) return Response.json({ error: error.message }, { status: error.status });
+  console.error(error instanceof Error ? error.message : "request failed");
+  return Response.json({ error: "Something went wrong on our side. Try again in a moment." }, { status: 500 });
+}

@@ -1,127 +1,164 @@
+import { Suspense } from "react";
 import Link from "next/link";
-import { ArrowRight, Briefcase, CalendarClock, Check, Plus, UserSearch } from "lucide-react";
+import { ArrowRight, Briefcase, CalendarClock, Check, Minus, UserSearch, X } from "lucide-react";
 import { JOB_STATUSES } from "@resumefit/shared";
+import { PromoBanner } from "@/components/promo-banner";
+import { ScanFormLoader } from "@/components/scan/scan-form-loader";
 import { ScoreRing } from "@/components/score-ring";
+import { CARD, LINK_BUTTON } from "@/components/ui/buttons";
+import { Skeleton } from "@/components/ui/skeleton";
+import { getCurrentUser } from "@/lib/auth";
+import { jobCounts, nextInterview } from "@/lib/data/jobs";
+import { latestScan } from "@/lib/data/scans";
 
 export const metadata = { title: "Dashboard" };
 
 // tracker columns shown as counters on the dashboard
 const TRACKER_COUNTS = JOB_STATUSES.filter((status) => status !== "rejected");
 
-// made up skills for the sample report preview
-const SAMPLE_FOUND = ["TypeScript", "React", "REST APIs", "Unit testing"];
-const SAMPLE_MISSING = ["GraphQL", "CI/CD"];
+// date and time for the next interview line
+const WHEN = new Intl.DateTimeFormat("en-US", { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
 
 // home page after sign in
 export default function DashboardPage() {
   return (
     <div className="mx-auto max-w-5xl space-y-6">
-      {/* welcome card with the new scan button and a sample report */}
-      <section className="grid gap-8 rounded-2xl border border-border bg-surface p-6 sm:p-8 md:grid-cols-[1fr_auto] md:items-center">
-        <div>
-          <h1 className="text-3xl font-semibold sm:text-4xl">Welcome to ResumeFit</h1>
-          <p className="mt-3 max-w-xl text-muted">
-            See how well your resume fits a job, fix what is missing and keep every application in one place. Aim for a match of 75% or more.
-          </p>
-          <Link
-            href="/scans/new"
-            className="group mt-6 inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-on-primary transition duration-150 hover:bg-primary-hover active:scale-[0.98]"
-          >
-            <Plus className="size-4 transition-transform duration-200 group-hover:rotate-90" aria-hidden />
-            New Scan
-          </Link>
-        </div>
+      <PromoBanner />
 
-        {/* sample report, the ring draws in and then the skills show one by one */}
-        <figure className="flex items-center gap-5 rounded-xl bg-background p-5">
-          <ScoreRing score={82} size="lg" label="Sample match rate" />
-          <div className="max-w-52">
-            <figcaption className="text-sm font-semibold">Sample report</figcaption>
-            <ul className="mt-3 flex flex-wrap gap-1.5 text-xs font-medium">
-              {/* skills the resume already has, shown like highlighter marks */}
-              {SAMPLE_FOUND.map((skill, index) => (
-                <li
-                  key={skill}
-                  className="flex animate-rise items-center gap-1 rounded bg-marker px-1.5 py-0.5 text-on-marker"
-                  style={{ animationDelay: `${900 + index * 70}ms` }}
-                >
-                  <Check className="size-3" aria-hidden />
-                  {skill}
-                </li>
-              ))}
-              {/* skills the job wants that are not in the resume */}
-              {SAMPLE_MISSING.map((skill, index) => (
-                <li
-                  key={skill}
-                  className="animate-rise rounded border border-dashed border-muted/60 px-1.5 py-0.5 text-muted"
-                  style={{ animationDelay: `${900 + (SAMPLE_FOUND.length + index) * 70}ms` }}
-                >
-                  <span className="sr-only">Missing: </span>
-                  {skill}
-                </li>
-              ))}
-            </ul>
-          </div>
-        </figure>
+      <div>
+        <h1 className="text-3xl font-semibold sm:text-4xl">Welcome to ResumeFit</h1>
+        <p className="mt-2 max-w-xl text-muted">See how well your resume fits a job, fix what is missing and keep every application in one place.</p>
+      </div>
+
+      {/* the scan form, right on the dashboard */}
+      <section className={`${CARD} p-6`}>
+        <h2 className="mb-4 text-lg font-semibold">New scan</h2>
+        <Suspense fallback={<Skeleton className="h-80" />}>
+          <ScanFormLoader />
+        </Suspense>
       </section>
 
       <div className="grid gap-6 md:grid-cols-2">
-        {/* latest scan card, empty until the first scan */}
-        <section className="rounded-2xl border border-border bg-surface p-6">
-          <h2 className="font-semibold">Latest Resume Scan</h2>
-          <div className="mt-4 flex items-center gap-4">
-            <ScoreRing score={0} />
-            <p className="text-sm text-muted">No scans yet. Your most recent match rate and checklist will show up here.</p>
-          </div>
+        <section className={`${CARD} p-6`}>
+          <h2 className="font-semibold">Latest resume scan</h2>
+          <Suspense fallback={<Skeleton className="mt-4 h-24" />}>
+            <LatestScan />
+          </Suspense>
         </section>
 
         {/* linkedin card */}
-        <section className="rounded-2xl border border-border bg-surface p-6">
-          <h2 className="font-semibold">LinkedIn Report</h2>
+        <section className={`${CARD} p-6`}>
+          <h2 className="font-semibold">LinkedIn report</h2>
           <p className="mt-4 text-sm text-muted">Score your profile against the jobs you want and see which keywords are missing.</p>
-          <Link
-            href="/linkedin"
-            className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-primary transition-colors duration-150 hover:text-primary-hover"
-          >
+          <Link href="/linkedin" className={`mt-4 inline-flex items-center gap-2 text-sm ${LINK_BUTTON}`}>
             <UserSearch className="size-4" aria-hidden />
             Optimize LinkedIn
           </Link>
         </section>
 
         {/* tracker counts card */}
-        <section className="rounded-2xl border border-border bg-surface p-6 md:col-span-2">
+        <section className={`${CARD} p-6 md:col-span-2`}>
           <div className="flex items-center justify-between">
             <h2 className="flex items-center gap-2 font-semibold">
               <Briefcase className="size-4 text-muted" aria-hidden />
-              Job Tracker
+              Job tracker
             </h2>
             {/* the arrow nudges over on hover */}
-            <Link
-              href="/tracker"
-              className="group inline-flex items-center gap-1 text-sm font-semibold text-primary transition-colors duration-150 hover:text-primary-hover"
-            >
+            <Link href="/tracker" className={`group inline-flex items-center gap-1 text-sm ${LINK_BUTTON}`}>
               Open tracker
               <ArrowRight className="size-4 transition-transform duration-200 group-hover:translate-x-0.5" aria-hidden />
             </Link>
           </div>
-
-          {/* one counter per column, split by thin lines */}
-          <dl className="mt-5 grid grid-cols-2 gap-y-4 sm:grid-cols-4 sm:divide-x sm:divide-border">
-            {TRACKER_COUNTS.map((status) => (
-              <div key={status} className="sm:px-5 sm:first:pl-0">
-                <dt className="text-sm capitalize text-muted">{status}</dt>
-                <dd className="mt-1 font-display text-3xl font-semibold tabular-nums">0</dd>
-              </div>
-            ))}
-          </dl>
-
-          {/* next interview line */}
-          <p className="mt-5 flex items-center gap-2 border-t border-border pt-4 text-sm text-muted">
-            <CalendarClock className="size-4" aria-hidden />
-            Next interview: No upcoming interview
-          </p>
+          <Suspense fallback={<Skeleton className="mt-5 h-24" />}>
+            <TrackerSummary />
+          </Suspense>
         </section>
       </div>
     </div>
+  );
+}
+
+// one chip on the latest scan card: done, needs work, or not started
+function Chip({ label, state }: { label: string; state: "good" | "bad" | "none" }) {
+  const look = state === "good" ? "text-success" : state === "bad" ? "text-danger" : "text-muted";
+  const Icon = state === "good" ? Check : state === "bad" ? X : Minus;
+  return (
+    <li className="flex items-center gap-1 rounded-full border border-border px-2.5 py-1 text-xs font-medium">
+      <Icon className={`size-3.5 ${look}`} aria-hidden />
+      {label}
+      <span className="sr-only">{state === "good" ? ", looks good" : state === "bad" ? ", needs work" : ", not done yet"}</span>
+    </li>
+  );
+}
+
+// the most recent scan with its score and checklist
+async function LatestScan() {
+  const user = await getCurrentUser();
+  const scan = await latestScan(user.id);
+  if (!scan) {
+    return (
+      <div className="mt-4 flex items-center gap-4">
+        <ScoreRing score={0} />
+        <p className="text-sm text-muted">No scans yet. Your most recent match rate and checklist will show up here.</p>
+      </div>
+    );
+  }
+
+  const { issuesToFix } = scan.report;
+  const clean = (issues: number) => (issues === 0 ? "good" : "bad");
+  return (
+    <Link href={`/scans/${scan.id}`} className="group mt-4 block">
+      <div className="flex items-center gap-4">
+        <ScoreRing score={scan.matchRate} />
+        <div className="min-w-0 flex-1">
+          <p className="truncate font-medium group-hover:text-primary">{scan.jobTitle ?? "Untitled scan"}</p>
+          <p className="truncate text-sm text-muted">{scan.company ?? "Company not set"}</p>
+        </div>
+        <ArrowRight className="size-4 shrink-0 text-muted transition-transform duration-200 group-hover:translate-x-0.5" aria-hidden />
+      </div>
+      {/* quick checklist of the report's parts */}
+      <ul className="mt-4 flex flex-wrap gap-1.5">
+        <Chip label="Searchability" state={clean(issuesToFix.searchability)} />
+        <Chip label="Formatting" state={clean(issuesToFix.formatting)} />
+        <Chip label="Skills match" state={clean(issuesToFix.hardSkills + issuesToFix.softSkills)} />
+        <Chip label="Cover letter" state="none" />
+        <Chip label="Recruiter tips" state={clean(issuesToFix.recruiterTips)} />
+      </ul>
+    </Link>
+  );
+}
+
+// counts per tracker column and the next interview
+async function TrackerSummary() {
+  const user = await getCurrentUser();
+  const [counts, interview] = await Promise.all([jobCounts(user.id), nextInterview(user.id)]);
+  return (
+    <>
+      {/* one counter per column, split by thin lines */}
+      <dl className="mt-5 grid grid-cols-2 gap-y-4 sm:grid-cols-4 sm:divide-x sm:divide-border">
+        {TRACKER_COUNTS.map((status) => (
+          <div key={status} className="sm:px-5 sm:first:pl-0">
+            <dt className="text-sm capitalize text-muted">{status}</dt>
+            <dd className="mt-1 font-display text-3xl font-semibold tabular-nums">{counts[status]}</dd>
+          </div>
+        ))}
+      </dl>
+
+      {/* next interview line */}
+      <p className="mt-5 flex items-center gap-2 border-t border-border pt-4 text-sm text-muted">
+        <CalendarClock className="size-4" aria-hidden />
+        {interview ? (
+          <span>
+            Next interview:{" "}
+            <Link href={`/tracker/${interview.jobId}/interviews`} className="font-medium text-foreground hover:text-primary">
+              {interview.jobTitle}
+              {interview.company ? ` at ${interview.company}` : ""}, {WHEN.format(interview.datetime)}
+            </Link>
+          </span>
+        ) : (
+          "Next interview: No upcoming interview"
+        )}
+      </p>
+    </>
   );
 }

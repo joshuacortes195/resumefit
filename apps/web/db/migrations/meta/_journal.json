@@ -8,6 +8,13 @@
       "when": 1791502619024,
       "tag": "0000_foamy_radioactive_man",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1791523754598,
+      "tag": "0001_gifted_silverclaw",
+      "breakpoints": true
     }
   ]
 }

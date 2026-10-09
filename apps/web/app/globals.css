@@ -143,3 +143,21 @@ h2 {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* ring around the part of the report the tour is talking about */
+.tour-target {
+  outline: 2px solid var(--primary);
+  outline-offset: 4px;
+  border-radius: 1rem;
+}
+
+/* printing the report: white page, no shadows, nothing cut in half */
+@media print {
+  body {
+    background: #ffffff;
+  }
+
+  section {
+    break-inside: avoid;
+  }
+}

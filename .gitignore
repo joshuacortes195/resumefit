@@ -20,3 +20,8 @@ next-env.d.ts
 *.pem
 *.log
 .vercel
+.data
+
+# browser test output
+test-results
+playwright-report

@@ -117,3 +117,24 @@ export function matchSkills(
     (a, b) => order[a.match] - order[b.match] || b.jdCount - a.jdCount || rank[a.importance] - rank[b.importance] || a.name.localeCompare(b.name),
   );
 }
+
+// where one skill mention sits in a piece of text
+export type SkillSpan = { start: number; end: number; name: string };
+
+// finds every skill mention with its position, so the text can be shown with highlights
+export function findSkillSpans(text: string, skills: SkillTerm[]): SkillSpan[] {
+  const spellings = skills
+    .flatMap((skill) => [skill.name, ...(skill.aliases ?? [])].map((term) => ({ term, name: skill.name })))
+    .sort((a, b) => b.term.length - a.term.length);
+
+  const spans: SkillSpan[] = [];
+  let remaining = text;
+  for (const { term, name } of spellings) {
+    // blank out each hit so a shorter spelling cannot mark the same words again
+    remaining = remaining.replace(termPattern(term), (hit, offset: number) => {
+      spans.push({ start: offset, end: offset + hit.length, name });
+      return " ".repeat(hit.length);
+    });
+  }
+  return spans.sort((a, b) => a.start - b.start);
+}
