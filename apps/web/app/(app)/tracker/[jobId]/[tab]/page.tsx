@@ -3,12 +3,15 @@ import { notFound } from "next/navigation";
 import { JobModal } from "@/components/tracker/job-modal";
 import { getCurrentUser } from "@/lib/auth";
 import { getCoverLetter, getJob, latestScores, listInterviews } from "@/lib/data/jobs";
+import { listPracticeSessions, sessionScore } from "@/lib/data/practice";
 import { getResume, listResumes } from "@/lib/data/resumes";
 import { JOB_TABS, type JobTab } from "@/lib/job-tabs";
 
 export const metadata = { title: "Job" };
 
 type Params = Promise<{ jobId: string; tab: string }>;
+
+const PRACTICE_DATE = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" });
 
 // one job's card, opened on top of the board
 export default function JobPage({ params }: { params: Params }) {
@@ -27,12 +30,13 @@ async function JobModalLoader({ params }: { params: Params }) {
   const job = await getJob(user.id, jobId);
   if (!job) notFound();
 
-  const [scores, resumes, resume, coverLetter, interviews] = await Promise.all([
+  const [scores, resumes, resume, coverLetter, interviews, practice] = await Promise.all([
     latestScores(user.id, [job.id]),
     listResumes(user.id),
     job.resumeId ? getResume(user.id, job.resumeId) : null,
     getCoverLetter(user.id, job.id),
     listInterviews(user.id, job.id),
+    listPracticeSessions(user.id, job.id),
   ]);
 
   return (
@@ -58,6 +62,7 @@ async function JobModalLoader({ params }: { params: Params }) {
         resume: resume ? { id: resume.id, name: resume.name, text: resume.rawText ?? "" } : null,
         resumes: resumes.map(({ id, name, isBase }) => ({ id, name, isBase })),
         coverLetter: coverLetter?.content ?? "",
+        practice: practice.map((session) => ({ id: session.id, date: PRACTICE_DATE.format(session.createdAt), answered: session.answers.filter(Boolean).length, score: sessionScore(session) })),
         interviews: interviews.map((interview) => ({
           id: interview.id,
           type: interview.type,

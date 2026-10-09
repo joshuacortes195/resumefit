@@ -35,7 +35,16 @@ export const mockCall: ProviderCall = async ({ system, prompt }) => {
     const interviewer = prompt.match(/Interviewer: (.*)/)?.[1] ?? "there";
     text = `Hi ${interviewer},\n\nThank you for the conversation today. I am still very interested in the role.\n\nBest,\nThe applicant`;
   }
-  else if (system.startsWith("Task: answer an application question.")) {
+  else if (system.startsWith("Task: write linkedin headlines.")) {
+    text = JSON.stringify({ options: ["Data Analyst | SQL and Tableau | Healthcare", "Data Analyst turning messy data into clear answers", "SQL and Tableau analyst for care teams"] });
+  } else if (system.startsWith("Task: write a linkedin about section.")) {
+    text = "I am a data analyst who helps care teams decide faster.\n\nI am looking for my next analytics role.";
+  } else if (system.startsWith("Task: write interview questions.")) {
+    const types = ["behavioral", "technical", "resume", "behavioral", "technical", "resume", "behavioral", "technical"];
+    text = JSON.stringify({ questions: types.map((type, index) => ({ type, question: `Practice question ${index + 1}: tell me about your work as it relates to this job.` })) });
+  } else if (system.startsWith("Task: give interview feedback.")) {
+    text = JSON.stringify({ score: 72, star: { situation: true, task: true, action: true, result: false }, relevance: "It fits the role.", specificity: "Add a number.", improve: ["Say what the result was."], sample_answer: "At my last job I led the migration and cut load time by [X%]." });
+  } else if (system.startsWith("Task: answer an application question.")) {
     text = "I enjoy this kind of work and have done it before. [Add a specific example here.]";
   } else if (system.startsWith("You turn a person's short description")) {
     text = JSON.stringify({ bullets: ["Served [N] customers a day at a busy counter", "Trained [N] new team members on the register"] });

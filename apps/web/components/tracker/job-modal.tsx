@@ -40,6 +40,8 @@ export type JobModalData = {
   resume: { id: string; name: string; text: string } | null;
   resumes: { id: string; name: string; isBase: boolean }[];
   coverLetter: string;
+  // practice sessions done for this job
+  practice: { id: string; date: string; answered: number; score: number | null }[];
   interviews: {
     id: string;
     type: string;
@@ -398,6 +400,25 @@ function InterviewsPanel({ data, pending, run }: PanelProps) {
           })}
         </ul>
       )}
+
+      {/* practice for this job, and the sessions already done */}
+      <div className="rounded-xl bg-background p-3 text-sm">
+        <Link href={`/interview?job=${job.id}`} className={`inline-flex items-center gap-1 ${LINK_BUTTON}`}>
+          <Sparkles className="size-4" aria-hidden />
+          Practice interview questions for this job
+        </Link>
+        {data.practice.length > 0 && (
+          <ul className="mt-2 space-y-1 text-muted">
+            {data.practice.map((session) => (
+              <li key={session.id}>
+                <Link href={`/interview/${session.id}`} className="hover:text-foreground hover:underline">
+                  Practice on {session.date}: {session.answered} answered{session.score !== null ? `, average score ${session.score}` : ""}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
 
       {adding ? (
         <form

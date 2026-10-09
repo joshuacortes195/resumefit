@@ -26,8 +26,9 @@ export function authMode(): "local" | "hosted" {
 async function localUser(): Promise<CurrentUser> {
   if (globalForAuth.localUser) return globalForAuth.localUser;
   const db = await getDb();
-  const [existing] = await db.select().from(schema.users).where(eq(schema.users.email, LOCAL_EMAIL)).limit(1);
-  const row = existing ?? (await db.insert(schema.users).values({ email: LOCAL_EMAIL, name: "You", isAdmin: true }).returning())[0];
+  // two pages loading at once can both get here, so the insert quietly steps aside when the account is already there
+  await db.insert(schema.users).values({ email: LOCAL_EMAIL, name: "You", isAdmin: true }).onConflictDoNothing({ target: schema.users.email });
+  const [row] = await db.select().from(schema.users).where(eq(schema.users.email, LOCAL_EMAIL)).limit(1);
   if (!row) throw new Error("Could not create the local account.");
   globalForAuth.localUser = { id: row.id, email: row.email, name: row.name, isAdmin: row.isAdmin };
   return globalForAuth.localUser;
