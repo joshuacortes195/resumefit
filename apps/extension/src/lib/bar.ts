@@ -49,13 +49,13 @@ function wording(bar: BarState): { title: string; note: string; dot: string } {
   if (bar.state === "sending") return { title: countdownTitle(bar.seconds), note: "Everything is filled from your profile. Press Cancel to send it yourself.", dot: "spin" };
   if (bar.state === "sent") return { title: "Submit pressed, waiting for the site", note: "We mark it as applied when the site says thanks.", dot: "spin" };
   if (bar.state === "held") return { title: "Left for you to send", note: bar.message, dot: "warn" };
-  if (bar.state === "no-form") return { title: "No application form on this page yet", note: "Press the site's Apply button. We fill the form in when it shows.", dot: "warn" };
+  if (bar.state === "no-form") return { title: "No application form on this page yet", note: "Sign in or press the site's Apply button if it asks. We fill the form in as soon as it shows.", dot: "warn" };
   if (bar.state === "error") return { title: "Could not fill this one", note: bar.message, dot: "bad" };
   const fields = `${bar.filled} ${bar.filled === 1 ? "field" : "fields"}`;
   const note = [
     bar.needs === 0 ? "Read it over, then press the site's own Submit button." : `Check ${bar.needs === 1 ? "it" : "those"}, then press the site's own Submit button.`,
     bar.captcha ? "The captcha is yours to do." : "",
-    bar.multiPage ? "On the next page, press Fill this page." : "",
+    bar.multiPage ? "Press the site's Next button and we fill in each step as it opens." : "",
   ]
     .filter(Boolean)
     .join(" ");

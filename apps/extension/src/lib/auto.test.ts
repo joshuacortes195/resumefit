@@ -5,6 +5,7 @@ import { showBar, tickBar } from "./bar";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { adapterFor } from "./adapters";
+import { fillDropdowns } from "./dropdowns";
 import { findFields } from "./fields";
 import { fillForm, highlight } from "./fill";
 import { canAutoSubmit, fillEverything, MAX_DRAFTS, pickResume, tally, worthDrafting, type Ask } from "./pipeline";
@@ -148,6 +149,61 @@ describe("the one application", () => {
     expect(chosen("h")).toBe("I don't wish to answer");
     expect(chosen("d")).toBe("Bachelor's Degree");
     expect((document.querySelector('input[name="age"][value="1"]') as HTMLInputElement).checked).toBe(true);
+  });
+});
+
+describe("dropdowns that are not real select boxes", () => {
+  // a button that opens a list of choices when clicked, the way workday builds its dropdowns
+  function dropdown(label: string, choices: string[]) {
+    const button = document.createElement("button");
+    button.setAttribute("aria-haspopup", "listbox");
+    button.setAttribute("aria-label", `${label} select one required`);
+    button.textContent = "Select One";
+    button.addEventListener("click", () => {
+      if (document.querySelector('[role="listbox"]')) return document.querySelector('[role="listbox"]')?.remove();
+      const list = document.createElement("ul");
+      list.setAttribute("role", "listbox");
+      for (const choice of choices) {
+        const option = document.createElement("li");
+        option.setAttribute("role", "option");
+        option.textContent = choice;
+        option.addEventListener("click", () => {
+          button.textContent = choice;
+          list.remove();
+        });
+        list.append(option);
+      }
+      document.body.append(list);
+    });
+    document.body.append(button);
+    return button;
+  }
+
+  it("opens each one, clicks the matching choice and closes one it cannot answer", async () => {
+    document.body.innerHTML = "";
+    const sponsor = dropdown("Will you now or in the future require sponsorship?", ["Yes", "No"]);
+    const veteran = dropdown("Veteran status", ["I am a veteran", "I am not a veteran", "I do not wish to answer"]);
+    const source = dropdown("How did you hear about us?", ["Job board", "Employee referral"]);
+    const reports = await fillDropdowns(document, { sponsorship: "No", eeoVeteran: "Decline to self-identify", howHeard: "LinkedIn" }, false);
+    expect(sponsor.textContent).toBe("No");
+    expect(veteran.textContent).toBe("I do not wish to answer");
+    // no choice says LinkedIn, so it is left for the person, with its list closed again
+    expect(source.textContent).toBe("Select One");
+    expect(document.querySelector('[role="listbox"]')).toBeNull();
+    expect(reports.map((report) => report.status)).toEqual(["filled", "filled", "missing"]);
+    expect(reports[0]?.label).toBe("Will you now or in the future require sponsorship?");
+  });
+
+  it("leaves alone what was already dealt with on a later step", async () => {
+    document.body.innerHTML = "";
+    const first = dropdown("Are you legally authorized to work in the US?", ["Yes", "No"]);
+    await fillDropdowns(document, { workAuthorization: "Yes" }, false);
+    // the person changes it, then the next step opens
+    first.textContent = "No";
+    const second = dropdown("Willing to relocate?", ["Yes", "No"]);
+    await fillDropdowns(document, { workAuthorization: "Yes", relocation: "Yes" }, true);
+    expect(first.textContent).toBe("No");
+    expect(second.textContent).toBe("Yes");
   });
 });
 

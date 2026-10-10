@@ -83,7 +83,7 @@ function report(run: Run, status: "queued" | "autofilling" | "needs_review" | "a
 }
 
 // the run's tab finished loading, or the person asked for another go: find the form and fill it
-async function advance(tabId: number, force = false): Promise<void> {
+async function advance(tabId: number, force = false, onlyNew = false): Promise<void> {
   let run = await getRun(tabId);
   if (!run || run.stage === "filling" || run.stage === "applied") return;
   const ask: Ask = (request) => chrome.tabs.sendMessage(tabId, request);
@@ -107,7 +107,9 @@ async function advance(tabId: number, force = false): Promise<void> {
     // the form is gone and the page says thanks: the person sent it
     if (run.stage === "review" && page.confirmed && !page.hasForm) return await finish(tabId);
 
-    if (!page.hasForm) {
+    // a later step of a long form often has no name or email on it, so it does not look like an application by itself
+    const nextStep = onlyNew && run.stage === "review";
+    if (!page.hasForm && !nextStep) {
       // after a fill, a page without a form just means they moved on
       if (run.stage === "review") return;
       // a posting, not the form: follow its Apply link, a couple of times at most
@@ -121,6 +123,8 @@ async function advance(tabId: number, force = false): Promise<void> {
 
     // a form that is already filled in is left alone, unless the person asked for another go
     if (run.stage === "review" && !force && page.fields.some((field) => field.status !== "skipped")) return;
+    // only what is new gets filled when the rest was already dealt with
+    const keep = nextStep;
 
     run = { ...run, stage: "filling", url: page.url };
     await setRun(tabId, run);
@@ -128,7 +132,7 @@ async function advance(tabId: number, force = false): Promise<void> {
     void report(run, "autofilling", page.ats?.name ?? null);
 
     const account = await api.me();
-    const fields = await fillEverything(ask, account, { resumeId: pickResume(account, run.jobId, run.resumeId), jobId: run.jobId, jdText: page.job?.description ?? "" });
+    const fields = await fillEverything(ask, account, { resumeId: pickResume(account, run.jobId, run.resumeId), jobId: run.jobId, jdText: page.job?.description ?? "", onlyNew: keep });
     const multiPage = adapterFor(new URL(page.url).hostname).multiPage === true;
     const done: BarState = { state: "done", ...tally(fields), captcha: page.captcha, multiPage };
     // "Submit for me": only for jobs started from Auto Apply, only once, and only when nothing at all is left for the person
@@ -170,13 +174,15 @@ chrome.runtime.onMessage.addListener((message: WorkerRequest, sender) => {
   const tabId = message.type === "rf-advance" ? message.tabId : sender.tab?.id;
   if (!tabId) return false;
   if (message.type === "rf-confirmed") void finish(tabId);
-  else if (message.type === "rf-refill" || message.type === "rf-advance") {
+  else {
+    // rf-more: the next step of a long form opened, so fill what is new and leave the rest alone
+    const more = message.type === "rf-more";
     void (async () => {
       const run = await getRun(tabId);
-      // Fill again on a page we did not open still works, it just has no job to tie to
-      if (!run) await setRun(tabId, newRun(sender.tab?.url ?? ""));
+      // a page we did not open still works, it just has no job to tie to
+      if (!run) await setRun(tabId, { ...newRun(sender.tab?.url ?? ""), stage: more ? "review" : "opening" });
       else if (run.stage === "blocked") await setRun(tabId, { ...run, stage: "opening" });
-      await advance(tabId, true);
+      await advance(tabId, true, more);
     })();
   }
   return false;

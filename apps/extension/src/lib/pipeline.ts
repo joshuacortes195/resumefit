@@ -24,13 +24,13 @@ export function pickResume(account: Account, jobId: string | null, wanted: strin
 }
 
 // fills the whole form in one go: profile details, the resume, then the written questions. it never submits anything
-export async function fillEverything(ask: Ask, account: Account, options: { resumeId: string | null; jobId: string | null; jdText: string }, source: FillSource = api): Promise<FieldReport[]> {
+export async function fillEverything(ask: Ask, account: Account, options: { resumeId: string | null; jobId: string | null; jdText: string; onlyNew?: boolean }, source: FillSource = api): Promise<FieldReport[]> {
   // a resume that will not download just leaves its field for the person
   const resume = options.resumeId ? await source.resumeFile(options.resumeId).catch(() => null) : null;
-  let fields = await ask<FieldReport[]>({ type: "autofill", values: profileValues(account), resume });
+  let fields = await ask<FieldReport[]>({ type: "autofill", values: profileValues(account), resume, onlyNew: options.onlyNew });
 
   // written questions: a saved answer when one fits, otherwise a draft marked for review
-  for (const question of fields.filter(worthDrafting).slice(0, MAX_DRAFTS)) {
+  for (const question of fields.filter((field) => worthDrafting(field) && field.status !== "review").slice(0, MAX_DRAFTS)) {
     try {
       const result = await source.answer({ question: question.label.slice(0, 500), jdText: options.jdText, resumeId: options.resumeId ?? undefined, jobId: options.jobId ?? undefined });
       const next = await ask<FieldReport | null>({ type: "set-field", id: question.id, value: result.answer, status: result.source === "saved" ? "filled" : "review" });

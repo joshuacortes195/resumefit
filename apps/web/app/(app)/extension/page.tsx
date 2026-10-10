@@ -80,7 +80,7 @@ export default function ExtensionPage() {
           <strong>Tuned for:</strong> {SUPPORTED.join(", ")}.
         </p>
         <p className="mt-1 text-sm">
-          <strong>Best effort:</strong> {BEST_EFFORT.join(", ")}. Workday and Taleo spread a form over several pages: press the site&apos;s Next button yourself, then Fill again on each page.
+          <strong>Best effort:</strong> {BEST_EFFORT.join(", ")}. Workday and Taleo spread a form over several steps, and usually want you to sign in first: press the site&apos;s Next button and each step is filled in as it opens.
         </p>
       </section>
 
@@ -98,8 +98,8 @@ export default function ExtensionPage() {
       <section className={`${CARD} p-6`}>
         <h2 className="text-xl font-semibold">Privacy</h2>
         <p className="mt-2 text-sm">
-          When you connect it, Chrome asks once whether it may work on the big job sites (Greenhouse, Lever, Ashby, Workable, Workday and a few more), so Auto Apply can fill those in as they open. Any other site is asked for one at a
-          time, the first time you use it there. It reads a job posting or form only when you press Auto Apply or a button in the panel. On your computer it stores your connection key and nothing else. Everything it sends goes to
+          When you connect it, Chrome asks once whether it may work on websites, because every company keeps its applications on a different site. Press Allow, or nothing can be read or filled. It only reads a page when you open its panel
+          there or when Auto Apply opened that page for you. On your computer it stores your connection key and nothing else. Everything it sends goes to
           your own ResumeFit account.
         </p>
       </section>
@@ -112,14 +112,13 @@ export default function ExtensionPage() {
             <dd className="text-muted">Press Connect again above and paste the new code. A connection lasts 90 days, and connecting again replaces the old one.</dd>
           </div>
           <div>
-            <dt className="font-semibold">&quot;Check this page&quot; asks for permission</dt>
-            <dd className="text-muted">That is Chrome asking whether ResumeFit may read this one site. Choose Allow and press the button again.</dd>
+            <dt className="font-semibold">The panel says it is not allowed on this page</dt>
+            <dd className="text-muted">Press Allow in the panel, then Allow again in the box Chrome shows. You only do this once.</dd>
           </div>
           <div>
             <dt className="font-semibold">Auto Apply opened the page but did not fill it</dt>
             <dd className="text-muted">
-              Download the extension again and reload it on chrome://extensions so you have the newest one, then open its side panel and press Turn it on. On a company&apos;s own careers site, click the ResumeFit icon once and it
-              fills the form.
+              Download the extension again and reload it on chrome://extensions so you have the newest one, then click the ResumeFit icon and press Allow in its panel. Without that, Chrome does not let it see the page.
             </dd>
           </div>
           <div>

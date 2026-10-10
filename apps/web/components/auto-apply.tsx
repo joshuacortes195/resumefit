@@ -326,7 +326,7 @@ export function AutoApply({ jobs, applications, resumes, suggest, profileReady, 
                   : !extension.canApply
                     ? "Your extension is an older version. Download the new one from the Chrome Extension page and Auto Apply will open and fill applications by itself."
                     : !extension.handsFree
-                      ? "Almost there: open the extension's side panel and press Turn it on, so applications are filled in as soon as they open."
+                      ? "Almost there: click the ResumeFit icon in Chrome's toolbar and press Allow, so applications are filled in as soon as they open."
                       : "Hands free is on. Auto Apply opens the application and fills it in for you."}
               </span>
             </p>

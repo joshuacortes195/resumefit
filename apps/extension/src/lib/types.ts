@@ -114,7 +114,8 @@ export type PageJob = { title: string; company: string; location: string; descri
 // what the side panel can ask the page to do
 export type PageRequest =
   | { type: "read-page" }
-  | { type: "autofill"; values: Partial<Record<FieldKey, string>>; resume: { name: string; type: string; base64: string } | null }
+  // onlyNew leaves fields that were already dealt with alone, for the next step of a long form
+  | { type: "autofill"; values: Partial<Record<FieldKey, string>>; resume: { name: string; type: string; base64: string } | null; onlyNew?: boolean }
   | { type: "set-field"; id: string; value: string; status: FillStatus }
   | { type: "focus-field"; id: string }
   | { type: "selection" }
@@ -153,7 +154,8 @@ export type Run = {
 };
 
 // messages the page and the side panel send to the background worker
-export type WorkerRequest = { type: "rf-refill" } | { type: "rf-confirmed" } | { type: "rf-advance"; tabId: number };
+// rf-more: new fields showed up on a page we already filled, like the next step of a long form
+export type WorkerRequest = { type: "rf-refill" } | { type: "rf-more" } | { type: "rf-confirmed" } | { type: "rf-advance"; tabId: number };
 
 // a linkedin profile read off the page the person is on
 export type LinkedinImport = { headline: string; about: string; experience: string; skills: string[]; url: string };

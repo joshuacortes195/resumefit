@@ -128,5 +128,6 @@ export function adapterFor(hostname: string): Adapter {
   return ADAPTERS.find((adapter) => adapter.hosts.test(hostname)) ?? generic;
 }
 
-// the job sites we ask to fill in without being opened by hand, asked for once when the extension is connected
-export const HANDS_FREE_ORIGINS = ["greenhouse.io", "lever.co", "ashbyhq.com", "workable.com", "myworkdayjobs.com", "smartrecruiters.com", "icims.com", "jobvite.com", "bamboohr.com", "taleo.net"].map((host) => `https://*.${host}/*`);
+// what we ask chrome for, once, when the extension is connected: to work on any site, since every company keeps its applications somewhere different.
+// it is only ever used on a page the person opened the panel on, or one Auto Apply opened for them
+export const HANDS_FREE_ORIGINS = ["https://*/*"];

@@ -38,7 +38,7 @@ export type SubmitResult = { sent: true } | { sent: false; reason: string };
 // presses the site's own Submit button, the same as a click would. only ever called when the person switched this on
 export function pressSubmit(doc: Document, fields: FormField[]): SubmitResult {
   // anything still marked for checking means the person sends it
-  if (fields.some((field) => /^(missing|review)$/.test(field.elements[0]?.getAttribute("data-resumefit-status") ?? ""))) return { sent: false, reason: "A field still needs checking, so this one is yours to send." };
+  if (doc.querySelector('[data-resumefit-status="missing"], [data-resumefit-status="review"]')) return { sent: false, reason: "A field still needs checking, so this one is yours to send." };
   const button = findSubmit(doc, fields);
   if (!button) return { sent: false, reason: "We could not tell which button sends this form, so it is yours to press." };
   // the form's own rules get the last word, like a box that has to be ticked by you

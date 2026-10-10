@@ -4,7 +4,7 @@ import { api, ApiError, getConnection, parseConnectionCode, saveConnection, type
 import { fillEverything, tally } from "../lib/pipeline";
 import { getRun, runKey } from "../lib/runs";
 import type { Account, FieldReport, LinkedinImport, PageInfo, Run, WorkerRequest } from "../lib/types";
-import { activeTab, askPage, localToday, readPage } from "./page";
+import { activeTab, askPage, localToday, NeedsAccess, readPage } from "./page";
 
 // asks chrome, once, to let us fill the big job sites without being opened by hand. it has to be asked from a click
 const askHandsFree = () => chrome.permissions.request({ origins: HANDS_FREE_ORIGINS }).catch(() => false);
@@ -159,7 +159,9 @@ function Workspace({ connection, account, onDisconnect }: { connection: Connecti
       if (tab?.id && run?.stage === "blocked") void chrome.runtime.sendMessage({ type: "rf-advance", tabId: tab.id } satisfies WorkerRequest);
     } catch (problem) {
       setPage(null);
-      setError(messageOf(problem));
+      // not being allowed on the page gets its own card with a button, not a red error
+      if (problem instanceof NeedsAccess) setHandsFree(false);
+      else setError(messageOf(problem));
     } finally {
       setBusy(false);
     }
@@ -182,7 +184,16 @@ function Workspace({ connection, account, onDisconnect }: { connection: Connecti
         if (next?.stage === "review" || next?.stage === "applied") void check();
       });
     chrome.storage.session.onChanged.addListener(onRun);
-    return () => chrome.storage.session.onChanged.removeListener(onRun);
+    // moving to another tab, or the tab going to another page, means looking again
+    const onTab = () => void check();
+    const onLoad = (_tabId: number, change: { status?: string }, tab: chrome.tabs.Tab) => change.status === "complete" && tab.active && void check();
+    chrome.tabs.onActivated.addListener(onTab);
+    chrome.tabs.onUpdated.addListener(onLoad);
+    return () => {
+      chrome.storage.session.onChanged.removeListener(onRun);
+      chrome.tabs.onActivated.removeListener(onTab);
+      chrome.tabs.onUpdated.removeListener(onLoad);
+    };
   }, [check]);
 
   const open = (path: string) => void chrome.tabs.create({ url: `${connection.apiBase}${path}` });
@@ -204,14 +215,26 @@ function Workspace({ connection, account, onDisconnect }: { connection: Connecti
           </button>
         </p>
       )}
-      {/* one click lets Auto Apply fill the big job sites by itself */}
+      {/* chrome has to be told once that we may work on job sites. nothing works until then */}
       {!handsFree && (
-        <p className="notice small">
-          Let Auto Apply fill applications on Greenhouse, Lever, Ashby and the other big job sites as soon as they open.{" "}
-          <button className="link" onClick={async () => setHandsFree(await askHandsFree())}>
-            Turn it on
+        <div className="card">
+          <h2>Allow ResumeFit on job sites</h2>
+          <p className="muted small" style={{ marginTop: 6 }}>
+            Every company keeps its applications on a different site, so Chrome needs your OK once. After that the panel reads the page you are on, and Auto Apply can open and fill applications by itself. It only acts on a page when you
+            open this panel there or start it from Auto Apply.
+          </p>
+          <button
+            className="primary"
+            style={{ marginTop: 10 }}
+            onClick={async () => {
+              const granted = await askHandsFree();
+              setHandsFree(granted);
+              if (granted) void check();
+            }}
+          >
+            Allow
           </button>
-        </p>
+        </div>
       )}
       {error && (
         <p role="alert" className="error">
@@ -484,7 +507,7 @@ function Autofill({ page, account, jobId, onPage }: { page: PageInfo; account: A
         <p className="notice" style={{ marginTop: 10 }}>
           <strong>Review everything, then click the site&apos;s Submit button.</strong>{" "}
           {needs === 0 ? "Every field we found is filled in." : `${needs} ${needs === 1 ? "field needs" : "fields need"} your attention.`}
-          {page.ats?.id === "workday" || page.ats?.id === "taleo" ? " This form has several pages. Press its Next button yourself, then press Fill again on each page." : ""}
+          {page.ats?.id === "workday" || page.ats?.id === "taleo" ? " This form has several steps. Press its Next button and we fill in each step as it opens." : ""}
         </p>
       )}
 

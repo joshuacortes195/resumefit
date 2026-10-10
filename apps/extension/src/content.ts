@@ -1,6 +1,7 @@
 import { adapterFor } from "./lib/adapters";
 import { findApplyLink } from "./lib/apply-link";
 import { showBar, tickBar } from "./lib/bar";
+import { fillDropdowns } from "./lib/dropdowns";
 import { findFields, looksLikeApplication, type FormField } from "./lib/fields";
 import { currentValue, fillField, fillForm, highlight } from "./lib/fill";
 import { hasCaptcha, looksConfirmed, readJob } from "./lib/job-page";
@@ -50,29 +51,46 @@ let cursor = -1;
 
 // scrolls to the next field that still wants the person's eyes
 function showNext(): void {
-  const waiting = fields.filter((field) => /^(missing|review)$/.test(field.elements[0]?.getAttribute("data-resumefit-status") ?? ""));
+  const waiting = [...document.querySelectorAll<HTMLElement>('[data-resumefit-status="missing"], [data-resumefit-status="review"]')];
   if (waiting.length === 0) return;
   cursor = (cursor + 1) % waiting.length;
-  const element = waiting[cursor]?.elements[0];
-  element?.scrollIntoView({ behavior: "smooth", block: "center" });
-  element?.focus({ preventScroll: true });
+  waiting[cursor]?.scrollIntoView({ behavior: "smooth", block: "center" });
+  waiting[cursor]?.focus({ preventScroll: true });
 }
 
-// true once we are watching for the "thanks for applying" page
+// true once we are watching the page for what happens next
 let watching = false;
 
-// after a fill, keeps an eye out for the form being swapped for a thank you message, on sites that never load a new page
-function watchForConfirmation(): void {
-  if (watching || looksConfirmed(document)) return;
+// true once this page has been filled in, which is when a thank you message starts to mean something
+let wasFilled = false;
+
+// how many times this page has asked for more filling, so a page that keeps changing cannot keep us busy forever
+let asked = 0;
+
+// keeps an eye on the page after we have looked at it, for the two things that happen without a new page loading:
+// the form being swapped for a thank you message, and new questions showing up, like the next step of a long form
+function watchPage(filled: boolean): void {
+  wasFilled = wasFilled || filled;
+  if (watching) return;
   watching = true;
   let timer: ReturnType<typeof setTimeout> | undefined;
   const observer = new MutationObserver(() => {
     // wait for the page to settle before reading it
     clearTimeout(timer);
     timer = setTimeout(() => {
-      if (!looksConfirmed(document) || looksLikeApplication(findFields(document, adapterFor(location.hostname)))) return;
-      observer.disconnect();
-      tellWorker({ type: "rf-confirmed" });
+      const found = findFields(document, adapterFor(location.hostname));
+      const isForm = looksLikeApplication(found);
+      if (wasFilled && !isForm && looksConfirmed(document)) {
+        observer.disconnect();
+        return tellWorker({ type: "rf-confirmed" });
+      }
+      // fields nobody has dealt with yet. two or more means a new step opened, one is usually just a search box
+      const fresh = found.filter((field) => !field.elements[0]?.hasAttribute("data-resumefit-status")).length;
+      const formNow = isForm || (wasFilled && found.length > 0);
+      if (formNow && fresh >= 2 && asked < 15) {
+        asked++;
+        tellWorker({ type: "rf-more" });
+      }
     }, 1200);
   });
   observer.observe(document.body, { childList: true, subtree: true });
@@ -119,12 +137,19 @@ if (!window.__resumefitLoaded) {
     } else if (request.type === "autofill") {
       // look again first, forms like workday swap their fields as you move between pages
       fields = findFields(document, adapterFor(location.hostname));
-      const results = fillForm(fields, request.values, request.resume);
+      // on a later step of a long form, what was already filled or fixed by the person is left alone
+      const kept = request.onlyNew ? fields.filter((field) => field.elements[0]?.hasAttribute("data-resumefit-status")) : [];
+      const results = fillForm(fields.filter((field) => !kept.includes(field)), request.values, request.resume);
       for (const result of results) {
         const field = fields.find((entry) => entry.id === result.id);
         if (field) highlight(field, result.status);
       }
-      respond(results);
+      const before = kept.map((field) => report(field, (field.elements[0]?.getAttribute("data-resumefit-status") as FieldReport["status"] | null) ?? "skipped"));
+      // then the dropdowns that have to be clicked open, which takes a moment each
+      void fillDropdowns(document, request.values, request.onlyNew === true)
+        .catch(() => [])
+        .then((dropdowns) => respond([...before, ...results, ...dropdowns]));
+      return true;
     } else if (request.type === "set-field") {
       // one field changed from the side panel, like an edited answer
       const field = fields.find((entry) => entry.id === request.id);
@@ -134,7 +159,7 @@ if (!window.__resumefitLoaded) {
         respond(report(field, status));
       } else respond(null);
     } else if (request.type === "focus-field") {
-      const element = fields.find((entry) => entry.id === request.id)?.elements[0];
+      const element = fields.find((entry) => entry.id === request.id)?.elements[0] ?? document.querySelector<HTMLElement>(`[data-resumefit-field="${CSS.escape(request.id)}"]`);
       element?.scrollIntoView({ behavior: "smooth", block: "center" });
       element?.focus({ preventScroll: true });
       respond(true);
@@ -146,10 +171,10 @@ if (!window.__resumefitLoaded) {
       respond(findApplyLink(document, location.href));
     } else if (request.type === "show-bar") {
       showBar(document, request.bar, barActions);
-      if (request.bar.state === "done") watchForConfirmation();
+      if (request.bar.state === "done" || request.bar.state === "no-form") watchPage(request.bar.state === "done");
       respond(true);
     } else if (request.type === "auto-submit") {
-      watchForConfirmation();
+      watchPage(true);
       countDownToSubmit(request.seconds, request.done);
       respond(true);
     } else if (request.type === "selection") {
