@@ -18,6 +18,7 @@ ${STYLE_RULES}
 - Tone: ${tone}. Length: about ${LENGTHS[length]} words.
 - Do not open with "I am writing to express my interest" or any version of it. Start with something specific about the role or the person's most relevant work.
 - Pick two or three things from the resume that match what the job asks for and say what the person did.
+- When no job description is given, write for what that job title usually involves, and still only use facts from the resume.
 - If the person gave a reason for wanting this company, work it in. Do not make up reasons or facts about the company.
 - Address it to the hiring manager by name when one is given, otherwise "Dear Hiring Manager,".
 - End with a short closing line and the person's name placeholder if the resume has one.
@@ -32,7 +33,7 @@ Why this company, in the person's words: ${input.why?.trim() || "not given"}
 
 Job description:
 """
-${input.jdText.slice(0, 8000)}
+${input.jdText.trim().slice(0, 8000) || "not given"}
 """
 
 Resume:

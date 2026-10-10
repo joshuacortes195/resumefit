@@ -253,7 +253,7 @@ export async function updateScan(userId: string, id: string, changes: ScanChange
 }
 
 // one line in the scan history table
-export type ScanListItem = Pick<ScanRow, "id" | "matchRate" | "jobTitle" | "company" | "jobId" | "archived" | "createdAt"> & {
+export type ScanListItem = Pick<ScanRow, "id" | "matchRate" | "jobTitle" | "company" | "jobId" | "resumeId" | "archived" | "createdAt"> & {
   snippet: string;
   jobStatus: (typeof schema.jobs.$inferSelect)["status"] | null;
 };
@@ -285,6 +285,7 @@ export async function listScans(userId: string, options: ScanListOptions = {}): 
       jobTitle: schema.scans.jobTitle,
       company: schema.scans.company,
       jobId: schema.scans.jobId,
+      resumeId: schema.scans.resumeId,
       archived: schema.scans.archived,
       createdAt: schema.scans.createdAt,
       jdText: schema.scans.jdText,

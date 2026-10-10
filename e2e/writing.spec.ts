@@ -102,9 +102,19 @@ test("write a cover letter and a thank-you note", async ({ page }) => {
 
   // generate, edit and save the letter to the job
   await page.goto("/cover-letter");
+  // typing who it is for is enough, no job description needed
+  await expect(page.getByRole("button", { name: "Generate cover letter" })).toBeDisabled();
+  await page.getByLabel("Write it for").fill("Software Engineer Intern for Google");
+  await page.getByRole("button", { name: "Generate cover letter" }).click();
+  const letter = page.getByLabel("Cover letter", { exact: true });
+  await expect(letter).toHaveValue(/Software Engineer Intern role at Google/);
+
+  // a saved job fills in who it is for and brings its description
+  await page.getByRole("button", { name: "Change options" }).click();
+  await page.getByLabel("Use a job you already saved").selectOption({ label: "UI Engineer for Lakeside Labs" });
+  await expect(page.getByLabel("Write it for")).toHaveValue("UI Engineer for Lakeside Labs");
   await page.getByRole("button", { name: "Enthusiastic" }).click();
   await page.getByRole("button", { name: "Generate cover letter" }).click();
-  const letter = page.getByLabel("Cover letter");
   await expect(letter).toHaveValue(/UI Engineer role at Lakeside Labs/);
   await letter.fill(`${await letter.inputValue()}\n\nP.S. I added this line myself.`);
   const download = page.waitForEvent("download");

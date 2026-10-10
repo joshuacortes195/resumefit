@@ -9,6 +9,7 @@ import { suggestBullets, suggestEdits } from "@/lib/ai/optimize";
 import { LENGTHS, TONES } from "@/lib/ai/prompts/letters";
 import type { Suggestion } from "@/lib/ai/prompts/optimize";
 import { AiBusyError, AiLimitError, AiUnavailableError } from "@/lib/ai/router";
+import { parseTarget } from "@/lib/letter-target";
 import { getCurrentUser } from "@/lib/auth";
 import { getJob, listInterviews, saveCoverLetter, updateInterview } from "@/lib/data/jobs";
 import { finishOptimization, saveSuggestions } from "@/lib/data/optimizations";
@@ -88,6 +89,8 @@ const letterSchema = z.object({
   jdText: z.string().max(60_000).optional(),
   jobTitle: z.string().max(200).optional(),
   company: z.string().max(200).optional(),
+  // typed by hand, like "Software Engineer Intern for Google"
+  target: z.string().max(200).optional(),
   tone: z.enum(TONES),
   length: z.enum(Object.keys(LENGTHS) as [keyof typeof LENGTHS, ...(keyof typeof LENGTHS)[]]),
   why: z.string().max(1000).optional(),
@@ -105,19 +108,24 @@ export async function generateCoverLetter(input: z.input<typeof letterSchema>): 
     const job = jobId ? await getJob(user.id, jobId) : null;
     const resume = resumeId ? await getResume(user.id, resumeId) : job?.resumeId ? await getResume(user.id, job.resumeId) : null;
 
-    const resumeText = scan?.resumeTextSnapshot ?? resume?.rawText ?? "";
+    // a resume that was picked on purpose wins over the one a scan happened to use
+    const resumeText = (resumeId ? resume?.rawText : null) ?? scan?.resumeTextSnapshot ?? resume?.rawText ?? "";
     const jdText = parsed.data.jdText?.trim() || scan?.jdText || job?.description || "";
+    const typed = parseTarget(parsed.data.target ?? "");
+    const jobTitle = parsed.data.jobTitle?.trim() || typed.jobTitle || scan?.jobTitle || job?.title || null;
+    const company = parsed.data.company?.trim() || typed.company || scan?.company || job?.company || null;
     if (resumeText.trim().length < 50) return { ok: false, error: "Pick a resume first. A cover letter is built from what is in it." };
-    if (jdText.trim().length < 50) return { ok: false, error: "Add the job description first, so the letter can speak to it." };
+    // the job description is a bonus, the letter only has to know which job it is for
+    if (jdText.trim().length < 50 && !jobTitle) return { ok: false, error: "Say which job the letter is for, like Software Engineer Intern for Google." };
 
-    const contact: ResumeContact = scan?.report.resume.contact ?? parseResume(resumeText).contact;
+    const contact: ResumeContact = (resumeId ? null : scan?.report.resume.contact) ?? parseResume(resumeText).contact;
     const letter = await writeCoverLetter(
       {
         resume: resumeText,
         contact,
         jdText,
-        jobTitle: parsed.data.jobTitle?.trim() || scan?.jobTitle || job?.title || null,
-        company: parsed.data.company?.trim() || scan?.company || job?.company || null,
+        jobTitle,
+        company,
         tone: parsed.data.tone,
         length: parsed.data.length,
         why: parsed.data.why,

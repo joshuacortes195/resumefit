@@ -1,52 +1,101 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import Link from "next/link";
-import { Check, Copy, Download, RefreshCw, Save, Sparkles } from "lucide-react";
+import { useRef, useState, useTransition } from "react";
+import { Check, Copy, Download, RefreshCw, Save, Sparkles, Upload } from "lucide-react";
 import { generateCoverLetter, saveLetterToJob } from "@/app/actions/writing";
 import { AiNotice } from "@/components/ai-notice";
-import { CARD, INPUT, LINK_BUTTON, PRIMARY_BUTTON, SECONDARY_BUTTON } from "@/components/ui/buttons";
+import { CARD, INPUT, PRIMARY_BUTTON, SECONDARY_BUTTON } from "@/components/ui/buttons";
 import { LENGTHS, TONES, type Length, type Tone } from "@/lib/ai/prompts/letters";
 import { downloadExport } from "@/lib/download";
 
 type StudioProps = {
   resumes: { id: string; name: string; isBase: boolean }[];
   // recent scans, picking one fills in the resume and the job
-  scans: { id: string; label: string; jobId: string | null }[];
+  scans: { id: string; label: string; jobId: string | null; resumeId: string | null }[];
   // tracked jobs the finished letter can be saved to
   jobs: { id: string; label: string }[];
   ai: { available: boolean; remaining: number | null };
 };
 
 // the two steps of the cover letter page: what to write from, then the letter itself
-export function CoverLetterStudio({ resumes, scans, jobs, ai }: StudioProps) {
+export function CoverLetterStudio({ resumes: savedResumes, scans, jobs, ai }: StudioProps) {
+  const [resumes, setResumes] = useState(savedResumes);
   const base = resumes.find((resume) => resume.isBase) ?? resumes[0];
   const [step, setStep] = useState<1 | 2>(1);
-  const [scanId, setScanId] = useState(scans[0]?.id ?? "");
   const [resumeId, setResumeId] = useState(base?.id ?? "");
+  // who the letter is for, typed freely, like "Software Engineer Intern for Google"
+  const [target, setTarget] = useState("");
+  // a scan or tracked job to borrow the job description from, as "scan:id" or "job:id"
+  const [saved, setSaved] = useState("");
   const [jdText, setJdText] = useState("");
-  const [jobTitle, setJobTitle] = useState("");
-  const [company, setCompany] = useState("");
   const [tone, setTone] = useState<Tone>("Professional");
   const [length, setLength] = useState<Length>("Standard");
   const [why, setWhy] = useState("");
   const [manager, setManager] = useState("");
   const [letter, setLetter] = useState("");
-  const [jobId, setJobId] = useState(scans[0]?.jobId ?? jobs[0]?.id ?? "");
+  const [jobId, setJobId] = useState(jobs[0]?.id ?? "");
   const [remaining, setRemaining] = useState(ai.remaining);
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
   const [copied, setCopied] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [pending, startTransition] = useTransition();
+  const fileRef = useRef<HTMLInputElement>(null);
 
-  // a scan brings its own resume and job, otherwise both have to be given here
-  const fromScan = scanId !== "";
-  const ready = fromScan || (resumeId !== "" && jdText.trim().length >= 50);
+  const [savedKind, savedId] = saved.split(":");
+  // a scan remembers the resume it was run with, so it can stand in when none is saved
+  const ready = (resumeId !== "" || savedKind === "scan") && (target.trim().length >= 2 || jdText.trim().length >= 50);
+
+  // picking a job that is already saved fills in who the letter is for, and uses its description
+  function pickSaved(value: string) {
+    setSaved(value);
+    const [kind, id] = value.split(":");
+    const scan = kind === "scan" ? scans.find((entry) => entry.id === id) : undefined;
+    const job = kind === "job" ? jobs.find((entry) => entry.id === id) : undefined;
+    if (scan) setTarget(scan.label);
+    if (job) setTarget(job.label);
+    // the letter gets saved to the same job by default, and written from the resume the scan used
+    const trackedJob = scan?.jobId ?? job?.id;
+    if (trackedJob) setJobId(trackedJob);
+    if (scan?.resumeId && resumes.some((resume) => resume.id === scan.resumeId)) setResumeId(scan.resumeId);
+  }
+
+  // saves an uploaded file as a resume and picks it
+  async function upload(file: File | undefined) {
+    if (!file) return;
+    setUploading(true);
+    setMessage(null);
+    const form = new FormData();
+    form.set("file", file);
+    try {
+      const response = await fetch("/api/resumes", { method: "POST", body: form });
+      const result = (await response.json()) as { id?: string; error?: string };
+      if (!response.ok || !result.id) throw new Error(result.error ?? "The upload did not work. Try again.");
+      const added = { id: result.id, name: file.name.replace(/\.(pdf|docx)$/i, ""), isBase: false };
+      setResumes((all) => (all.some((resume) => resume.id === added.id) ? all : [added, ...all]));
+      setResumeId(added.id);
+    } catch (problem) {
+      setMessage({ ok: false, text: problem instanceof Error ? problem.message : "The upload did not work. Try again." });
+    } finally {
+      setUploading(false);
+      if (fileRef.current) fileRef.current.value = "";
+    }
+  }
 
   // writes the letter, the first time and every time after
   function generate() {
     setMessage(null);
     startTransition(async () => {
-      const result = await generateCoverLetter(fromScan ? { scanId, tone, length, why, manager } : { resumeId, jdText, jobTitle, company, tone, length, why, manager });
+      const result = await generateCoverLetter({
+        resumeId: resumeId || undefined,
+        scanId: savedKind === "scan" ? savedId : undefined,
+        jobId: savedKind === "job" ? savedId : undefined,
+        target,
+        jdText,
+        tone,
+        length,
+        why,
+        manager,
+      });
       if (!result.ok) {
         setMessage({ ok: false, text: result.error });
         return;
@@ -69,7 +118,7 @@ export function CoverLetterStudio({ resumes, scans, jobs, ai }: StudioProps) {
     <div className="space-y-6">
       {/* which step we are on */}
       <ol className="flex flex-wrap gap-x-8 gap-y-2 text-sm font-medium">
-        {["Resume and job description", "Your cover letter"].map((label, index) => (
+        {["Resume and job", "Your cover letter"].map((label, index) => (
           <li key={label} aria-current={step === index + 1 ? "step" : undefined} className={`flex items-center gap-2 ${step === index + 1 ? "text-foreground" : "text-muted"}`}>
             <span className={`flex size-6 items-center justify-center rounded-full text-xs ${step === index + 1 ? "bg-primary text-on-primary" : "bg-border"}`}>{index + 1}</span>
             {label}
@@ -79,60 +128,74 @@ export function CoverLetterStudio({ resumes, scans, jobs, ai }: StudioProps) {
 
       {step === 1 && (
         <section className={`${CARD} space-y-5 p-6`}>
-          {/* what the letter is written from */}
-          {scans.length > 0 && (
+          {/* the resume the letter is written from, and the job it is for */}
+          <div className="grid gap-4 md:grid-cols-2">
+            <div>
+              <label htmlFor="letter-resume" className="block text-sm font-semibold">
+                Resume
+              </label>
+              <div className="mt-1 flex gap-2">
+                <select id="letter-resume" value={resumeId} onChange={(event) => setResumeId(event.target.value)} disabled={resumes.length === 0} className={`${INPUT} min-w-0 flex-1`}>
+                  {resumes.length === 0 && <option value="">No saved resumes yet</option>}
+                  {resumes.map((resume) => (
+                    <option key={resume.id} value={resume.id}>
+                      {resume.name}
+                      {resume.isBase ? " (base)" : ""}
+                    </option>
+                  ))}
+                </select>
+                <button type="button" disabled={uploading} onClick={() => fileRef.current?.click()} className={`${SECONDARY_BUTTON} shrink-0`}>
+                  <Upload className="size-4" aria-hidden />
+                  {uploading ? "Reading..." : "Upload"}
+                </button>
+              </div>
+              <input ref={fileRef} type="file" accept=".pdf,.docx" aria-label="Upload a resume" className="sr-only" tabIndex={-1} onChange={(event) => upload(event.target.files?.[0])} />
+              <p className="mt-1 text-xs text-muted">Pick a saved resume, or upload a PDF or DOCX and it is saved for next time.</p>
+            </div>
             <label className="block text-sm font-semibold">
               Write it for
-              <select value={scanId} onChange={(event) => setScanId(event.target.value)} className={`${INPUT} mt-1 font-normal`}>
-                {scans.map((scan) => (
-                  <option key={scan.id} value={scan.id}>
-                    {scan.label}
-                  </option>
-                ))}
-                <option value="">A different job (paste the description)</option>
+              <input value={target} onChange={(event) => setTarget(event.target.value)} maxLength={200} placeholder="Software Engineer Intern for Google" className={`${INPUT} mt-1 font-normal`} />
+              <span className="mt-1 block text-xs font-normal text-muted">The job, then the company.</span>
+            </label>
+          </div>
+
+          {/* a job that is already saved brings its description along */}
+          {(scans.length > 0 || jobs.length > 0) && (
+            <label className="block text-sm font-semibold">
+              Use a job you already saved <span className="font-normal text-muted">(optional)</span>
+              <select value={saved} onChange={(event) => pickSaved(event.target.value)} className={`${INPUT} mt-1 font-normal`}>
+                <option value="">None, I typed the job above</option>
+                {scans.length > 0 && (
+                  <optgroup label="Recent scans">
+                    {scans.map((scan) => (
+                      <option key={scan.id} value={`scan:${scan.id}`}>
+                        {scan.label}
+                      </option>
+                    ))}
+                  </optgroup>
+                )}
+                {jobs.length > 0 && (
+                  <optgroup label="Job tracker">
+                    {jobs.map((job) => (
+                      <option key={job.id} value={`job:${job.id}`}>
+                        {job.label}
+                      </option>
+                    ))}
+                  </optgroup>
+                )}
               </select>
             </label>
           )}
 
-          {!fromScan && (
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-4">
-                {resumes.length === 0 ? (
-                  <p className="text-sm text-muted">
-                    You have no saved resumes yet.{" "}
-                    <Link href="/resumes" className={LINK_BUTTON}>
-                      Upload one in the Resume Manager
-                    </Link>{" "}
-                    first.
-                  </p>
-                ) : (
-                  <label className="block text-sm font-semibold">
-                    Resume
-                    <select value={resumeId} onChange={(event) => setResumeId(event.target.value)} className={`${INPUT} mt-1 font-normal`}>
-                      {resumes.map((resume) => (
-                        <option key={resume.id} value={resume.id}>
-                          {resume.name}
-                          {resume.isBase ? " (base)" : ""}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                )}
-                <label className="block text-sm font-semibold">
-                  Job title
-                  <input value={jobTitle} onChange={(event) => setJobTitle(event.target.value)} className={`${INPUT} mt-1 font-normal`} />
-                </label>
-                <label className="block text-sm font-semibold">
-                  Company
-                  <input value={company} onChange={(event) => setCompany(event.target.value)} className={`${INPUT} mt-1 font-normal`} />
-                </label>
-              </div>
-              <label className="block text-sm font-semibold">
-                Job description
-                <textarea value={jdText} onChange={(event) => setJdText(event.target.value)} placeholder="Copy and paste the job description here." className={`${INPUT} mt-1 h-52 resize-y font-normal`} />
-              </label>
-            </div>
-          )}
+          <label className="block text-sm font-semibold">
+            Job description <span className="font-normal text-muted">(optional)</span>
+            <textarea
+              value={jdText}
+              onChange={(event) => setJdText(event.target.value)}
+              placeholder={saved ? "We use the description saved with that job. Paste a different one here to use it instead." : "Paste it for a letter that speaks to the posting. Leave it empty and the letter is written for the job title."}
+              className={`${INPUT} mt-1 h-32 resize-y font-normal`}
+            />
+          </label>
 
           {/* how it should read */}
           <div className="grid gap-4 sm:grid-cols-2">
