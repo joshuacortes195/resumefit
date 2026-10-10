@@ -8,14 +8,24 @@ import { ScoreRing } from "@/components/score-ring";
 import { CARD, LINK_BUTTON } from "@/components/ui/buttons";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getCurrentUser } from "@/lib/auth";
-import { getCoverLetter, jobCounts, nextInterview } from "@/lib/data/jobs";
+import { CompanyLogo } from "@/components/company-logo";
+import { getCoverLetter, listJobs, nextInterview } from "@/lib/data/jobs";
 import { listLinkedinReports } from "@/lib/data/practice";
 import { latestScan } from "@/lib/data/scans";
 
 export const metadata = { title: "Dashboard" };
 
-// tracker columns shown as counters on the dashboard
-const TRACKER_COUNTS = JOB_STATUSES.filter((status) => status !== "rejected");
+// how each tracker column is named on the dashboard, with its own dot color
+const COLUMNS = {
+  saved: { label: "Saved", dot: "var(--c-scans)" },
+  applied: { label: "Applied", dot: "var(--c-linkedin)" },
+  interview: { label: "Interview", dot: "var(--c-builder)" },
+  offer: { label: "Offer", dot: "var(--c-tracker)" },
+  rejected: { label: "Rejected", dot: "var(--c-resumes)" },
+} as const;
+
+// how many cards each column shows before it says "and more"
+const CARDS_PER_COLUMN = 4;
 
 // date and time for the next interview line
 const WHEN = new Intl.DateTimeFormat("en-US", { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
@@ -39,6 +49,24 @@ export default function DashboardPage() {
         </Suspense>
       </section>
 
+      {/* the real tracker board, cards and all */}
+      <section className={`${CARD} p-6`}>
+        <div className="flex items-center justify-between">
+          <h2 className="flex items-center gap-2 font-semibold">
+            <Briefcase className="size-4 text-muted" aria-hidden />
+            Job tracker
+          </h2>
+          {/* the arrow nudges over on hover */}
+          <Link href="/tracker" className={`group inline-flex items-center gap-1 text-sm ${LINK_BUTTON}`}>
+            Open tracker
+            <ArrowRight className="size-4 transition-transform duration-200 group-hover:translate-x-0.5" aria-hidden />
+          </Link>
+        </div>
+        <Suspense fallback={<Skeleton className="mt-5 h-48" />}>
+          <TrackerSummary />
+        </Suspense>
+      </section>
+
       <div className="grid gap-6 md:grid-cols-2">
         <section className={`${CARD} p-6`}>
           <h2 className="font-semibold">Latest resume scan</h2>
@@ -55,23 +83,6 @@ export default function DashboardPage() {
           </Suspense>
         </section>
 
-        {/* tracker counts card */}
-        <section className={`${CARD} p-6 md:col-span-2`}>
-          <div className="flex items-center justify-between">
-            <h2 className="flex items-center gap-2 font-semibold">
-              <Briefcase className="size-4 text-muted" aria-hidden />
-              Job tracker
-            </h2>
-            {/* the arrow nudges over on hover */}
-            <Link href="/tracker" className={`group inline-flex items-center gap-1 text-sm ${LINK_BUTTON}`}>
-              Open tracker
-              <ArrowRight className="size-4 transition-transform duration-200 group-hover:translate-x-0.5" aria-hidden />
-            </Link>
-          </div>
-          <Suspense fallback={<Skeleton className="mt-5 h-24" />}>
-            <TrackerSummary />
-          </Suspense>
-        </section>
       </div>
     </div>
   );
@@ -151,21 +162,50 @@ async function LinkedinCard() {
   );
 }
 
-// counts per tracker column and the next interview
+// the tracker board with its real cards, and the next interview
 async function TrackerSummary() {
   const user = await getCurrentUser();
-  const [counts, interview] = await Promise.all([jobCounts(user.id), nextInterview(user.id)]);
+  const [jobs, interview] = await Promise.all([listJobs(user.id), nextInterview(user.id)]);
   return (
     <>
-      {/* one counter per column, split by thin lines */}
-      <dl className="mt-5 grid grid-cols-2 gap-y-4 sm:grid-cols-4 sm:divide-x sm:divide-border">
-        {TRACKER_COUNTS.map((status) => (
-          <div key={status} className="sm:px-5 sm:first:pl-0">
-            <dt className="text-sm capitalize text-muted">{status}</dt>
-            <dd className="mt-1 font-display text-3xl font-semibold tabular-nums">{counts[status]}</dd>
-          </div>
-        ))}
-      </dl>
+      {/* one column per stage, each with the cards that are in it */}
+      <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+        {JOB_STATUSES.map((status) => {
+          const cards = jobs.filter((job) => job.status === status);
+          return (
+            <section key={status} aria-label={`${COLUMNS[status].label} jobs`} className="rounded-xl bg-background p-3">
+              <h3 className="flex items-center gap-2 text-sm font-semibold">
+                <span aria-hidden className="size-2 rounded-full" style={{ background: COLUMNS[status].dot }} />
+                {COLUMNS[status].label}
+                <span className="ml-auto font-normal tabular-nums text-muted">{cards.length}</span>
+              </h3>
+              {cards.length === 0 ? (
+                <p className="mt-3 rounded-lg border border-dashed border-border px-3 py-4 text-center text-xs text-muted">Nothing here yet</p>
+              ) : (
+                <ul className="mt-3 space-y-2">
+                  {cards.slice(0, CARDS_PER_COLUMN).map((job) => (
+                    <li key={job.id}>
+                      <Link href={`/tracker/${job.id}/job`} className="flex items-center gap-2.5 rounded-lg border border-border/70 bg-surface p-2.5 transition-colors duration-150 hover:border-primary/60">
+                        <CompanyLogo company={job.company ?? job.title} size={28} />
+                        <span className="min-w-0 flex-1">
+                          <span className="line-clamp-2 text-sm font-medium leading-snug">{job.title}</span>
+                          <span className="block truncate text-xs text-muted">{job.company ?? "Company not set"}</span>
+                        </span>
+                        {job.matchRate !== null && <span className="shrink-0 text-xs font-semibold tabular-nums text-primary">{job.matchRate}%</span>}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {cards.length > CARDS_PER_COLUMN && (
+                <Link href="/tracker" className={`mt-2 block text-xs ${LINK_BUTTON}`}>
+                  and {cards.length - CARDS_PER_COLUMN} more
+                </Link>
+              )}
+            </section>
+          );
+        })}
+      </div>
 
       {/* next interview line */}
       <p className="mt-5 flex items-center gap-2 border-t border-border pt-4 text-sm text-muted">
