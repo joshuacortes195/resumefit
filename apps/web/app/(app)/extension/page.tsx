@@ -1,6 +1,8 @@
 import { Suspense } from "react";
+import { Download } from "lucide-react";
+import { CopyText } from "@/components/copy-text";
 import { ExtensionConnect } from "@/components/extension-connect";
-import { CARD } from "@/components/ui/buttons";
+import { CARD, PRIMARY_BUTTON } from "@/components/ui/buttons";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getCurrentUser } from "@/lib/auth";
 import { extensionStatus } from "@/lib/data/extension";
@@ -24,14 +26,33 @@ export default function ExtensionPage() {
 
       <section className={`${CARD} p-6`}>
         <h2 className="text-xl font-semibold">1. Install it</h2>
-        <p className="mt-2 text-sm text-muted">The extension is not in the Chrome Web Store yet, so it is loaded by hand. It takes a minute.</p>
-        <ol className="mt-3 list-decimal space-y-1.5 pl-5 text-sm">
-          <li>Get the extension folder. If you have the project, run <code className="rounded bg-background px-1">pnpm --filter @resumefit/extension build</code> and use <code className="rounded bg-background px-1">apps/extension/dist</code>. Otherwise unzip the file you were sent.</li>
-          <li>Open <code className="rounded bg-background px-1">chrome://extensions</code> in Chrome.</li>
-          <li>Turn on <strong>Developer mode</strong>, top right.</li>
-          <li>Press <strong>Load unpacked</strong> and pick the folder.</li>
-          <li>Pin ResumeFit from the puzzle icon in the toolbar so it is easy to reach.</li>
+        <p className="mt-2 text-sm text-muted">It is not in the Chrome Web Store yet, so you add it yourself. It takes about a minute and you only do it once.</p>
+        {/* the folder Chrome needs, ready to download */}
+        <a href="/resumefit-extension.zip" download className={`${PRIMARY_BUTTON} mt-4`}>
+          <Download className="size-4" aria-hidden />
+          Download the extension
+        </a>
+        <ol className="mt-5 list-decimal space-y-3 pl-5 text-sm">
+          <li>
+            <strong>Download it</strong> with the button above. A file called <strong>resumefit-extension.zip</strong> lands in your Downloads folder.
+          </li>
+          <li>
+            <strong>Open that file.</strong> On a Mac, double click it. On Windows, right click it and choose Extract All. Either way you end up with a folder called <strong>resumefit-extension</strong>.
+          </li>
+          <li>
+            <strong>Open Chrome&apos;s extensions page.</strong> Copy this, paste it into the address bar and press Enter: <CopyText text="chrome://extensions" />
+          </li>
+          <li>
+            <strong>Turn on Developer mode</strong> with the switch in the top right corner of that page.
+          </li>
+          <li>
+            <strong>Press Load unpacked</strong> (top left) and pick the <strong>resumefit-extension</strong> folder from your Downloads.
+          </li>
+          <li>
+            <strong>Pin it.</strong> Click the puzzle piece in Chrome&apos;s toolbar, then the pin next to ResumeFit, so it is always one click away.
+          </li>
         </ol>
+        <p className="mt-4 text-sm text-muted">Leave the folder where it is. Chrome runs the extension from it, so deleting or moving the folder removes the extension.</p>
       </section>
 
       <section className={`${CARD} p-6`}>
@@ -49,6 +70,7 @@ export default function ExtensionPage() {
           <li><strong>On a job posting:</strong> save the job to your tracker, or scan it against your resume and see your match rate and the top missing skills without leaving the page.</li>
           <li><strong>On any page:</strong> highlight a job description, right click and choose &quot;Scan this job description with ResumeFit&quot;.</li>
           <li><strong>On an application form:</strong> press Autofill. It fills in your details, attaches your resume and colors each field: green is filled from your profile, amber is a draft to review, red needs you.</li>
+          <li><strong>On your LinkedIn profile:</strong> press Import my profile and the LinkedIn Optimizer opens with your headline, About, experience and skills filled in.</li>
           <li><strong>Written questions:</strong> it uses an answer you saved before when one fits, otherwise it can draft one from your resume for you to edit.</li>
         </ul>
         <h3 className="mt-5 font-semibold">Where autofill works</h3>
