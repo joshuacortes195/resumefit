@@ -121,7 +121,9 @@ export function fillForm(fields: FormField[], values: Partial<Record<FieldKey, s
     // free text questions are answered one at a time from the side panel, where the person can read each draft
     const answer = field.key && field.key !== "question" ? values[field.key] : undefined;
     const status = field.key === "question" ? (field.required ? "missing" : "skipped") : fillField(field, answer, resume);
-    return { id: field.id, key: field.key, label: field.label, kind: field.kind, required: field.required, status, value: currentValue(field) };
+    // some sites show the value a moment later, or in a way we cannot read back. what we put in is shown then, so a filled field never reads as empty
+    const put = field.kind === "file" ? (resume?.name ?? "") : (answer ?? "");
+    return { id: field.id, key: field.key, label: field.label, kind: field.kind, required: field.required, status, value: currentValue(field) || (status === "filled" ? put : "") };
   });
 }
 

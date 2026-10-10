@@ -33,7 +33,7 @@ export function findDropdowns(doc: Document): HTMLElement[] {
 }
 
 // opens one dropdown, clicks the choice that matches the answer and says how it went. a list with no clear match is closed again untouched
-async function choose(button: HTMLElement, answer: string, key: FieldKey, doc: Document): Promise<boolean> {
+async function choose(button: HTMLElement, answer: string, key: FieldKey, doc: Document): Promise<string | null> {
   button.click();
   const options = await until(() => {
     const found = [...doc.querySelectorAll<HTMLElement>('[role="listbox"] [role="option"], [role="option"]')];
@@ -42,8 +42,9 @@ async function choose(button: HTMLElement, answer: string, key: FieldKey, doc: D
   const index = options ? pickOption(options.map((option) => ({ text: (option.textContent ?? "").replace(/\s+/g, " ").trim(), value: option.getAttribute("data-value") ?? "" })), answer, key) : -1;
   const choice = options?.[index];
   if (choice) {
+    const words = (choice.textContent ?? "").replace(/\s+/g, " ").trim();
     choice.click();
-    return true;
+    return words;
   }
   // nothing fits: close the list the way a person would, and leave the question for them
   const view = doc.defaultView ?? window;
@@ -51,7 +52,7 @@ async function choose(button: HTMLElement, answer: string, key: FieldKey, doc: D
   await new Promise((done) => setTimeout(done, 80));
   // still open: a second click on the button closes it
   if (options?.some((option) => option.isConnected)) button.click();
-  return false;
+  return null;
 }
 
 // answers the button style dropdowns from the profile, one at a time, the way a person would click through them
@@ -65,12 +66,17 @@ export async function fillDropdowns(doc: Document, values: Partial<Record<FieldK
     const required = button.getAttribute("aria-required") === "true" || /required|\*\s*$/i.test(button.getAttribute("aria-label") ?? "") || /\*\s*$/.test(label);
     const shown = () => (button.textContent ?? "").replace(/\s+/g, " ").trim();
     let status = (button.getAttribute("data-resumefit-status") as FillStatus | null) ?? null;
+    // the choice we clicked, kept because the button often shows it a moment later
+    let picked = "";
 
     // ones already dealt with are left as they are when we are only filling what is new
     if (!(onlyNew && status)) {
       const answer = key && key !== "question" ? values[key] : undefined;
       const empty = PLACEHOLDER.test(shown());
-      if (answer && key && empty) status = (await choose(button, answer, key, doc)) ? "filled" : required ? "missing" : "skipped";
+      if (answer && key && empty) {
+        picked = (await choose(button, answer, key, doc)) ?? "";
+        status = picked ? "filled" : required ? "missing" : "skipped";
+      }
       else status = !empty ? "filled" : required ? "missing" : "skipped";
       button.setAttribute("data-resumefit-status", status);
       // the same colors as every other field
@@ -78,7 +84,7 @@ export async function fillDropdowns(doc: Document, values: Partial<Record<FieldK
       button.style.outline = color ? `2px solid ${color}` : "";
       button.style.outlineOffset = color ? "2px" : "";
     }
-    reports.push({ id, key, label: label || "Dropdown", kind: "select", required, status: status ?? "skipped", value: PLACEHOLDER.test(shown()) ? "" : shown() });
+    reports.push({ id, key, label: label || "Dropdown", kind: "select", required, status: status ?? "skipped", value: PLACEHOLDER.test(shown()) ? picked : shown() });
   }
   return reports;
 }

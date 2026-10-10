@@ -1,5 +1,7 @@
 # ResumeFit
 
+**Live app:** https://resumefit-three.vercel.app/dashboard
+
 A free tool for matching a resume to a job description, tracking applications and filling out application forms faster. I built it for me and my friends, so there are no paywalls, credits or locked features.
 
 ## What it does
