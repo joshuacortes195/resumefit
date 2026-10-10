@@ -121,8 +121,8 @@ export function AiSettings({ status }: { status: AiStatus }) {
 
       {/* what leaves the app when a helper runs */}
       <p className="max-w-prose border-t border-border pt-4 text-xs text-muted">
-        AI features send redacted resume and job text to Google Gemini&apos;s free API, which may use it to improve their models. Your name and contact details are removed first. When Gemini is busy
-        the same redacted text may go to Groq or Cloudflare instead.
+        AI features send redacted resume and job text to a free AI provider (Groq, Google Gemini or Cloudflare, whichever is set up), which may use it to improve their models. Your name and contact
+        details are removed first.
       </p>
     </section>
   );

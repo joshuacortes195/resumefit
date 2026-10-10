@@ -21,10 +21,11 @@ export default function PrivacyPage() {
       <section>
         <h2>What the AI features send, and where</h2>
         <p>
-          AI features send redacted resume and job text to Google Gemini&apos;s free API, which may use it to improve their models. Your name and contact info are removed first: your name, email, phone
-          number, street address and links are swapped for placeholders before anything is sent, and put back when the answer arrives.
+          AI features send redacted resume and job text to a free AI provider: Groq, Google Gemini or Cloudflare Workers AI, whichever is set up and answering. Free tiers may use what they are sent to
+          improve their models. Your name and contact info are removed first: your name, email, phone number, street address and links are swapped for placeholders before anything is sent, and put
+          back when the answer arrives.
         </p>
-        <p className="mt-2">When Gemini is busy, the same redacted text may go to Groq or Cloudflare Workers AI instead. Nothing is sent to any of them until you press a button that uses AI.</p>
+        <p className="mt-2">Nothing is sent to any of them until you press a button that uses AI.</p>
         <p className="mt-2">Match scores, reports, the tracker and exports never use AI and never leave the app.</p>
       </section>
 
