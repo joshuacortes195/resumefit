@@ -61,14 +61,18 @@ async function getJson(url: string, timeoutMs = 15_000): Promise<unknown> {
 }
 
 // the most openings we keep from one company, newest first
-const PER_BOARD = 300;
+const PER_BOARD = 120;
+
+// takes a company's openings down to the limit, keeping internships and new grad roles first since those are the hardest to find
+const INTERN = /\b(intern|internship|co-?op|new grad|graduate program|apprentice)\b/i;
+function pick<T>(list: T[], title: (item: T) => string): T[] {
+  return [...list.filter((item) => INTERN.test(title(item))), ...list.filter((item) => !INTERN.test(title(item)))].slice(0, PER_BOARD);
+}
 
 // the skills an opening asks for, by the names on our own skill list
 function skillsIn(title: string, description: string): string[] {
   return [...countSkills(`${title}\n${description.slice(0, 12_000)}`, HARD_SKILLS).keys()].slice(0, 40);
 }
-
-const INTERN = /\b(intern|internship|co-?op|new grad|graduate program|apprentice)\b/i;
 
 // reads one company's board into our own small shape
 export async function fetchBoard(board: Board): Promise<FeedJob[]> {
@@ -89,13 +93,13 @@ export async function fetchBoard(board: Board): Promise<FeedJob[]> {
   let jobs: FeedJob[];
   if (board.source === "greenhouse") {
     const data = (await getJson(`https://boards-api.greenhouse.io/v1/boards/${board.token}/jobs?content=true`, 25_000)) as { jobs?: Raw[] };
-    jobs = (data.jobs ?? []).slice(0, PER_BOARD).map((job) => {
+    jobs = pick(data.jobs ?? [], (job) => text(job.title)).map((job) => {
       const location = text((job.location as Raw | undefined)?.name);
       return make(job.id, text(job.title), location, /remote/i.test(location), text(job.absolute_url), text(job.first_published) || text(job.updated_at) || null, htmlToText(text(job.content)));
     });
   } else if (board.source === "lever") {
     const data = (await getJson(`https://api.lever.co/v0/postings/${board.token}?mode=json`, 25_000)) as Raw[];
-    jobs = data.slice(0, PER_BOARD).map((job) => {
+    jobs = pick(data, (job) => text(job.text)).map((job) => {
       const categories = (job.categories as Raw | undefined) ?? {};
       const lists = ((job.lists as Raw[] | undefined) ?? []).map((list) => `${text(list.text)}\n${htmlToText(text(list.content))}`).join("\n");
       const location = text(categories.location);
@@ -103,10 +107,10 @@ export async function fetchBoard(board: Board): Promise<FeedJob[]> {
     });
   } else {
     const data = (await getJson(`https://api.ashbyhq.com/posting-api/job-board/${board.token}`, 25_000)) as { jobs?: Raw[] };
-    jobs = (data.jobs ?? [])
-      .filter((job) => job.isListed !== false)
-      .slice(0, PER_BOARD)
-      .map((job) => make(job.id, text(job.title), text(job.location), job.isRemote === true, text(job.jobUrl), text(job.publishedAt) || null, text(job.descriptionPlain)));
+    jobs = pick(
+      (data.jobs ?? []).filter((job) => job.isListed !== false),
+      (job) => text(job.title),
+    ).map((job) => make(job.id, text(job.title), text(job.location), job.isRemote === true, text(job.jobUrl), text(job.publishedAt) || null, text(job.descriptionPlain)));
   }
   return jobs.filter((job) => job.title && /^https:\/\//.test(job.url));
 }
@@ -116,6 +120,7 @@ export async function fetchBoard(board: Board): Promise<FeedJob[]> {
 const OFFLINE = () => process.env.JOB_FEED_OFFLINE === "1";
 
 const STALE_AFTER = 20 * 60 * 60 * 1000;
+const RETRY_AFTER = 2 * 60 * 60 * 1000;
 const feedKey = (board: Board) => `feed:${board.source}:${board.token}`;
 
 // fetches the companies whose saved openings are oldest or missing, until the time allowed runs out.
@@ -133,16 +138,15 @@ export async function refreshFeed(budgetMs: number, boards: Board[] = BOARDS): P
   for (let index = 0; index < due.length && Date.now() - started < budgetMs; index += 4) {
     await Promise.all(
       due.slice(index, index + 4).map(async (board) => {
-        let jobs: FeedJob[] = [];
         try {
-          jobs = await fetchBoard(board);
+          const value = { jobs: await fetchBoard(board) };
+          await db.insert(schema.appSettings).values({ key: feedKey(board), value }).onConflictDoUpdate({ target: schema.appSettings.key, set: { value, updatedAt: new Date() } });
+          refreshed += 1;
         } catch {
-          // a board that is down keeps what it had, and is tried again next time
-          if (age.has(feedKey(board))) return;
+          // a board that is down keeps what it had and is tried again in a couple of hours, not straight away and not a whole day later
+          const retryAt = new Date(Date.now() - STALE_AFTER + RETRY_AFTER);
+          await db.insert(schema.appSettings).values({ key: feedKey(board), value: { jobs: [] }, updatedAt: retryAt }).onConflictDoUpdate({ target: schema.appSettings.key, set: { updatedAt: retryAt } });
         }
-        const value = { jobs };
-        await db.insert(schema.appSettings).values({ key: feedKey(board), value }).onConflictDoUpdate({ target: schema.appSettings.key, set: { value, updatedAt: new Date() } });
-        refreshed += 1;
       }),
     );
   }
@@ -156,7 +160,7 @@ const memory = (globalForFeed.jobFeed2 ??= { feed: null, muse: new Map() });
 
 // every opening we have saved, across all companies
 export async function savedJobs(): Promise<{ jobs: FeedJob[]; boards: number }> {
-  if (memory.feed && Date.now() - memory.feed.at < 10 * 60 * 1000) return memory.feed;
+  if (memory.feed && Date.now() - memory.feed.at < 30 * 60 * 1000) return memory.feed;
   const db = await getDb();
   const rows = await db.select({ value: schema.appSettings.value }).from(schema.appSettings).where(like(schema.appSettings.key, "feed:%"));
   const jobs = rows.flatMap((row) => ((row.value as { jobs?: FeedJob[] }).jobs ?? []));

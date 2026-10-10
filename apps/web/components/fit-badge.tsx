@@ -2,8 +2,9 @@ import { fitLabel } from "@/lib/fit";
 
 // how well a job suits the chosen resume, in words and as a number
 export function FitBadge({ fit }: { fit: number | null }) {
-  const label = fitLabel(fit);
-  if (fit === null || !label) return null;
+  // nothing to show until a resume has been picked to compare with
+  if (fit === null) return null;
+  const label = fitLabel(fit) ?? "Low fit";
   // the strongest fits get the highlighter, the rest a quieter tint
   const look = fit >= 70 ? "bg-marker text-on-marker" : fit >= 50 ? "bg-primary-soft text-primary" : "border border-border text-muted";
   return (
