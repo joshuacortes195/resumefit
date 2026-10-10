@@ -5,7 +5,7 @@ import { DAILY_CAPS, type AiFeature } from "@/lib/ai/limits";
 // features that can be switched on and off from the admin page
 export const FLAGS = { findJobs: "Find Jobs", interviewVoice: "Voice answers in Interview Practice" } as const;
 export type Flag = keyof typeof FLAGS;
-const FLAG_DEFAULTS: Record<Flag, boolean> = { findJobs: false, interviewVoice: true };
+const FLAG_DEFAULTS: Record<Flag, boolean> = { findJobs: true, interviewVoice: true };
 
 // reads one saved setting, null when it was never changed
 async function read<T>(key: string): Promise<T | null> {

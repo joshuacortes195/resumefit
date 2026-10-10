@@ -122,7 +122,7 @@ test("fill in the profile, connect the extension and follow an application throu
 
   // the first Auto Apply explains itself before opening anything
   await page.goto("/auto-apply");
-  await page.getByRole("button", { name: "Auto Apply" }).first().click();
+  await page.getByRole("region", { name: "From your tracker" }).getByRole("button", { name: "Auto Apply" }).first().click();
   await expect(page.getByRole("dialog")).toContainText("You always submit.");
   // answer for the made up job site ourselves, so the test never touches the real internet
   await page.context().route("https://jobs.example.com/**", (route) => route.fulfill({ contentType: "text/html", body: "<h1>Apply here</h1>" }));

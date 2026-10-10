@@ -8,16 +8,19 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { getCurrentUser } from "@/lib/auth";
 import { listResumes } from "@/lib/data/resumes";
 import { featureFlags } from "@/lib/data/settings";
-import { BOARDS } from "@/lib/jobs-feed";
+import { BOARDS } from "@/lib/job-boards";
 
 export const metadata = { title: "Find Jobs" };
 
-// search open roles from public job boards and rank them against your resume
+// searches are allowed a little longer, the first one of the day may have to fetch fresh openings
+export const maxDuration = 60;
+
+// open roles ranked against your resume
 export default function JobsPage() {
   return (
     <div className="mx-auto max-w-6xl">
       <h1 className="text-3xl font-semibold">Find Jobs</h1>
-      <p className="mt-1 mb-6 max-w-2xl text-muted">Open roles from the public job boards of {BOARDS.length} companies, ranked against your resume. Bring your own job descriptions for everything else.</p>
+      <p className="mt-1 mb-6 max-w-2xl text-muted">Open roles from {BOARDS.length} company job boards and a wider job site, ranked by how well each one suits the resume you pick.</p>
       <Suspense fallback={<Skeleton className="h-64" />}>
         <JobsLoader />
       </Suspense>
@@ -30,7 +33,7 @@ async function JobsLoader() {
   const user = await getCurrentUser();
   if (!(await featureFlags()).findJobs) {
     return (
-      <EmptyState icon={Search} title="Find Jobs is switched off" text="It is an optional part of the app. Every other feature works with job descriptions you paste in or save with the extension.">
+      <EmptyState icon={Search} title="Find Jobs is switched off" text="Every other feature works with job descriptions you paste in or save with the extension.">
         {user.isAdmin && (
           <Link href="/admin" className={LINK_BUTTON}>
             Switch it on from the admin page
@@ -39,5 +42,6 @@ async function JobsLoader() {
       </EmptyState>
     );
   }
-  return <FindJobs hasResume={(await listResumes(user.id)).length > 0} />;
+  const resumes = await listResumes(user.id);
+  return <FindJobs resumes={resumes.map(({ id, name, isBase }) => ({ id, name, isBase }))} />;
 }

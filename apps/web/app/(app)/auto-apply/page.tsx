@@ -7,12 +7,17 @@ import { listApplications } from "@/lib/data/applications";
 import { extensionStatus } from "@/lib/data/extension";
 import { listJobs } from "@/lib/data/jobs";
 import { getProfile, profileReady } from "@/lib/data/profile";
+import { listResumes } from "@/lib/data/resumes";
+import { featureFlags } from "@/lib/data/settings";
 
 export const metadata = { title: "Auto Apply" };
 
+// the suggestions may have to fetch fresh openings the first time
+export const maxDuration = 60;
+
 // the four steps, in order
 const STEPS = [
-  { title: "Find a job and hit Auto Apply", text: "Any job on your tracker with a link to its posting can be started from here." },
+  { title: "Pick a resume and hit Auto Apply", text: "We line up open roles that suit it. Jobs already on your tracker can be started from here too." },
   { title: "Complete your preferences", text: "Your profile holds the answers that get typed in. Fill it in once." },
   { title: "Review and submit", text: "The extension fills the form. You check every field and press the site's own Submit button." },
   { title: "Track it", text: "Mark it as applied and the job moves to Applied on your tracker." },
@@ -48,7 +53,7 @@ export default function AutoApplyPage() {
 // loads the jobs that can be applied to and the applications so far
 async function AutoApplyLoader() {
   const user = await getCurrentUser();
-  const [jobs, applications, profile, extension] = await Promise.all([listJobs(user.id), listApplications(user.id), getProfile(user.id), extensionStatus(user.id)]);
+  const [jobs, applications, profile, extension, resumes, flags] = await Promise.all([listJobs(user.id), listApplications(user.id), getProfile(user.id), extensionStatus(user.id), listResumes(user.id), featureFlags()]);
   return (
     <AutoApply
       jobs={jobs
@@ -65,6 +70,8 @@ async function AutoApplyLoader() {
         fieldsNeedingAttention: application.fieldsNeedingAttention,
         updatedAt: application.updatedAt.toISOString(),
       }))}
+      resumes={resumes.map(({ id, name, isBase }) => ({ id, name, isBase }))}
+      suggest={flags.findJobs}
       profileReady={profileReady(profile)}
       extensionConnected={extension.connected}
     />

@@ -65,9 +65,9 @@ describe("admin settings", () => {
   });
 
   it("lets the caps and switches be changed, and uses the changed caps", async () => {
-    expect((await featureFlags()).findJobs).toBe(false);
-    await saveFeatureFlags({ findJobs: true, interviewVoice: false });
-    expect(await featureFlags()).toEqual({ findJobs: true, interviewVoice: false });
+    expect((await featureFlags()).findJobs).toBe(true);
+    await saveFeatureFlags({ findJobs: false, interviewVoice: false });
+    expect(await featureFlags()).toEqual({ findJobs: false, interviewVoice: false });
 
     const person = await seedPerson(`caps-${randomUUID()}@example.com`);
     expect(await remainingToday(person.id, "cover-letter")).toBe(10);

@@ -1,20 +1,29 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useTransition } from "react";
 import Link from "next/link";
 import { Bell, BellRing, Briefcase, ExternalLink, Settings2, Zap } from "lucide-react";
 import type { ApplicationStatus } from "@resumefit/shared";
+import { findJobs, saveFoundJob } from "@/app/actions/find-jobs";
+import { CompanyLogo } from "@/components/company-logo";
+import { FitBadge } from "@/components/fit-badge";
+import type { ResumeOption } from "@/components/scan-form";
 import { ScoreRing } from "@/components/score-ring";
-import { CARD, LINK_BUTTON, PRIMARY_BUTTON, SECONDARY_BUTTON } from "@/components/ui/buttons";
+import { CARD, INPUT, LINK_BUTTON, PRIMARY_BUTTON, SECONDARY_BUTTON } from "@/components/ui/buttons";
 import { EmptyState } from "@/components/ui/empty-state";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Modal } from "@/components/ui/modal";
 import { tellExtension } from "@/lib/extension-client";
+import type { JobResult } from "@/lib/jobs-feed";
 
 // a tracked job that has somewhere to apply
 export type ApplyJob = { id: string; title: string; company: string | null; url: string; matchRate: number | null; createdAt: string };
 export type ApplicationEntry = { id: string; jobTitle: string | null; company: string | null; ats: string | null; applyUrl: string | null; status: ApplicationStatus; fieldsFilled: number; fieldsNeedingAttention: number; updatedAt: string };
 
-type AutoApplyProps = { jobs: ApplyJob[]; applications: ApplicationEntry[]; profileReady: boolean; extensionConnected: boolean };
+type AutoApplyProps = { jobs: ApplyJob[]; applications: ApplicationEntry[]; resumes: ResumeOption[]; suggest: boolean; profileReady: boolean; extensionConnected: boolean };
+
+// something Auto Apply can be pressed on: a card from the tracker, or an opening we suggested
+type Target = { url: string; jobId?: string; found?: JobResult };
 
 // remembers that the "how this works" pop up was read
 const CONSENT_KEY = "resumefit-auto-apply-consent";
@@ -32,9 +41,30 @@ function age(iso: string): string {
 }
 
 // the tabs, the jobs you can apply to and the list of applications so far
-export function AutoApply({ jobs, applications, profileReady, extensionConnected }: AutoApplyProps) {
+export function AutoApply({ jobs, applications, resumes, suggest, profileReady, extensionConnected }: AutoApplyProps) {
   const [tab, setTab] = useState<"jobs" | "applications">("jobs");
-  const [consenting, setConsenting] = useState<ApplyJob | null>(null);
+  const [consenting, setConsenting] = useState<Target | null>(null);
+  const [resumeId, setResumeId] = useState((resumes.find((resume) => resume.isBase) ?? resumes[0])?.id ?? "");
+  const [suggested, setSuggested] = useState<JobResult[] | null>(null);
+  const [started, setStarted] = useState<Record<string, true>>({});
+  const [error, setError] = useState<string | null>(null);
+  const [, startSuggest] = useTransition();
+
+  // finds openings that suit the chosen resume, on job sites the extension can fill in
+  function loadSuggestions(forResume: string) {
+    startSuggest(async () => {
+      setSuggested(null);
+      const result = await findJobs({ query: "", location: "", remoteOnly: false, internOnly: false, days: null, sort: "relevance", resumeId: forResume || null, autofillOnly: true });
+      setSuggested(result.ok ? result.jobs.slice(0, 12) : []);
+    });
+  }
+
+  // suggestions are there as soon as the page opens
+  useEffect(() => {
+    if (suggest && resumes.length > 0) loadSuggestions(resumeId);
+    // only once, when the page opens
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [notifications, setNotifications] = useState<"unknown" | NotificationPermission>("unknown");
 
   // whether browser notifications are already allowed
@@ -44,15 +74,27 @@ export function AutoApply({ jobs, applications, profileReady, extensionConnected
   }, []);
 
   // opens the application in a new tab and lets the extension know which job it is for
-  function start(job: ApplyJob) {
-    void tellExtension({ type: "resumefit-autofill", jobId: job.id });
-    window.open(job.url, "_blank", "noopener");
+  function start(target: Target) {
+    // the tab opens straight away, while the click still counts as the person's own
+    window.open(target.url, "_blank", "noopener");
+    if (target.jobId) {
+      void tellExtension({ type: "resumefit-autofill", jobId: target.jobId });
+      return;
+    }
+    // a suggested opening goes onto the tracker as Saved first, with the resume it was picked for
+    const found = target.found;
+    if (!found) return;
+    setStarted((all) => ({ ...all, [found.id]: true }));
+    void saveFoundJob({ id: found.id, title: found.title, company: found.company, location: found.location, url: found.url, resumeId: resumeId || null }).then((result) => {
+      if (result.ok) void tellExtension({ type: "resumefit-autofill", jobId: result.jobId });
+      else setError(result.error);
+    });
   }
 
   // the first time, explain what will and will not happen
-  function apply(job: ApplyJob) {
-    if (localStorage.getItem(CONSENT_KEY) === "1") start(job);
-    else setConsenting(job);
+  function apply(target: Target) {
+    if (localStorage.getItem(CONSENT_KEY) === "1") start(target);
+    else setConsenting(target);
   }
 
   return (
@@ -118,44 +160,131 @@ export function AutoApply({ jobs, applications, profileReady, extensionConnected
           ))}
         </div>
 
-        {/* tracked jobs that have a link to apply at */}
         {tab === "jobs" && (
-          <div className="pt-5">
-            {jobs.length === 0 ? (
-              <EmptyState icon={Briefcase} title="No jobs to apply to yet" text="Jobs on your tracker that have a link to the posting show up here. Save one with the extension, or add the link on a job's card.">
-                <Link href="/tracker" className={PRIMARY_BUTTON}>
-                  Open the tracker
-                </Link>
-              </EmptyState>
-            ) : (
-              <ul className="grid gap-3 md:grid-cols-2">
-                {jobs.map((job) => {
-                  const host = new URL(job.url).hostname.replace(/^www\./, "");
-                  return (
-                    <li key={job.id} className={`${CARD} flex flex-wrap items-center gap-x-4 gap-y-3 p-4`}>
-                      {/* the site's own icon, straight from the site */}
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={`https://${host}/favicon.ico`} alt="" width={32} height={32} className="size-8 shrink-0 rounded" onError={(event) => (event.currentTarget.style.visibility = "hidden")} />
-                      <div className="min-w-32 flex-1">
-                        <Link href={`/tracker/${job.id}/job`} className="block truncate font-semibold hover:text-primary">
-                          {job.title}
-                        </Link>
-                        <p className="truncate text-sm text-muted">{job.company ?? host}</p>
-                        <p className="text-xs text-muted">
-                          {age(job.createdAt)}
-                          {job.matchRate !== null && job.matchRate >= 75 ? ", top match" : job.matchRate !== null && job.matchRate >= 50 ? ", good match" : ""}
-                        </p>
-                      </div>
-                      {job.matchRate !== null && <ScoreRing score={job.matchRate} size="sm" />}
-                      <button type="button" onClick={() => apply(job)} className={`${PRIMARY_BUTTON} px-3 py-2`}>
-                        <Zap className="size-4" aria-hidden />
-                        Auto Apply
-                      </button>
-                    </li>
-                  );
-                })}
-              </ul>
+          <div className="space-y-8 pt-5">
+            {/* openings picked for the chosen resume */}
+            {suggest && (
+              <section aria-labelledby="suggested-heading">
+                <div className="flex flex-wrap items-end justify-between gap-3">
+                  <div>
+                    <h2 id="suggested-heading" className="text-lg font-semibold">
+                      Jobs that fit your resume
+                    </h2>
+                    <p className="mt-0.5 max-w-xl text-sm text-muted">Open roles on job sites the extension can fill in, ranked for the resume you pick. Auto Apply saves the job to your tracker and opens the application.</p>
+                  </div>
+                  {resumes.length > 0 && (
+                    <label className="block w-full text-sm font-medium sm:w-64">
+                      Resume to use
+                      <select
+                        value={resumeId}
+                        onChange={(event) => {
+                          setResumeId(event.target.value);
+                          loadSuggestions(event.target.value);
+                        }}
+                        className={`${INPUT} mt-1 font-normal`}
+                      >
+                        {resumes.map((resume) => (
+                          <option key={resume.id} value={resume.id}>
+                            {resume.name}
+                            {resume.isBase ? " (base)" : ""}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  )}
+                </div>
+                {error && (
+                  <p role="alert" className="mt-3 text-sm text-danger">
+                    {error}
+                  </p>
+                )}
+                {resumes.length === 0 ? (
+                  <p className={`${CARD} mt-4 p-5 text-sm text-muted`}>
+                    Add a resume and we will line up jobs that suit it.{" "}
+                    <Link href="/resumes" className={LINK_BUTTON}>
+                      Open Resume Manager
+                    </Link>
+                  </p>
+                ) : suggested === null ? (
+                  <div className="mt-4 grid gap-3 md:grid-cols-2" role="status" aria-label="Finding jobs">
+                    {Array.from({ length: 4 }, (_, index) => (
+                      <Skeleton key={index} className="h-24" />
+                    ))}
+                  </div>
+                ) : suggested.length === 0 ? (
+                  <p className={`${CARD} mt-4 p-5 text-sm text-muted`}>
+                    Nothing to suggest right now. We are still gathering openings, so check back in a few minutes, or search yourself in{" "}
+                    <Link href="/jobs" className={LINK_BUTTON}>
+                      Find Jobs
+                    </Link>
+                    .
+                  </p>
+                ) : (
+                  <ul className="mt-4 grid gap-3 md:grid-cols-2">
+                    {suggested.map((job) => (
+                      <li key={job.id} className={`${CARD} flex flex-wrap items-center gap-x-4 gap-y-3 p-4`}>
+                        <CompanyLogo company={job.company} domain={job.domain} size={40} />
+                        <div className="min-w-32 flex-1">
+                          <a href={job.url} target="_blank" rel="noreferrer" className="block font-semibold leading-snug hover:text-primary">
+                            {job.title}
+                          </a>
+                          <p className="truncate text-sm text-muted">{[job.company, job.location].filter(Boolean).join(", ")}</p>
+                          <p className="mt-1.5">
+                            <FitBadge fit={job.fit} />
+                          </p>
+                        </div>
+                        <button type="button" onClick={() => apply({ url: job.url, found: job })} className={`${PRIMARY_BUTTON} px-3 py-2`}>
+                          <Zap className="size-4" aria-hidden />
+                          {started[job.id] ? "Open again" : "Auto Apply"}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </section>
             )}
+
+            {/* tracked jobs that have a link to apply at */}
+            <section aria-labelledby="tracked-heading">
+              <h2 id="tracked-heading" className="text-lg font-semibold">
+                From your tracker
+              </h2>
+              {jobs.length === 0 ? (
+                <div className="mt-4">
+                  <EmptyState icon={Briefcase} title="No jobs to apply to yet" text="Jobs on your tracker that have a link to the posting show up here. Save one with the extension, or add the link on a job's card.">
+                    <Link href="/tracker" className={PRIMARY_BUTTON}>
+                      Open the tracker
+                    </Link>
+                  </EmptyState>
+                </div>
+              ) : (
+                <ul className="mt-4 grid gap-3 md:grid-cols-2">
+                  {jobs.map((job) => {
+                    const host = new URL(job.url).hostname.replace(/^www\./, "");
+                    return (
+                      <li key={job.id} className={`${CARD} flex flex-wrap items-center gap-x-4 gap-y-3 p-4`}>
+                        <CompanyLogo company={job.company ?? host} size={40} />
+                        <div className="min-w-32 flex-1">
+                          <Link href={`/tracker/${job.id}/job`} className="block truncate font-semibold hover:text-primary">
+                            {job.title}
+                          </Link>
+                          <p className="truncate text-sm text-muted">{job.company ?? host}</p>
+                          <p className="text-xs text-muted">
+                            {age(job.createdAt)}
+                            {job.matchRate !== null && job.matchRate >= 75 ? ", top match" : job.matchRate !== null && job.matchRate >= 50 ? ", good match" : ""}
+                          </p>
+                        </div>
+                        {job.matchRate !== null && <ScoreRing score={job.matchRate} size="sm" />}
+                        <button type="button" onClick={() => apply({ url: job.url, jobId: job.id })} className={`${PRIMARY_BUTTON} px-3 py-2`}>
+                          <Zap className="size-4" aria-hidden />
+                          Auto Apply
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </section>
           </div>
         )}
 
@@ -211,7 +340,7 @@ export function AutoApply({ jobs, applications, profileReady, extensionConnected
       {/* shown once, before the first application */}
       <Modal open={consenting !== null} onClose={() => setConsenting(null)} title="Before your first Auto Apply">
         <ul className="list-disc space-y-2 pl-5 text-sm">
-          <li>We open the application in a new tab. In the extension&apos;s side panel, press Autofill and it fills in the form from your profile.</li>
+          <li>We save the job to your tracker and open the application in a new tab. In the extension&apos;s side panel, press Autofill and it fills in the form from your profile.</li>
           <li>
             <strong>You always submit.</strong> The extension never presses Submit and never does a captcha. Read every field, fix what needs fixing, then send it yourself.
           </li>

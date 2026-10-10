@@ -23,6 +23,6 @@ export default defineConfig({
     timeout: 180_000,
     reuseExistingServer: false,
     // the writing features answer from a built in stand in, so no keys are needed
-    env: { LOCAL_DATA_DIR: "memory", AI_MOCK: "1" },
+    env: { LOCAL_DATA_DIR: "memory", AI_MOCK: "1", JOB_FEED_OFFLINE: "1" },
   },
 });
