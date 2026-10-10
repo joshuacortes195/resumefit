@@ -18,43 +18,31 @@
   --danger: #c2362b;
   --card-shadow: 0 1px 2px rgb(28 27 24 / 0.05), 0 6px 20px rgb(28 27 24 / 0.04);
 
-  /* one color per part of the app: a deep tone, a soft tint and a page tint */
+  /* one color per part of the app: a deep tone and a soft tint */
   --c-dashboard: #0a6960;
   --s-dashboard: #d6f0eb;
-  --b-dashboard: #f2faf8;
   --c-scans: #3a3eb5;
   --s-scans: #e2e3fb;
-  --b-scans: #f5f5fe;
   --c-optimize: #6b30b0;
   --s-optimize: #ecdffa;
-  --b-optimize: #faf5fe;
   --c-letter: #ad2d5b;
   --s-letter: #fbdfe8;
-  --b-letter: #fef5f8;
   --c-linkedin: #155ea6;
   --s-linkedin: #dbeafb;
-  --b-linkedin: #f3f8fe;
   --c-apply: #a34707;
   --s-apply: #fde5d0;
-  --b-apply: #fef7f0;
   --c-tracker: #1c7439;
   --s-tracker: #daf2e0;
-  --b-tracker: #f3fbf5;
   --c-jobs: #0a677e;
   --s-jobs: #d5eef4;
-  --b-jobs: #f1f9fc;
   --c-builder: #835500;
   --s-builder: #fbebc8;
-  --b-builder: #fef9ee;
   --c-resumes: #ad372c;
   --s-resumes: #fbe0dc;
-  --b-resumes: #fef5f4;
   --c-extension: #872c8a;
   --s-extension: #f5ddf6;
-  --b-extension: #fdf5fd;
   --c-interview: #55650a;
   --s-interview: #e8f0c9;
-  --b-interview: #f9fbef;
 }
 
 /* everything derived from the accent follows it, whichever page sets it */
@@ -69,73 +57,61 @@
 html[data-section="dashboard"] {
   --primary: var(--c-dashboard);
   --primary-soft: var(--s-dashboard);
-  --background: var(--b-dashboard);
 }
 
 html[data-section="scans"] {
   --primary: var(--c-scans);
   --primary-soft: var(--s-scans);
-  --background: var(--b-scans);
 }
 
 html[data-section="optimize"] {
   --primary: var(--c-optimize);
   --primary-soft: var(--s-optimize);
-  --background: var(--b-optimize);
 }
 
 html[data-section="letter"] {
   --primary: var(--c-letter);
   --primary-soft: var(--s-letter);
-  --background: var(--b-letter);
 }
 
 html[data-section="linkedin"] {
   --primary: var(--c-linkedin);
   --primary-soft: var(--s-linkedin);
-  --background: var(--b-linkedin);
 }
 
 html[data-section="apply"] {
   --primary: var(--c-apply);
   --primary-soft: var(--s-apply);
-  --background: var(--b-apply);
 }
 
 html[data-section="tracker"] {
   --primary: var(--c-tracker);
   --primary-soft: var(--s-tracker);
-  --background: var(--b-tracker);
 }
 
 html[data-section="jobs"] {
   --primary: var(--c-jobs);
   --primary-soft: var(--s-jobs);
-  --background: var(--b-jobs);
 }
 
 html[data-section="builder"] {
   --primary: var(--c-builder);
   --primary-soft: var(--s-builder);
-  --background: var(--b-builder);
 }
 
 html[data-section="resumes"] {
   --primary: var(--c-resumes);
   --primary-soft: var(--s-resumes);
-  --background: var(--b-resumes);
 }
 
 html[data-section="extension"] {
   --primary: var(--c-extension);
   --primary-soft: var(--s-extension);
-  --background: var(--b-extension);
 }
 
 html[data-section="interview"] {
   --primary: var(--c-interview);
   --primary-soft: var(--s-interview);
-  --background: var(--b-interview);
 }
 
 /* lets tailwind classes like bg-surface and text-muted use the colors above */
@@ -217,11 +193,10 @@ html[data-section="interview"] {
   }
 }
 
-/* page background and text, the tint fades over when you move to another part of the app */
+/* page background and text, the same on every page */
 body {
   background: var(--background);
   color: var(--foreground);
-  transition: background-color 0.3s ease;
 }
 
 /* headings use the display font */
