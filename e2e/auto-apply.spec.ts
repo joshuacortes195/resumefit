@@ -33,15 +33,32 @@ test("fill in the profile, connect the extension and follow an application throu
   await page.getByRole("button", { name: "Scan", exact: true }).click();
   await expect(page).toHaveURL(/\/scans\/[0-9a-f-]{36}$/);
 
-  // the profile autofill reads from
-  await page.goto("/settings");
+  // before the extension is set up, the page says plainly that it is needed, and the button explains instead of opening anything
+  await page.goto("/auto-apply");
+  await expect(page.getByRole("heading", { name: "Auto Apply needs the ResumeFit Chrome extension" })).toBeVisible();
+
+  // the one application autofill reads from, reached from Auto Apply
+  await page.getByRole("link", { name: "Fill in my application" }).click();
+  await expect(page).toHaveURL(/\/auto-apply\/application$/);
+  // going back with nothing changed just goes back
+  await page.getByRole("button", { name: "Back" }).click();
+  await expect(page).toHaveURL(/\/auto-apply$/);
+  await page.goto("/auto-apply/application");
+  await expect(page.getByText("Going back does not save your changes.")).toBeVisible();
+  // saved answers are not part of the form any more
+  await expect(page.getByRole("button", { name: "Add an answer" })).toHaveCount(0);
   await page.getByLabel("Full name", { exact: true }).fill("Riley Chen");
   await page.getByLabel("Email", { exact: true }).fill("riley.chen@example.com");
   await page.getByLabel("Phone", { exact: true }).fill("(503) 555-0177");
   await page.getByLabel("City", { exact: true }).fill("Portland");
   await page.getByLabel("Will you need visa sponsorship?").selectOption("no");
   await page.getByLabel("Desired salary, lowest").fill("not a number");
-  await page.getByRole("button", { name: "Save profile" }).click();
+  // back with changes warns that they will be lost, and staying keeps them
+  await page.getByRole("button", { name: "Back" }).click();
+  await expect(page.getByRole("dialog")).toContainText("Your changes have not been saved");
+  await page.getByRole("button", { name: "Cancel" }).click();
+  await expect(page.getByLabel("City", { exact: true })).toHaveValue("Portland");
+  await page.getByRole("button", { name: "Finished" }).click();
   await expect(page.getByText("Use a plain number, like 85000.")).toBeVisible();
   await page.getByLabel("Desired salary, lowest").fill("52000");
   // the rest of the one application: school, and the question forms ask apart from race
@@ -52,11 +69,9 @@ test("fill in the profile, connect the extension and follow an application throu
   await page.getByLabel("Are you Hispanic or Latino?").selectOption("No");
   // demographic answers start on decline
   await expect(page.getByRole("combobox", { name: /^Gender/ })).toHaveValue("Decline to self-identify");
-  await page.getByRole("button", { name: "Add an answer" }).click();
-  await page.getByRole("textbox", { name: "Question 1" }).fill("Why do you want to work here?");
-  await page.getByRole("textbox", { name: "Answer 1" }).fill("I like helping people get unstuck.");
-  await page.getByRole("button", { name: "Save profile" }).click();
-  await expect(page.getByText("Saved", { exact: true })).toBeVisible();
+  // finished saves and goes back to Auto Apply
+  await page.getByRole("button", { name: "Finished" }).click();
+  await expect(page).toHaveURL(/\/auto-apply$/);
 
   // connect: with no extension to reach, the page gives a code to paste
   await page.goto("/extension");
@@ -94,7 +109,8 @@ test("fill in the profile, connect the extension and follow an application throu
   const file = await (await request.get(`/api/ext/resumes/${me.resumes[0].id}`, { headers })).json();
   expect(Buffer.from(file.base64, "base64").subarray(0, 5).toString()).toBe("%PDF-");
 
-  // a question we have a saved answer for uses it, a new one gets a draft to review
+  // an answer saved from the panel is reused, a new question gets a draft to review
+  await request.post("/api/ext/qa", { headers, data: { question: "Why do you want to work here?", answer: "I like helping people get unstuck." } });
   const known = await (await request.post("/api/ext/answer", { headers, data: { question: "Why do you want to work at Harbor Freight Co?", jdText: JD } })).json();
   expect(known).toMatchObject({ source: "saved", answer: "I like helping people get unstuck." });
   const fresh = await (await request.post("/api/ext/answer", { headers, data: { question: "Describe a time you calmed down an upset customer.", jdText: JD } })).json();
@@ -129,9 +145,12 @@ test("fill in the profile, connect the extension and follow an application throu
   await page.getByRole("link", { name: /Support Specialist/ }).click();
   await expect(page.getByLabel("Date applied")).toHaveValue("2026-10-08");
 
-  // the saved answer is in the profile now
-  await page.goto("/settings");
-  await expect(page.getByRole("textbox", { name: "Question 2" })).toHaveValue("Describe a time you calmed down an upset customer.");
+  // saving the application again keeps the answers saved from the panel
+  await page.goto("/auto-apply/application");
+  await page.getByLabel("City", { exact: true }).fill("Salem");
+  await page.getByRole("button", { name: "Finished" }).click();
+  await expect(page).toHaveURL(/\/auto-apply$/);
+  expect(await (await request.post("/api/ext/answer", { headers, data: { question: "Describe a time you calmed down an upset customer.", jdText: JD } })).json()).toMatchObject({ source: "saved" });
 
   // a linkedin profile the extension read is waiting in the optimizer, already filled in
   await request.post("/api/ext/linkedin", { headers, data: { headline: "Support Specialist | Zendesk", about: "I help people get unstuck.", experience: "Support Specialist\nHarbor Freight Co", skills: ["Zendesk", "Excel"], url: "linkedin.com/in/sam" } });

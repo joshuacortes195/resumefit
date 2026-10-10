@@ -109,7 +109,6 @@ export function applicationParts(profile: Profile, answered: boolean): { label: 
     { label: "Education", done: Boolean(profile.school && profile.degree) },
     // declining is an answer too, so this counts once the form has been saved with these on it
     { label: "Self-identification", done: answered },
-    { label: "Saved answers", done: profile.qaBank.length > 0 },
   ];
 }
 export type ProfileInput = z.input<typeof profileSchema>;

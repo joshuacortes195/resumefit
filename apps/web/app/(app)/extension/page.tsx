@@ -21,7 +21,7 @@ export default function ExtensionPage() {
     <div className="mx-auto max-w-3xl space-y-6">
       <div>
         <h1 className="text-3xl font-semibold">Chrome Extension</h1>
-        <p className="mt-1 text-muted">Save jobs, scan them and have applications filled in for you. Nothing is sent unless you press Submit or switch on Submit for me.</p>
+        <p className="mt-1 text-muted">Auto Apply only works with this extension. It saves jobs, scans them and fills applications in for you. Nothing is sent unless you press Submit or switch on Submit for me.</p>
       </div>
 
       <section className={`${CARD} p-6`}>
@@ -72,7 +72,7 @@ export default function ExtensionPage() {
           <li><strong>From Auto Apply:</strong> press Auto Apply on a job and the extension opens the application, fills it in and puts a small bar on the page that says what still needs you. Up to five can be started together.</li>
           <li><strong>On an application form you opened yourself:</strong> press Autofill. It fills in your details, attaches your resume and colors each field: green is filled from your profile, amber is a draft to review, red needs you.</li>
           <li><strong>On your LinkedIn profile:</strong> press Import my profile and the LinkedIn Optimizer opens with your headline, About, experience and skills filled in.</li>
-          <li><strong>Written questions:</strong> it uses an answer you saved before when one fits, otherwise it drafts one from your resume and the job description and marks it amber for you to read and edit.</li>
+          <li><strong>Written questions:</strong> it drafts an answer from your resume and the job description and marks it amber for you to read and edit. An answer you saved from the panel is reused when a form asks something similar.</li>
           <li><strong>After you submit:</strong> when the site shows its thank you page, the job moves to Applied on your tracker by itself.</li>
         </ul>
         <h3 className="mt-5 font-semibold">Where autofill works</h3>

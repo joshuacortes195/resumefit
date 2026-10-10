@@ -199,7 +199,7 @@ function Workspace({ connection, account, onDisconnect }: { connection: Connecti
       {!account.profileReady && (
         <p className="notice warn small">
           Your profile is missing your name, email or phone, so autofill has little to work with.{" "}
-          <button className="link" onClick={() => open("/settings#profile")}>
+          <button className="link" onClick={() => open("/auto-apply/application")}>
             Fill in your profile
           </button>
         </p>

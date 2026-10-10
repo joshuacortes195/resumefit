@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Bell, BellRing, Briefcase, Check, CircleAlert, ClipboardList, ExternalLink, Send, Settings2, Zap } from "lucide-react";
+import { Bell, BellRing, Briefcase, Check, CircleAlert, ClipboardList, Download, ExternalLink, Send, Settings2, Zap } from "lucide-react";
 import type { ApplicationStatus } from "@resumefit/shared";
 import { findJobs, saveFoundJob } from "@/app/actions/find-jobs";
 import { setAutoSubmit } from "@/app/actions/profile";
@@ -65,6 +65,9 @@ export function AutoApply({ jobs, applications, resumes, suggest, profileReady, 
   // which tracker card each started suggestion became
   const [savedAs, setSavedAs] = useState<Record<string, string>>({});
   const [starting, setStarting] = useState(false);
+  // nothing here works until the extension is downloaded and connected, in this browser or another
+  const needsExtension = !extensionConnected && !extension?.installed;
+  const [askingForExtension, setAskingForExtension] = useState(false);
   // "Submit for me": what the switch shows, and whether its explanation is open
   const [submits, setSubmits] = useState(submitForMe);
   const [explaining, setExplaining] = useState(false);
@@ -186,6 +189,8 @@ export function AutoApply({ jobs, applications, resumes, suggest, profileReady, 
 
   // the first time, explain what will and will not happen
   function apply(targets: Target[]) {
+    // without the extension there is nothing to fill the form, so say that instead of opening a page
+    if (needsExtension) return setAskingForExtension(true);
     if (localStorage.getItem(CONSENT_KEY) === "1") void start(targets);
     else setConsenting(targets);
   }
@@ -236,6 +241,23 @@ export function AutoApply({ jobs, applications, resumes, suggest, profileReady, 
 
   return (
     <div className="space-y-6">
+      {/* the first thing to know: none of this works without the extension */}
+      {needsExtension && (
+        <section role="note" aria-labelledby="extension-needed" className="flex animate-rise flex-wrap items-center gap-x-6 gap-y-3 rounded-2xl border border-primary/30 bg-primary-soft p-5">
+          <div className="min-w-64 flex-1">
+            <h2 id="extension-needed" className="flex items-center gap-2 font-semibold">
+              <Download className="size-4" aria-hidden />
+              Auto Apply needs the ResumeFit Chrome extension
+            </h2>
+            <p className="mt-1 max-w-prose text-sm">The extension is what opens and fills in applications. Auto Apply only works after you download it and connect it to your account. It is free and takes about a minute.</p>
+          </div>
+          <Link href="/extension" className={PRIMARY_BUTTON}>
+            <Download className="size-4" aria-hidden />
+            Download the extension
+          </Link>
+        </section>
+      )}
+
       {/* the one application everything is filled from, and how much of it is done */}
       <section className={`${CARD} p-5`} aria-labelledby="application-heading">
         <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-3">
@@ -248,7 +270,7 @@ export function AutoApply({ jobs, applications, resumes, suggest, profileReady, 
               Fill it in once here: contact details, work eligibility, school, and the gender, race, veteran and disability questions. Every real application is answered from it.
             </p>
           </div>
-          <Link href="/settings#profile" className={parts.every((part) => part.done) ? SECONDARY_BUTTON : PRIMARY_BUTTON}>
+          <Link href="/auto-apply/application" className={parts.every((part) => part.done) ? SECONDARY_BUTTON : PRIMARY_BUTTON}>
             {parts.every((part) => part.done) ? "Review my answers" : parts.some((part) => part.done) ? "Finish my application" : "Fill in my application"}
           </Link>
         </div>
@@ -310,7 +332,7 @@ export function AutoApply({ jobs, applications, resumes, suggest, profileReady, 
             </p>
           )}
           <div className="mt-3 flex flex-wrap gap-2">
-            <Link href="/settings#profile" className={SECONDARY_BUTTON}>
+            <Link href="/auto-apply/application" className={SECONDARY_BUTTON}>
               Preferences
             </Link>
             {(!extensionConnected || (extension !== null && !extension.canApply)) && (
@@ -555,18 +577,32 @@ export function AutoApply({ jobs, applications, resumes, suggest, profileReady, 
         </div>
       )}
 
+      {/* pressing Auto Apply without the extension explains what is missing */}
+      <Modal open={askingForExtension} onClose={() => setAskingForExtension(false)} title="Download the extension first">
+        <p className="text-sm">Auto Apply only works with the ResumeFit Chrome extension. It is the part that opens the application and fills it in, and it is not set up on your account yet.</p>
+        <p className="mt-2 text-sm text-muted">Download it, add it to Chrome and connect it. It takes about a minute, then come back and press Auto Apply again.</p>
+        <div className="mt-5 flex justify-end gap-2">
+          <button type="button" onClick={() => setAskingForExtension(false)} className={SECONDARY_BUTTON}>
+            Not now
+          </button>
+          <Link href="/extension" className={PRIMARY_BUTTON}>
+            <Download className="size-4" aria-hidden />
+            Download the extension
+          </Link>
+        </div>
+      </Modal>
+
       {/* the rules for "Submit for me", agreed to before it goes on */}
       <Modal open={explaining} onClose={() => setExplaining(false)} title="Turn on Submit for me?">
         <p className="text-sm">We press the site&apos;s Submit button for you, but only when every one of these is true:</p>
         <ul className="mt-3 list-disc space-y-2 pl-5 text-sm">
           <li>You started the application from Auto Apply.</li>
           <li>Every field we found was filled from your profile, your resume attached, and nothing is left red or amber.</li>
-          <li>No answer was freshly drafted. Only answers you saved yourself count.</li>
+          <li>No written answer was freshly drafted for it.</li>
           <li>There is no captcha, and the form is a single page.</li>
         </ul>
         <p className="mt-3 text-sm">
-          The page counts down for a few seconds first, with a Cancel button. If any rule is not met, the application waits for you like before. <strong>What gets sent goes out under your name</strong>, so keep your profile and saved
-          answers correct.
+          The page counts down for a few seconds first, with a Cancel button. If any rule is not met, the application waits for you like before. <strong>What gets sent goes out under your name</strong>, so keep your application correct.
         </p>
         <div className="mt-5 flex justify-end gap-2">
           <button type="button" onClick={() => setExplaining(false)} className={SECONDARY_BUTTON}>
@@ -600,7 +636,7 @@ export function AutoApply({ jobs, applications, resumes, suggest, profileReady, 
               </>
             )}
           </li>
-          <li>Written answers use what you saved in your profile when one fits. A fresh draft is marked amber so you read it first.</li>
+          <li>Written answers are drafted from your resume and the job description, and marked amber so you read them first.</li>
           <li>Demographic questions are answered only with what you chose in your profile.</li>
           <li>There are no credits. You can start up to {MAX_AT_ONCE} applications at a time.</li>
         </ul>

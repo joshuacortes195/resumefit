@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import type { ActionResult } from "@/app/actions/scans";
 import { getCurrentUser } from "@/lib/auth";
 import { createExtensionToken, revokeExtensionTokens, saveAutoSubmit } from "@/lib/data/extension";
-import { saveProfile } from "@/lib/data/profile";
+import { getProfile, saveProfile } from "@/lib/data/profile";
 import { profileSchema, type ProfileInput } from "@/lib/profile";
 
 // saves the profile and preferences form
@@ -17,9 +17,9 @@ export async function saveProfileAction(input: ProfileInput): Promise<ActionResu
   const { desiredSalaryMin: low, desiredSalaryMax: high } = parsed.data;
   if (low !== null && high !== null && low > high) return { ok: false, error: "The lowest salary is higher than the highest one." };
   const user = await getCurrentUser();
-  await saveProfile(user.id, parsed.data);
-  revalidatePath("/settings");
-  revalidatePath("/auto-apply");
+  // answers saved from the extension are not on this form, so they are kept as they are
+  await saveProfile(user.id, { ...parsed.data, qaBank: (await getProfile(user.id)).qaBank });
+  revalidatePath("/auto-apply", "layout");
   return { ok: true };
 }
 

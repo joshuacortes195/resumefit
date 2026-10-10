@@ -18,7 +18,7 @@ export const maxDuration = 60;
 
 // the four steps, in order
 const STEPS = [
-  { title: "Pick jobs and hit Auto Apply", text: "We line up open roles that suit your resume. Start one, or tick up to five and start them together." },
+  { title: "Get the extension, pick jobs", text: "Auto Apply only works once the Chrome extension is downloaded. Then start one job, or tick up to five and start them together." },
   { title: "We open and fill it", text: "The extension opens each application and types in your details, attaches your resume and drafts the written answers." },
   { title: "Review and submit", text: "A bar on the page shows what needs you. You check it and press the site's own Submit button, unless you switch on Submit for me." },
   { title: "It tracks itself", text: "When the site says thanks, the job moves to Applied on your tracker." },
@@ -30,7 +30,8 @@ export default function AutoApplyPage() {
     <div className="mx-auto max-w-5xl space-y-6">
       <div>
         <h1 className="text-3xl font-semibold">Auto Apply</h1>
-        <p className="mt-1 max-w-2xl text-muted">One click opens the application and fills it out. You review it and hit submit, or let us send the ones that need nothing from you. Free, with no credits to run out of.</p>
+        <p className="mt-1 max-w-2xl text-muted">
+          <strong className="font-semibold text-foreground">Works with the ResumeFit Chrome extension.</strong>{" "}One click opens the application and fills it out. You review it and hit submit, or let us send the ones that need nothing from you. Free, with no credits to run out of.</p>
       </div>
 
       {/* this really is a sequence, so the steps are numbered */}
