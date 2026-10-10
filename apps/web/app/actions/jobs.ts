@@ -7,6 +7,7 @@ import type { ActionResult } from "@/app/actions/scans";
 import { getCurrentUser } from "@/lib/auth";
 import { addInterview, createJob, deleteInterview, deleteJob, getJob, moveJob, saveCoverLetter, updateInterview, updateJob } from "@/lib/data/jobs";
 import { getResume } from "@/lib/data/resumes";
+import { ImportError, importJob, type ImportedJob } from "@/lib/job-import";
 
 const id = z.uuid();
 // the user's own date, sent from the browser so "date applied" matches their calendar
@@ -40,6 +41,7 @@ function refresh(jobId?: string) {
 const newJobSchema = z.object({
   title: z.string().trim().min(1, "Give the job a title.").max(200),
   company: text(200),
+  location: text(200).default(null),
   url: link,
   description: text(60_000),
   status: z.enum(JOB_STATUSES),
@@ -53,6 +55,19 @@ export async function addJob(input: z.input<typeof newJobSchema>): Promise<Actio
   const job = await createJob(user.id, parsed.data);
   refresh();
   return { ok: true, jobId: job.id };
+}
+
+// reads the title, company and description off a job posting's link, so nobody has to type them out
+export async function importJobFromLink(url: string): Promise<({ ok: true } & ImportedJob) | { ok: false; error: string }> {
+  await getCurrentUser();
+  const parsed = z.string().trim().min(1).max(2000).safeParse(url);
+  if (!parsed.success) return { ok: false, error: "Paste the link to the job posting first." };
+  try {
+    return { ok: true, ...(await importJob(parsed.data)) };
+  } catch (error) {
+    // our own messages are safe to show, anything else gets a plain one
+    return { ok: false, error: error instanceof ImportError ? error.message : "We could not read that page. Paste the details in instead." };
+  }
 }
 
 // drops a card into a column at a spot, orderedIds is the column from top to bottom

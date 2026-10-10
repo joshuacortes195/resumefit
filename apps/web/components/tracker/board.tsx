@@ -20,9 +20,9 @@ import {
 } from "@dnd-kit/core";
 import { SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { Archive, ArchiveRestore, Plus, Search } from "lucide-react";
+import { Archive, ArchiveRestore, Link2, Plus, Search } from "lucide-react";
 import { JOB_STATUSES, type JobStatus } from "@resumefit/shared";
-import { addJob, moveJobCard, setJobArchived } from "@/app/actions/jobs";
+import { addJob, importJobFromLink, moveJobCard, setJobArchived } from "@/app/actions/jobs";
 import { ScoreRing } from "@/components/score-ring";
 import { INPUT, PRIMARY_BUTTON, SECONDARY_BUTTON } from "@/components/ui/buttons";
 import { Modal } from "@/components/ui/modal";
@@ -252,39 +252,101 @@ export function Board({ jobs: serverJobs, archived }: { jobs: BoardJob[]; archiv
   );
 }
 
-// the form for adding a job by hand
+// the form for adding a job. pasting the posting's link fills in the rest
 function AddJobModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const blank = { url: "", title: "", company: "", location: "", description: "", status: "saved" as JobStatus };
+  const [fields, setFields] = useState(blank);
   const [error, setError] = useState<string | null>(null);
+  const [note, setNote] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const [importing, startImport] = useTransition();
+  const set = (name: keyof typeof blank, value: string) => setFields((all) => ({ ...all, [name]: value }));
 
-  function handleSubmit(form: FormData) {
-    setError(null);
+  // reads the posting behind the link and fills in the boxes
+  function fillFromLink(url = fields.url) {
+    if (!/^https:\/\/\S+\.\S+/.test(url.trim())) {
+      setError("Paste the full link to the job posting, starting with https://");
+      return;
+    }
+    startImport(async () => {
+      setError(null);
+      setNote(null);
+      const result = await importJobFromLink(url);
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
+      // what the page says wins, but anything it left out keeps what was typed
+      setFields((all) => ({ ...all, title: result.title || all.title, company: result.company || all.company, location: result.location || all.location, description: result.description || all.description }));
+      setNote(result.description.length > 200 ? "Filled in from the link. Check it over, then add the job." : "We found the title but not the full description. Paste the description in if you want to scan against it.");
+    });
+  }
+
+  function handleSubmit() {
     startTransition(async () => {
-      const value = (name: string) => String(form.get(name) ?? "");
-      const result = await addJob({ title: value("title"), company: value("company"), url: value("url"), description: value("description"), status: value("status") as JobStatus });
-      if (result.ok) onClose();
-      else setError(result.error);
+      setError(null);
+      const result = await addJob(fields);
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
+      setFields(blank);
+      setNote(null);
+      onClose();
     });
   }
 
   return (
     <Modal open={open} onClose={onClose} title="Add a job">
       <form action={handleSubmit} className="space-y-4">
+        {/* the link comes first, it can fill in everything below it */}
+        <div>
+          <label htmlFor="add-job-link" className="block text-sm font-medium">
+            Job posting link
+          </label>
+          <div className="mt-1 flex gap-2">
+            <input
+              id="add-job-link"
+              type="url"
+              value={fields.url}
+              onChange={(event) => set("url", event.target.value)}
+              // pasting a link into an empty form fills it in straight away
+              onPaste={(event) => {
+                const pasted = event.clipboardData.getData("text").trim();
+                if (!fields.title && /^https:\/\/\S+$/.test(pasted)) fillFromLink(pasted);
+              }}
+              placeholder="https://"
+              className={`${INPUT} min-w-0 flex-1 font-normal`}
+            />
+            <button type="button" disabled={importing} onClick={() => fillFromLink()} className={`${SECONDARY_BUTTON} shrink-0`}>
+              <Link2 className="size-4" aria-hidden />
+              {importing ? "Reading..." : "Fill in from link"}
+            </button>
+          </div>
+          <p className="mt-1 text-xs text-muted">Paste the link and we fill in the title, company and description for you.</p>
+        </div>
+        {note && (
+          <p role="status" className="rounded-lg bg-primary-soft px-3 py-2 text-sm">
+            {note}
+          </p>
+        )}
         <label className="block text-sm font-medium">
           Job title
-          <input name="title" required maxLength={200} className={`${INPUT} mt-1 font-normal`} />
+          <input value={fields.title} onChange={(event) => set("title", event.target.value)} required maxLength={200} className={`${INPUT} mt-1 font-normal`} />
         </label>
-        <label className="block text-sm font-medium">
-          Company
-          <input name="company" maxLength={200} className={`${INPUT} mt-1 font-normal`} />
-        </label>
-        <label className="block text-sm font-medium">
-          Job posting link
-          <input name="url" type="url" placeholder="https://" className={`${INPUT} mt-1 font-normal`} />
-        </label>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <label className="block text-sm font-medium">
+            Company
+            <input value={fields.company} onChange={(event) => set("company", event.target.value)} maxLength={200} className={`${INPUT} mt-1 font-normal`} />
+          </label>
+          <label className="block text-sm font-medium">
+            Location
+            <input value={fields.location} onChange={(event) => set("location", event.target.value)} maxLength={200} className={`${INPUT} mt-1 font-normal`} />
+          </label>
+        </div>
         <label className="block text-sm font-medium">
           Column
-          <select name="status" defaultValue="saved" className={`${INPUT} mt-1 font-normal`}>
+          <select value={fields.status} onChange={(event) => set("status", event.target.value)} className={`${INPUT} mt-1 font-normal`}>
             {JOB_STATUSES.map((status) => (
               <option key={status} value={status}>
                 {COLUMNS[status].label}
@@ -294,7 +356,7 @@ function AddJobModal({ open, onClose }: { open: boolean; onClose: () => void }) 
         </label>
         <label className="block text-sm font-medium">
           Job description
-          <textarea name="description" placeholder="Paste it now or add it later." className={`${INPUT} mt-1 h-28 resize-y font-normal`} />
+          <textarea value={fields.description} onChange={(event) => set("description", event.target.value)} placeholder="Filled in from the link, or paste it here." className={`${INPUT} mt-1 h-28 resize-y font-normal`} />
         </label>
         {error && (
           <p role="alert" className="text-sm text-danger">
@@ -305,7 +367,7 @@ function AddJobModal({ open, onClose }: { open: boolean; onClose: () => void }) 
           <button type="button" onClick={onClose} className={SECONDARY_BUTTON}>
             Cancel
           </button>
-          <button type="submit" disabled={pending} className={PRIMARY_BUTTON}>
+          <button type="submit" disabled={pending || importing} className={PRIMARY_BUTTON}>
             {pending ? "Adding..." : "Add job"}
           </button>
         </div>
