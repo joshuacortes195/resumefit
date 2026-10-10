@@ -74,6 +74,26 @@ describe("provider router", () => {
     await expect(generateText("bullets", { system: "s", prompt: "p" }, { userId: user.id, providers: [] })).rejects.toThrow(AiUnavailableError);
   });
 
+  it("tries a provider's smaller model when the main one wants billing or is gone", async () => {
+    const user = await getCurrentUser();
+    // the main model asks for payment, the small one answers
+    const gemini = fake("gemini", [new ProviderError("billing required", 402), "from the small model"]);
+    const groq = fake("groq", ["from groq"]);
+    expect(await generateText("bullets", { system: "s", prompt: "p" }, { userId: user.id, providers: [gemini, groq] })).toBe("from the small model");
+    expect(gemini.requests.map((request) => request.model)).toEqual(["gemini-main", "gemini-fast"]);
+    expect(groq.requests).toHaveLength(0);
+
+    // a rate limit is about the whole provider, so the small model is not tried
+    const limited = fake("gemini", [new ProviderError("slow down", 429), "never asked"]);
+    expect(await generateText("bullets", { system: "s", prompt: "p" }, { userId: user.id, providers: [limited, groq] })).toBe("from groq");
+    expect(limited.requests).toHaveLength(1);
+
+    // both models gone, on to the next provider
+    const gone = fake("gemini", [new ProviderError("no such model", 404), new ProviderError("no such model", 404)]);
+    expect(await generateText("bullets", { system: "s", prompt: "p" }, { userId: user.id, providers: [gone, groq] })).toBe("from groq");
+    expect(gone.requests).toHaveLength(2);
+  });
+
   it("picks the fast model when asked", async () => {
     const user = await getCurrentUser();
     const gemini = fake("gemini", ["plain text"]);

@@ -168,19 +168,27 @@ async function attempt<T>(
 ): Promise<T> {
   const providers = await prepare(feature, options);
   for (const provider of providers) {
-    const model = options.fast ? provider.fastModel : provider.model;
-    try {
-      const { value, tokensIn, tokensOut } = await run(provider, model, AbortSignal.timeout(options.timeoutMs ?? 25_000));
-      record(provider.name);
-      if (health[provider.name]?.lastError) await saveHealth(provider.name);
-      if (!options.untracked) await logUsage({ userId: options.userId, feature, provider: provider.name, model, tokensIn, tokensOut });
-      return value;
-    } catch (error) {
-      // rate limits, outages, timeouts and unusable answers all mean "try the next one"
-      record(provider.name, error instanceof Error ? error : new Error("unknown error"));
-      // also into the server log and the database, so the reason can be found afterwards
-      console.error(`ai provider ${provider.name} (${model}) failed for ${feature}: ${health[provider.name]?.lastError ?? "unknown"}`);
-      await saveHealth(provider.name);
+    // the model that was asked for first, then the provider's smaller one in case the first is not on offer for this key
+    const wanted = options.fast ? provider.fastModel : provider.model;
+    const models = wanted === provider.fastModel ? [wanted] : [wanted, provider.fastModel];
+    for (const model of models) {
+      try {
+        const { value, tokensIn, tokensOut } = await run(provider, model, AbortSignal.timeout(options.timeoutMs ?? 25_000));
+        record(provider.name);
+        if (health[provider.name]?.lastError) await saveHealth(provider.name);
+        if (!options.untracked) await logUsage({ userId: options.userId, feature, provider: provider.name, model, tokensIn, tokensOut });
+        return value;
+      } catch (error) {
+        // rate limits, outages, timeouts and unusable answers all mean "try the next one"
+        record(provider.name, error instanceof Error ? error : new Error("unknown error"));
+        // also into the server log and the database, so the reason can be found afterwards
+        console.error(`ai provider ${provider.name} (${model}) failed for ${feature}: ${health[provider.name]?.lastError ?? "unknown"}`);
+        await saveHealth(provider.name);
+        // "wants billing", "not allowed" and "no such model" are about that one model, so the smaller one is worth a try.
+        // anything else, like a rate limit, is about the whole provider, so move on to the next
+        const status = error instanceof ProviderError ? error.status : undefined;
+        if (status !== 402 && status !== 403 && status !== 404) break;
+      }
     }
   }
   throw new AiBusyError();

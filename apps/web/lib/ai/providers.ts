@@ -34,7 +34,8 @@ export type ProviderCall = (request: ProviderRequest) => Promise<ProviderReply>;
 // the models used when the environment does not name one, all on free tiers
 export const DEFAULT_MODELS: Record<ProviderName, { main: string; fast: string }> = {
   gemini: { main: "gemini-3.8-flash", fast: "gemini-3.5-flash-lite" },
-  groq: { main: "llama-3.3-70b-versatile", fast: "llama-3.1-8b-instant" },
+  // groq retired its llama models on the free tier in august 2026, these are the replacements it names
+  groq: { main: "openai/gpt-oss-120b", fast: "openai/gpt-oss-20b" },
   cloudflare: { main: "@cf/meta/llama-3.3-70b-instruct-fp8-fast", fast: "@cf/meta/llama-3.1-8b-instruct" },
 };
 
