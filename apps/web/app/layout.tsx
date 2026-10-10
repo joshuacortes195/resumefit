@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Bricolage_Grotesque, Instrument_Sans } from "next/font/google";
-import { ThemeProvider } from "@/components/theme-provider";
+import { Suspense } from "react";
+import { SectionTheme } from "@/components/section-theme";
+import { SECTION_SCRIPT } from "@/lib/sections";
 import "./globals.css";
 
 // main font for body text
@@ -21,12 +23,17 @@ export const metadata: Metadata = {
   description: "Match your resume to any job description, track applications and apply faster. Free.",
 };
 
-// wraps every page with fonts and the theme
+// wraps every page with fonts and the color of the part of the app it belongs to
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning className={`${bodyFont.variable} ${headingFont.variable} h-full antialiased`}>
       <body className="min-h-full font-sans">
-        <ThemeProvider>{children}</ThemeProvider>
+        {/* sets the page color before anything is drawn, the text is fixed and written by us */}
+        <script dangerouslySetInnerHTML={{ __html: SECTION_SCRIPT }} />
+        <Suspense fallback={null}>
+          <SectionTheme />
+        </Suspense>
+        {children}
       </body>
     </html>
   );

@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense } from "react";
+import { Suspense, type CSSProperties } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Plus } from "lucide-react";
@@ -54,18 +54,20 @@ function SidebarLinks({ collapsed = false, onNavigate, pathname }: SidebarProps 
             onClick={onNavigate}
             title={collapsed ? item.label : undefined}
             aria-current={active ? "page" : undefined}
+            // each link carries its own color, so the menu shows the whole palette at a glance
+            style={item.section ? ({ "--link": `var(--c-${item.section})`, "--link-soft": `var(--s-${item.section})` } as CSSProperties) : undefined}
             className={`relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors duration-150 ${
-              active ? "bg-surface font-semibold text-foreground shadow-card" : "text-muted hover:bg-primary-soft hover:text-foreground"
+              active ? "bg-(--link-soft,var(--primary-soft)) font-semibold text-foreground" : "text-muted hover:bg-(--link-soft,var(--primary-soft)) hover:text-foreground"
             } ${collapsed ? "justify-center" : ""}`}
           >
-            {/* a stroke of highlighter marks the current page */}
+            {/* a bar in the link's own color marks the current page */}
             <span
               aria-hidden
-              className={`absolute left-0 top-1/2 w-1 -translate-y-1/2 rounded-full bg-marker transition-[height,opacity] duration-200 ${
+              className={`absolute left-0 top-1/2 w-1 -translate-y-1/2 rounded-full bg-(--link,var(--primary)) transition-[height,opacity] duration-200 ${
                 active ? "h-5 opacity-100" : "h-0 opacity-0"
               }`}
             />
-            <Icon className="size-5 shrink-0" aria-hidden />
+            <Icon className="size-5 shrink-0 text-(--link,currentColor)" aria-hidden />
             {collapsed ? <span className="sr-only">{item.label}</span> : <span className="truncate">{item.label}</span>}
           </Link>
         );

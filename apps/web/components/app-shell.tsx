@@ -6,7 +6,6 @@ import { Menu, PanelLeft, UserRound, X } from "lucide-react";
 import { signOut } from "@/app/actions/auth";
 import { Logo } from "@/components/logo";
 import { Sidebar } from "@/components/sidebar";
-import { ThemeToggle } from "@/components/theme-toggle";
 
 // links inside the avatar menu
 const ACCOUNT_LINKS = [
@@ -50,7 +49,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <Logo />
 
         <div className="ml-auto flex items-center gap-1">
-          <ThemeToggle />
 
           {/* avatar menu */}
           <div className="relative">

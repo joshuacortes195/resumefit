@@ -1,4 +1,4 @@
-/* the same colors as the web app, light and dark */
+/* the same base colors as the web app */
 :root {
   --background: #f7f6f2;
   --surface: #ffffff;
@@ -7,29 +7,12 @@
   --border: #e4e2da;
   --primary: #0a6960;
   --primary-soft: #eeede7;
-  --ink: #1c1b18;
+  --ink: #0a6960;
   --on-ink: #ffffff;
   --marker: #ffe45c;
   --success: #2a7a4b;
   --warning: #a86400;
   --danger: #c2362b;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0e0e10;
-    --surface: #18181b;
-    --foreground: #f4f3ef;
-    --muted: #a3a3a8;
-    --border: #2b2b30;
-    --primary: #62d6c6;
-    --primary-soft: #232327;
-    --ink: #ffe45c;
-    --on-ink: #1c1b18;
-    --success: #5fd08a;
-    --warning: #f5b84e;
-    --danger: #ff8a7a;
-  }
 }
 
 * {

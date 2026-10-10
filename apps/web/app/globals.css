@@ -1,54 +1,141 @@
 @import "tailwindcss";
 
-/* dark mode turns on when the html tag has the dark class */
-@custom-variant dark (&:where(.dark, .dark *));
-
-/* colors for light mode: warm paper, white sheets, ink for text and buttons, teal for links, and a highlighter */
+/* base colors: warm paper, white sheets, ink for text, and a highlighter. each part of the app adds its own color on top */
 :root {
   --background: #f7f6f2;
   --surface: #ffffff;
   --foreground: #1c1b18;
-  --muted: #66655e;
+  --muted: #5f5e58;
   --border: #e4e2da;
-  /* the accent, used for links, active things and progress */
-  --primary: #0a6960;
-  --primary-hover: #074f48;
-  /* a quiet tint for hovers and the circles behind icons */
-  --primary-soft: #eeede7;
+  /* the accent, used for links, buttons, active things and progress. the pages below swap it for their own */
+  --primary: #47515f;
+  --primary-soft: #e8eaee;
   --on-primary: #ffffff;
-  /* main buttons are ink, like something written on the page */
-  --ink: #1c1b18;
-  --ink-hover: #3a3832;
-  --on-ink: #ffffff;
   --marker: #ffe45c;
   --on-marker: #2b2500;
   --success: #2a7a4b;
   --warning: #a86400;
   --danger: #c2362b;
   --card-shadow: 0 1px 2px rgb(28 27 24 / 0.05), 0 6px 20px rgb(28 27 24 / 0.04);
+
+  /* one color per part of the app: a deep tone, a soft tint and a page tint */
+  --c-dashboard: #0a6960;
+  --s-dashboard: #d6f0eb;
+  --b-dashboard: #f2faf8;
+  --c-scans: #3a3eb5;
+  --s-scans: #e2e3fb;
+  --b-scans: #f5f5fe;
+  --c-optimize: #6b30b0;
+  --s-optimize: #ecdffa;
+  --b-optimize: #faf5fe;
+  --c-letter: #ad2d5b;
+  --s-letter: #fbdfe8;
+  --b-letter: #fef5f8;
+  --c-linkedin: #155ea6;
+  --s-linkedin: #dbeafb;
+  --b-linkedin: #f3f8fe;
+  --c-apply: #a34707;
+  --s-apply: #fde5d0;
+  --b-apply: #fef7f0;
+  --c-tracker: #1c7439;
+  --s-tracker: #daf2e0;
+  --b-tracker: #f3fbf5;
+  --c-jobs: #0a677e;
+  --s-jobs: #d5eef4;
+  --b-jobs: #f1f9fc;
+  --c-builder: #835500;
+  --s-builder: #fbebc8;
+  --b-builder: #fef9ee;
+  --c-resumes: #ad372c;
+  --s-resumes: #fbe0dc;
+  --b-resumes: #fef5f4;
+  --c-extension: #872c8a;
+  --s-extension: #f5ddf6;
+  --b-extension: #fdf5fd;
+  --c-interview: #55650a;
+  --s-interview: #e8f0c9;
+  --b-interview: #f9fbef;
 }
 
-/* colors for dark mode: the page turns to deep ink, the sheets lift off it, and the highlighter becomes the main button */
-.dark {
-  --background: #0e0e10;
-  --surface: #18181b;
-  --foreground: #f4f3ef;
-  --muted: #a3a3a8;
-  --border: #2b2b30;
-  --primary: #62d6c6;
-  --primary-hover: #8fe5d9;
-  --primary-soft: #232327;
-  --on-primary: #0c1f1c;
-  /* in the dark the main buttons are highlighter yellow, so they are the first thing you see */
-  --ink: #ffe45c;
-  --ink-hover: #fff08a;
-  --on-ink: #1c1b18;
-  --marker: #ffe45c;
-  --on-marker: #1c1b18;
-  --success: #5fd08a;
-  --warning: #f5b84e;
-  --danger: #ff8a7a;
-  --card-shadow: 0 1px 0 rgb(255 255 255 / 0.03) inset, 0 8px 24px rgb(0 0 0 / 0.35);
+/* everything derived from the accent follows it, whichever page sets it */
+:root {
+  --primary-hover: color-mix(in srgb, var(--primary) 82%, black);
+  --ink: var(--primary);
+  --ink-hover: var(--primary-hover);
+  --on-ink: #ffffff;
+}
+
+/* each part of the app wears its own color. the html tag says which part we are in */
+html[data-section="dashboard"] {
+  --primary: var(--c-dashboard);
+  --primary-soft: var(--s-dashboard);
+  --background: var(--b-dashboard);
+}
+
+html[data-section="scans"] {
+  --primary: var(--c-scans);
+  --primary-soft: var(--s-scans);
+  --background: var(--b-scans);
+}
+
+html[data-section="optimize"] {
+  --primary: var(--c-optimize);
+  --primary-soft: var(--s-optimize);
+  --background: var(--b-optimize);
+}
+
+html[data-section="letter"] {
+  --primary: var(--c-letter);
+  --primary-soft: var(--s-letter);
+  --background: var(--b-letter);
+}
+
+html[data-section="linkedin"] {
+  --primary: var(--c-linkedin);
+  --primary-soft: var(--s-linkedin);
+  --background: var(--b-linkedin);
+}
+
+html[data-section="apply"] {
+  --primary: var(--c-apply);
+  --primary-soft: var(--s-apply);
+  --background: var(--b-apply);
+}
+
+html[data-section="tracker"] {
+  --primary: var(--c-tracker);
+  --primary-soft: var(--s-tracker);
+  --background: var(--b-tracker);
+}
+
+html[data-section="jobs"] {
+  --primary: var(--c-jobs);
+  --primary-soft: var(--s-jobs);
+  --background: var(--b-jobs);
+}
+
+html[data-section="builder"] {
+  --primary: var(--c-builder);
+  --primary-soft: var(--s-builder);
+  --background: var(--b-builder);
+}
+
+html[data-section="resumes"] {
+  --primary: var(--c-resumes);
+  --primary-soft: var(--s-resumes);
+  --background: var(--b-resumes);
+}
+
+html[data-section="extension"] {
+  --primary: var(--c-extension);
+  --primary-soft: var(--s-extension);
+  --background: var(--b-extension);
+}
+
+html[data-section="interview"] {
+  --primary: var(--c-interview);
+  --primary-soft: var(--s-interview);
+  --background: var(--b-interview);
 }
 
 /* lets tailwind classes like bg-surface and text-muted use the colors above */
@@ -130,10 +217,11 @@
   }
 }
 
-/* page background and text */
+/* page background and text, the tint fades over when you move to another part of the app */
 body {
   background: var(--background);
   color: var(--foreground);
+  transition: background-color 0.3s ease;
 }
 
 /* headings use the display font */
