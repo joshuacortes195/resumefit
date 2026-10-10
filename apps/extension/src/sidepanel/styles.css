@@ -17,18 +17,18 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #161614;
-    --surface: #1f1f1c;
-    --foreground: #eeede7;
-    --muted: #a6a49b;
-    --border: #32312c;
-    --primary: #5fd4c4;
-    --primary-soft: #2a2a26;
-    --ink: #eeede7;
+    --background: #0e0e10;
+    --surface: #18181b;
+    --foreground: #f4f3ef;
+    --muted: #a3a3a8;
+    --border: #2b2b30;
+    --primary: #62d6c6;
+    --primary-soft: #232327;
+    --ink: #ffe45c;
     --on-ink: #1c1b18;
-    --success: #6ccf8e;
-    --warning: #f0b653;
-    --danger: #ff8577;
+    --success: #5fd08a;
+    --warning: #f5b84e;
+    --danger: #ff8a7a;
   }
 }
 

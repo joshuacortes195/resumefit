@@ -28,26 +28,27 @@
   --card-shadow: 0 1px 2px rgb(28 27 24 / 0.05), 0 6px 20px rgb(28 27 24 / 0.04);
 }
 
-/* colors for dark mode: warm charcoal, not blue, with the buttons flipped to off white */
+/* colors for dark mode: the page turns to deep ink, the sheets lift off it, and the highlighter becomes the main button */
 .dark {
-  --background: #161614;
-  --surface: #1f1f1c;
-  --foreground: #eeede7;
-  --muted: #a6a49b;
-  --border: #32312c;
-  --primary: #5fd4c4;
-  --primary-hover: #8be3d6;
-  --primary-soft: #2a2a26;
-  --on-primary: #0f201d;
-  --ink: #eeede7;
-  --ink-hover: #ffffff;
+  --background: #0e0e10;
+  --surface: #18181b;
+  --foreground: #f4f3ef;
+  --muted: #a3a3a8;
+  --border: #2b2b30;
+  --primary: #62d6c6;
+  --primary-hover: #8fe5d9;
+  --primary-soft: #232327;
+  --on-primary: #0c1f1c;
+  /* in the dark the main buttons are highlighter yellow, so they are the first thing you see */
+  --ink: #ffe45c;
+  --ink-hover: #fff08a;
   --on-ink: #1c1b18;
-  --marker: #f0dc5a;
-  --on-marker: #1f1b00;
-  --success: #6ccf8e;
-  --warning: #f0b653;
-  --danger: #ff8577;
-  --card-shadow: 0 0 0 rgb(0 0 0 / 0);
+  --marker: #ffe45c;
+  --on-marker: #1c1b18;
+  --success: #5fd08a;
+  --warning: #f5b84e;
+  --danger: #ff8a7a;
+  --card-shadow: 0 1px 0 rgb(255 255 255 / 0.03) inset, 0 8px 24px rgb(0 0 0 / 0.35);
 }
 
 /* lets tailwind classes like bg-surface and text-muted use the colors above */
