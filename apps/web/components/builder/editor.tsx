@@ -11,6 +11,7 @@ import { AiNotice } from "@/components/ai-notice";
 import { Field, ItemControls, LineList, move } from "@/components/builder/fields";
 import { ResumePreview } from "@/components/builder/preview";
 import { CARD, INPUT, LINK_BUTTON, PRIMARY_BUTTON, SECONDARY_BUTTON } from "@/components/ui/buttons";
+import { Tabs } from "@/components/ui/tabs";
 import { Modal } from "@/components/ui/modal";
 import { StatusIcon } from "@/components/ui/status-icon";
 import { GUIDE, SAMPLE_DATA, STEPS } from "@/lib/builder/guide";
@@ -221,24 +222,22 @@ export function BuilderEditor({ id, initialData, initialSettings, isNew, fresh, 
       <div className={`mt-4 grid gap-6 lg:grid-cols-[26rem_1fr] ${showGuide ? "2xl:grid-cols-[26rem_1fr_17rem]" : ""}`}>
         {/* the form */}
         <section className={`${CARD} self-start p-5`}>
-          <div role="tablist" aria-label="Form views" className="mb-5 flex gap-5 border-b border-border text-sm font-medium">
-            {(["editor", "style"] as const).map((key) => (
-              <button
-                key={key}
-                type="button"
-                role="tab"
-                aria-selected={tab === key}
-                onClick={() => setTab(key)}
-                className={`-mb-px border-b-2 pb-2 capitalize transition-colors duration-150 ${tab === key ? "border-primary text-foreground" : "border-transparent text-muted hover:text-foreground"}`}
-              >
-                {key}
-              </button>
-            ))}
+          <Tabs
+            label="Form views"
+            size="sm"
+            className="mb-5"
+            value={tab}
+            onChange={setTab}
+            tabs={[
+              { key: "editor", label: "Editor" },
+              { key: "style", label: "Style" },
+            ]}
+          >
             <button type="button" aria-pressed={showGuide} onClick={() => setShowGuide((open) => !open)} className="ml-auto inline-flex items-center gap-1 pb-2 text-muted hover:text-foreground">
               <BookOpen className="size-4" aria-hidden />
               Guide me
             </button>
-          </div>
+          </Tabs>
 
           {tab === "style" ? (
             <StylePanel settings={settings} onChange={setSettings} />

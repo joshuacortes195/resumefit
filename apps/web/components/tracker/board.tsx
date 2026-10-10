@@ -215,7 +215,7 @@ export function Board({ jobs: serverJobs, archived }: { jobs: BoardJob[]; archiv
 
       {archived ? (
         // archived jobs show as a plain list with a way to bring them back
-        <ul className="mt-5 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+        <ul className="stagger mt-5 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
           {jobs.filter(matches).map((job) => (
             <li key={job.id} className="flex items-center gap-2">
               <Link href={`/tracker/${job.id}/job`} className="min-w-0 flex-1">

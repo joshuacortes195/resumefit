@@ -73,7 +73,7 @@ export function BuilderStart() {
 
   return (
     <div>
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="stagger grid gap-4 md:grid-cols-3">
         {cards.map(({ key, icon: Icon, title, text }) => (
           <button key={key} type="button" disabled={busy !== null} onClick={() => choose(key)} className={`${CARD} group p-6 text-left transition duration-150 hover:-translate-y-0.5 hover:border-primary disabled:opacity-60`}>
             <span className="flex size-12 items-center justify-center rounded-full bg-primary-soft text-primary">

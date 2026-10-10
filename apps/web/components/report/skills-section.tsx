@@ -6,6 +6,7 @@ import type { SkillSpan } from "@resumefit/scoring";
 import type { SkillMatch } from "@resumefit/shared";
 import { HighlightedText, HighlightLegend } from "@/components/report/highlighted-text";
 import { LINK_BUTTON } from "@/components/ui/buttons";
+import { Tabs } from "@/components/ui/tabs";
 
 // how many rows show before "show more"
 const FIRST_ROWS = 10;
@@ -44,20 +45,7 @@ export function SkillsSection({ kind, skills, resumeText, spans, customNames, re
   return (
     <div>
       {/* switch between the table and the marked up resume */}
-      <div role="tablist" aria-label={`${kind} skills views`} className="flex gap-5 border-b border-border text-sm font-medium print:hidden">
-        {tabs.map((tab) => (
-          <button
-            key={tab.key}
-            type="button"
-            role="tab"
-            aria-selected={view === tab.key}
-            onClick={() => setView(tab.key)}
-            className={`-mb-px border-b-2 pb-2 transition-colors duration-150 ${view === tab.key ? "border-primary text-foreground" : "border-transparent text-muted hover:text-foreground"}`}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
+      <Tabs label={`${kind} skills views`} size="sm" className="print:hidden" tabs={tabs} value={view} onChange={setView} />
 
       {view === "compare" &&
         (skills.length === 0 ? (

@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { ChevronDown, LoaderCircle, ScanSearch, Sparkles, Star } from "lucide-react";
 import { Dropzone } from "@/components/scan/dropzone";
 import { INPUT, LINK_BUTTON, PRIMARY_BUTTON, SECONDARY_BUTTON } from "@/components/ui/buttons";
+import { Tabs } from "@/components/ui/tabs";
 
 // a saved resume as the picker shows it
 export type ResumeOption = { id: string; name: string; isBase: boolean };
@@ -103,23 +104,11 @@ export function ScanForm({ resumes, rescan, job, next }: ScanFormProps) {
         <fieldset>
           <div className="flex min-h-9 flex-wrap items-center justify-between gap-2">
             <legend className="float-left font-semibold">{rescan ? "Pick the updated resume" : "1. Add your resume"}</legend>
-            <div role="tablist" aria-label="How to add your resume" className="flex gap-1 rounded-lg bg-background p-1 text-xs font-medium">
-              {sources.map(({ key, label }) => (
-                <button
-                  key={key}
-                  type="button"
-                  role="tab"
-                  aria-selected={source === key}
-                  onClick={() => setSource(key)}
-                  className={`rounded-md px-2.5 py-1 transition-colors duration-150 ${source === key ? "bg-surface text-foreground shadow-sm" : "text-muted hover:text-foreground"}`}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
+            <Tabs label="How to add your resume" look="pill" tabs={sources} value={source} onChange={setSource} />
           </div>
 
-          <div className="mt-2">
+          {/* the key replays the little fade when you switch */}
+          <div key={source} className="mt-2 animate-swap">
             {source === "upload" && <Dropzone file={file} onFile={setFile} />}
             {source === "paste" && (
               <textarea

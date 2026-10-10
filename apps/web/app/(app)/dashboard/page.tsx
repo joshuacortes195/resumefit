@@ -67,7 +67,7 @@ export default function DashboardPage() {
         </Suspense>
       </section>
 
-      <div className="grid gap-6 md:grid-cols-2">
+      <div className="stagger grid gap-6 md:grid-cols-2">
         <section className={`${CARD} p-6`}>
           <h2 className="font-semibold">Latest resume scan</h2>
           <Suspense fallback={<Skeleton className="mt-4 h-24" />}>
@@ -169,7 +169,7 @@ async function TrackerSummary() {
   return (
     <>
       {/* one column per stage, each with the cards that are in it */}
-      <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+      <div className="stagger mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
         {JOB_STATUSES.map((status) => {
           const cards = jobs.filter((job) => job.status === status);
           return (

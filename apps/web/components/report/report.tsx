@@ -15,6 +15,7 @@ import { Tour, type TourStep } from "@/components/report/tour";
 import { ScanForm, type ResumeOption } from "@/components/scan-form";
 import { ScoreRing } from "@/components/score-ring";
 import { CARD, INPUT, LINK_BUTTON, PRIMARY_BUTTON, SECONDARY_BUTTON } from "@/components/ui/buttons";
+import { Tabs } from "@/components/ui/tabs";
 import { Modal } from "@/components/ui/modal";
 import type { ReportData } from "@/lib/report-data";
 
@@ -161,23 +162,19 @@ export function Report({ data, resumes }: { data: ReportData; resumes: ResumeOpt
 
         <div className="min-w-0">
           {/* switch between the findings and the marked up job description */}
-          <div role="tablist" aria-label="Report views" className="flex gap-6 border-b border-border font-medium print:hidden">
-            {(["report", "jd"] as const).map((key) => (
-              <button
-                key={key}
-                type="button"
-                role="tab"
-                aria-selected={tab === key}
-                onClick={() => setTab(key)}
-                className={`-mb-px border-b-2 pb-3 transition-colors duration-150 ${tab === key ? "border-primary text-foreground" : "border-transparent text-muted hover:text-foreground"}`}
-              >
-                {key === "report" ? "Resume report" : "Job description"}
-              </button>
-            ))}
-          </div>
+          <Tabs
+            label="Report views"
+            className="print:hidden"
+            value={tab}
+            onChange={setTab}
+            tabs={[
+              { key: "report", label: "Resume report" },
+              { key: "jd", label: "Job description" },
+            ]}
+          />
 
           {/* the five parts of the report */}
-          <div className={`space-y-6 pt-6 ${tab === "report" ? "" : "hidden print:block"}`}>
+          <div className={`animate-swap space-y-6 pt-6 ${tab === "report" ? "" : "hidden print:block"}`}>
             {SECTIONS.map((section) => (
               <section key={section.key} id={section.key} className={`${CARD} scroll-mt-20 p-5 sm:p-6`}>
                 <div className="flex flex-wrap items-center gap-3">
@@ -224,7 +221,7 @@ export function Report({ data, resumes }: { data: ReportData; resumes: ResumeOpt
           </div>
 
           {/* the job description with every skill marked */}
-          <div className={`pt-6 ${tab === "jd" ? "" : "hidden"} print:hidden`}>
+          <div className={`animate-swap pt-6 ${tab === "jd" ? "" : "hidden"} print:hidden`}>
             <section className={`${CARD} p-5 sm:p-6`}>
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <h2 className="text-xl font-semibold">{data.jobTitle ?? "Job description"}</h2>

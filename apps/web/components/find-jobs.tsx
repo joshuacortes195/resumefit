@@ -226,7 +226,7 @@ export function FindJobs({ resumes }: { resumes: ResumeOption[] }) {
       {results !== null && results.length > 0 && (
         <div className="grid gap-4 lg:grid-cols-[24rem_1fr]">
           {/* the list */}
-          <ul className="max-h-[75vh] space-y-2 overflow-y-auto pr-1">
+          <ul className="stagger max-h-[75vh] space-y-2 overflow-y-auto pr-1">
             {results.map((job) => (
               <li key={job.id}>
                 <button type="button" onClick={() => open(job)} aria-pressed={selected?.id === job.id} className={`${CARD} flex w-full items-start gap-3 p-3.5 text-left transition-colors duration-150 ${selected?.id === job.id ? "border-primary bg-primary-soft" : "hover:border-primary/50"}`}>
