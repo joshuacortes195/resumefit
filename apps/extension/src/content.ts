@@ -1,9 +1,9 @@
 import { adapterFor } from "./lib/adapters";
 import { findApplyLink } from "./lib/apply-link";
 import { showBar, tickBar } from "./lib/bar";
-import { fillDropdowns } from "./lib/dropdowns";
+import { fillDropdowns, setDropdown } from "./lib/dropdowns";
 import { findFields, looksLikeApplication, type FormField } from "./lib/fields";
-import { currentValue, fillField, fillForm, highlight } from "./lib/fill";
+import { currentValue, fillField, fillForm, highlight, optionsOf } from "./lib/fill";
 import { hasCaptcha, looksConfirmed, readJob } from "./lib/job-page";
 import { isLinkedinProfile, readLinkedinProfile } from "./lib/linkedin-page";
 import { pressSubmit } from "./lib/submit";
@@ -23,7 +23,7 @@ let fields: FormField[] = [];
 
 // what we can tell the side panel about a field right now
 function report(field: FormField, status: FieldReport["status"]): FieldReport {
-  return { id: field.id, key: field.key, label: field.label, kind: field.kind, required: field.required, status, value: currentValue(field) };
+  return { id: field.id, key: field.key, label: field.label, kind: field.kind, required: field.required, status, value: currentValue(field), options: optionsOf(field) };
 }
 
 // looks the page over: is it a job posting, is it an application form, which system is it
@@ -144,7 +144,7 @@ if (!window.__resumefitLoaded) {
         const field = fields.find((entry) => entry.id === result.id);
         if (field) highlight(field, result.status);
       }
-      const before = kept.map((field) => report(field, (field.elements[0]?.getAttribute("data-resumefit-status") as FieldReport["status"] | null) ?? "skipped"));
+      const before = kept.map((field) => ({ ...report(field, (field.elements[0]?.getAttribute("data-resumefit-status") as FieldReport["status"] | null) ?? "skipped"), fresh: false }));
       // then the dropdowns that have to be clicked open, which takes a moment each
       void fillDropdowns(document, request.values, request.onlyNew === true)
         .catch(() => [])
@@ -154,10 +154,18 @@ if (!window.__resumefitLoaded) {
       // one field changed from the side panel, like an edited answer
       const field = fields.find((entry) => entry.id === request.id);
       if (field) {
-        const status = fillField(field, request.value, null) === "filled" ? request.status : "missing";
+        // a question matched to a saved answer comes with what kind of answer it is, so choices are picked with the same care
+        const done = fillField({ ...field, key: request.key ?? field.key }, request.value, null) === "filled";
+        const status = done ? request.status : field.required ? "missing" : "skipped";
         highlight(field, status);
-        respond(report(field, status));
-      } else respond(null);
+        respond({ ...report(field, status), value: currentValue(field) || (done ? request.value : "") });
+      } else {
+        // not a normal field, so it may be one of the dropdowns that has to be clicked open
+        void setDropdown(document, request.id, request.value, request.key ?? null, request.status)
+          .catch(() => null)
+          .then(respond);
+        return true;
+      }
     } else if (request.type === "focus-field") {
       const element = fields.find((entry) => entry.id === request.id)?.elements[0] ?? document.querySelector<HTMLElement>(`[data-resumefit-field="${CSS.escape(request.id)}"]`);
       element?.scrollIntoView({ behavior: "smooth", block: "center" });

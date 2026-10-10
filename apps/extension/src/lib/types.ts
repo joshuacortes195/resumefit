@@ -106,6 +106,10 @@ export type FieldReport = {
   required: boolean;
   status: FillStatus;
   value: string;
+  // the choices on offer, for dropdowns and radio buttons
+  options?: string[];
+  // false for a field that was dealt with on an earlier step and left alone this time
+  fresh?: boolean;
 };
 
 // a job read off the page the person is looking at
@@ -116,7 +120,8 @@ export type PageRequest =
   | { type: "read-page" }
   // onlyNew leaves fields that were already dealt with alone, for the next step of a long form
   | { type: "autofill"; values: Partial<Record<FieldKey, string>>; resume: { name: string; type: string; base64: string } | null; onlyNew?: boolean }
-  | { type: "set-field"; id: string; value: string; status: FillStatus }
+  // key says what kind of answer this is, when the page did not work it out by itself
+  | { type: "set-field"; id: string; value: string; status: FillStatus; key?: FieldKey }
   | { type: "focus-field"; id: string }
   | { type: "selection" }
   | { type: "read-linkedin" }

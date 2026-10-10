@@ -44,6 +44,11 @@ export const mockCall: ProviderCall = async ({ system, prompt }) => {
     text = JSON.stringify({ questions: types.map((type, index) => ({ type, question: `Practice question ${index + 1}: tell me about your work as it relates to this job.` })) });
   } else if (system.startsWith("Task: give interview feedback.")) {
     text = JSON.stringify({ score: 72, star: { situation: true, task: true, action: true, result: false }, relevance: "It fits the role.", specificity: "Add a number.", improve: ["Say what the result was."], sample_answer: "At my last job I led the migration and cut load time by [X%]." });
+  } else if (system.startsWith("Task: match application questions to saved answers.")) {
+    // a few fixed rules stand in for the model
+    const rules: [RegExp, string][] = [[/call home|live right now/i, "city"], [/reach you during the day/i, "phone"], [/study/i, "major"]];
+    const questions = [...prompt.matchAll(/^([\w-]+) \| (.*)$/gm)].map((hit) => ({ id: hit[1] ?? "", label: hit[2] ?? "" }));
+    text = JSON.stringify({ matches: questions.map(({ id, label }) => ({ id, key: rules.find(([pattern]) => pattern.test(label))?.[1] ?? null })) });
   } else if (system.startsWith("Task: answer an application question.")) {
     text = "I enjoy this kind of work and have done it before. [Add a specific example here.]";
   } else if (system.startsWith("You turn a person's short description")) {

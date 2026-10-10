@@ -13,7 +13,7 @@ const askHandsFree = () => chrome.permissions.request({ origins: HANDS_FREE_ORIG
 const messageOf = (error: unknown) => (error instanceof Error ? error.message : "Something went wrong. Try again.");
 
 // what each color in the field list means
-const STATUS_TEXT: Record<FieldReport["status"], string> = { filled: "Filled from your profile", review: "Drafted, please review", missing: "Needs you", skipped: "Left empty" };
+const STATUS_TEXT: Record<FieldReport["status"], string> = { filled: "Filled from your profile", review: "Best guess, please check", missing: "Needs you", skipped: "Left empty" };
 
 // the whole side panel
 export function App() {

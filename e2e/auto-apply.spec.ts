@@ -117,6 +117,23 @@ test("fill in the profile, connect the extension and follow an application throu
   expect(fresh.source).toBe("ai");
   await request.post("/api/ext/qa", { headers, data: { question: "Describe a time you calmed down an upset customer.", answer: "I listened first, then fixed the order." } });
 
+  // questions the extension did not recognize are matched to saved answers by name. what is not saved or not known is dropped
+  const matched = await (
+    await request.post("/api/ext/match", {
+      headers,
+      data: {
+        fields: [
+          { id: "rf-1", label: "Which town do you call home?" },
+          { id: "rf-2", label: "What did you study?" },
+          { id: "rf-3", label: "Can you lift 50 pounds?", options: ["Yes", "No"] },
+        ],
+        // nothing is saved for major, so that match is not allowed through
+        keys: ["city", "phone", "not-a-real-answer"],
+      },
+    })
+  ).json();
+  expect(matched).toEqual({ matches: [{ id: "rf-1", key: "city" }] });
+
   // the autofill run is logged, then marked as applied once the person has submitted
   const report = { jobId: saved.jobId, ats: "Greenhouse", applyUrl: job.url, fieldsFilled: 9, fieldsNeedingAttention: 2 };
   await request.post("/api/ext/applications", { headers, data: { ...report, status: "needs_review" } });

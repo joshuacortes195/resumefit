@@ -63,6 +63,7 @@ export const api = {
   scan: (input: { jdText: string; title?: string; company?: string; url?: string; resumeId?: string; jobId?: string }) => call<{ scanId: string; matchRate: number; missing: string[]; resumeName: string }>("scan", input),
   resumeFile: (id: string) => call<{ name: string; type: string; base64: string }>(`resumes/${id}`),
   answer: (input: { question: string; jdText: string; resumeId?: string; jobId?: string }) => call<{ answer: string; source: "saved" | "ai"; remaining?: number | null }>("answer", input),
+  matchFields: (input: { fields: { id: string; label: string; options?: string[] }[]; keys: string[] }) => call<{ matches: { id: string; key: FieldKey }[] }>("match", input),
   saveAnswer: (entry: { question: string; answer: string }) => call<{ saved: boolean }>("qa", entry),
   importLinkedin: (profile: LinkedinImport) => call<{ saved: boolean }>("linkedin", profile),
   reportApplication: (report: { jobId: string | null; ats: string | null; applyUrl: string; status: string; fieldsFilled: number; fieldsNeedingAttention: number; today?: string }) => call<{ id: string }>("applications", report),

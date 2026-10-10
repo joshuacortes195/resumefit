@@ -55,6 +55,20 @@ async function choose(button: HTMLElement, answer: string, key: FieldKey, doc: D
   return null;
 }
 
+// answers one dropdown that was matched to a saved answer after the first pass. null when there is no such dropdown
+export async function setDropdown(doc: Document, id: string, value: string, key: FieldKey | null, status: FillStatus): Promise<FieldReport | null> {
+  const button = findDropdowns(doc).find((entry) => entry.getAttribute("data-resumefit-field") === id);
+  if (!button) return null;
+  const required = button.getAttribute("aria-required") === "true" || /required/i.test(button.getAttribute("aria-label") ?? "");
+  const picked = await choose(button, value, key ?? "question", doc);
+  const result: FillStatus = picked ? status : required ? "missing" : "skipped";
+  button.setAttribute("data-resumefit-status", result);
+  const color = result === "filled" ? "#15803d" : result === "review" ? "#b45309" : result === "missing" ? "#b91c1c" : "";
+  button.style.outline = color ? `2px solid ${color}` : "";
+  button.style.outlineOffset = color ? "2px" : "";
+  return { id, key, label: questionOf(button, doc) || "Dropdown", kind: "select", required, status: result, value: picked ?? "" };
+}
+
 // answers the button style dropdowns from the profile, one at a time, the way a person would click through them
 export async function fillDropdowns(doc: Document, values: Partial<Record<FieldKey, string>>, onlyNew: boolean): Promise<FieldReport[]> {
   const reports: FieldReport[] = [];
@@ -70,7 +84,8 @@ export async function fillDropdowns(doc: Document, values: Partial<Record<FieldK
     let picked = "";
 
     // ones already dealt with are left as they are when we are only filling what is new
-    if (!(onlyNew && status)) {
+    const skip = onlyNew && status !== null;
+    if (!skip) {
       const answer = key && key !== "question" ? values[key] : undefined;
       const empty = PLACEHOLDER.test(shown());
       if (answer && key && empty) {
@@ -84,7 +99,7 @@ export async function fillDropdowns(doc: Document, values: Partial<Record<FieldK
       button.style.outline = color ? `2px solid ${color}` : "";
       button.style.outlineOffset = color ? "2px" : "";
     }
-    reports.push({ id, key, label: label || "Dropdown", kind: "select", required, status: status ?? "skipped", value: PLACEHOLDER.test(shown()) ? picked : shown() });
+    reports.push({ id, key, label: label || "Dropdown", kind: "select", required, status: status ?? "skipped", value: PLACEHOLDER.test(shown()) ? picked : shown(), fresh: !skip });
   }
   return reports;
 }

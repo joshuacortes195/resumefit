@@ -8,7 +8,7 @@ import { adapterFor } from "./adapters";
 import { fillDropdowns } from "./dropdowns";
 import { findFields } from "./fields";
 import { fillForm, highlight } from "./fill";
-import { canAutoSubmit, fillEverything, MAX_DRAFTS, pickResume, tally, worthDrafting, type Ask } from "./pipeline";
+import { canAutoSubmit, fillEverything, MAX_DRAFTS, pickResume, tally, worthDrafting, worthMatching, type Ask } from "./pipeline";
 import { findSubmit, pressSubmit } from "./submit";
 import { matchKey } from "./synonyms";
 import { profileValues } from "./values";
@@ -69,6 +69,7 @@ describe("filling a whole form in one go", () => {
     const questions: string[] = [];
     const source = {
       resumeFile: async () => ({ name: "resume.pdf", type: "application/pdf", base64: "" }),
+      matchFields: async () => ({ matches: [] }),
       answer: async ({ question, jobId }: { question: string; jobId?: string }) => {
         questions.push(`${question} (${jobId})`);
         return question.startsWith("Why") ? { answer: "I like the work.", source: "saved" as const } : { answer: "A draft.", source: "ai" as const };
@@ -90,6 +91,9 @@ describe("filling a whole form in one go", () => {
       resumeFile: async () => {
         throw new Error("gone");
       },
+      matchFields: async () => {
+        throw new Error("busy");
+      },
       answer: async () => {
         calls++;
         throw new Error("busy");
@@ -98,6 +102,48 @@ describe("filling a whole form in one go", () => {
     const result = await fillEverything(ask, ACCOUNT, { resumeId: "base", jobId: null, jdText: "" }, source);
     expect(calls).toBe(MAX_DRAFTS);
     expect(result.every((entry) => entry.status === "missing")).toBe(true);
+  });
+
+  it("asks which saved answer an unrecognized question wants, and fills it from the profile for review", async () => {
+    const page = [
+      field("rf-0", { key: "email", kind: "text", label: "Email", status: "filled", value: "jordan.lee@example.com" }),
+      field("rf-1", { key: null, kind: "text", label: "Where do you call home?", status: "missing" }),
+      field("rf-2", { key: null, kind: "select", label: "Shift you can work", required: false, status: "skipped", options: ["Days", "Nights"] }),
+      field("rf-3", { key: null, kind: "text", label: "Name we should print on your badge", required: false, status: "skipped" }),
+      // dealt with on an earlier step, so it is not asked about again
+      field("rf-4", { key: null, kind: "text", label: "Old question", required: false, status: "skipped", fresh: false }),
+    ];
+    expect(page.map(worthMatching)).toEqual([false, true, true, true, false]);
+    const sent: { fields: { id: string; label: string; options?: string[] }[]; keys: string[] }[] = [];
+    const sets: PageRequest[] = [];
+    const ask = (async (request: PageRequest) => {
+      if (request.type === "autofill") return page;
+      if (request.type === "set-field") {
+        sets.push(request);
+        return { ...page.find((entry) => entry.id === request.id), value: request.value, status: request.status };
+      }
+      return null;
+    }) as Ask;
+    const source = {
+      resumeFile: async () => ({ name: "resume.pdf", type: "application/pdf", base64: "" }),
+      answer: async () => ({ answer: "A draft.", source: "ai" as const }),
+      matchFields: async (input: (typeof sent)[number]) => {
+        sent.push(input);
+        // one real match, one answer the person never saved, and one id that was never asked about
+        return { matches: [{ id: "rf-1", key: "fullName" as const }, { id: "rf-3", key: "gpa" as const }, { id: "rf-9", key: "email" as const }] };
+      },
+    };
+    const result = await fillEverything(ask, ACCOUNT, { resumeId: null, jobId: null, jdText: "" }, source);
+    // only the wording of the questions goes out, never the answers
+    expect(sent[0]?.fields).toEqual([
+      { id: "rf-1", label: "Where do you call home?", options: undefined },
+      { id: "rf-2", label: "Shift you can work", options: ["Days", "Nights"] },
+      { id: "rf-3", label: "Name we should print on your badge", options: undefined },
+    ]);
+    expect(JSON.stringify(sent)).not.toContain("jordan.lee@example.com");
+    expect(sets).toEqual([{ type: "set-field", id: "rf-1", value: "Jordan Lee", status: "review", key: "fullName" }]);
+    expect(result.find((entry) => entry.id === "rf-1")).toMatchObject({ value: "Jordan Lee", status: "review" });
+    expect(result.find((entry) => entry.id === "rf-3")?.status).toBe("skipped");
   });
 
   it("attaches the resume made for the job, then the one asked for, then the base one", () => {

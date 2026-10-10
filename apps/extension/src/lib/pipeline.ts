@@ -6,7 +6,18 @@ import { profileValues } from "./values";
 export type Ask = <T>(request: PageRequest) => Promise<T>;
 
 // the two calls a fill needs from the web app, swapped out in tests
-export type FillSource = Pick<typeof api, "resumeFile" | "answer">;
+export type FillSource = Pick<typeof api, "resumeFile" | "answer" | "matchFields">;
+
+// how many unrecognized questions one fill will ask about
+export const MAX_MATCHED = 25;
+
+// true for a question we did not recognize that is still unanswered, so it is worth asking which saved answer it wants.
+// big text boxes are left out, those get a drafted answer instead
+export function worthMatching(field: FieldReport): boolean {
+  const unknown = field.key === null || (field.key === "question" && field.kind !== "textarea");
+  const open = field.value.trim() === "" && (field.status === "missing" || field.status === "skipped");
+  return unknown && open && field.kind !== "file" && field.fresh !== false && field.label.trim().length >= 4 && field.label !== "Unlabelled field" && field.label !== "Dropdown";
+}
 
 // how many written answers one fill will draft, so a long form does not eat the day's allowance
 export const MAX_DRAFTS = 6;
@@ -27,14 +38,33 @@ export function pickResume(account: Account, jobId: string | null, wanted: strin
 export async function fillEverything(ask: Ask, account: Account, options: { resumeId: string | null; jobId: string | null; jdText: string; onlyNew?: boolean }, source: FillSource = api): Promise<FieldReport[]> {
   // a resume that will not download just leaves its field for the person
   const resume = options.resumeId ? await source.resumeFile(options.resumeId).catch(() => null) : null;
-  let fields = await ask<FieldReport[]>({ type: "autofill", values: profileValues(account), resume, onlyNew: options.onlyNew });
+  const values = profileValues(account);
+  let fields = await ask<FieldReport[]>({ type: "autofill", values, resume, onlyNew: options.onlyNew });
+  const swap = (next: FieldReport | null) => {
+    if (next) fields = fields.map((field) => (field.id === next.id ? next : field));
+  };
+
+  // questions worded in a way we did not recognize: ask which saved answer each one wants, then fill it from the profile.
+  // only the wording of the form is sent, and a match is marked for review because it is a best guess
+  const loose = fields.filter(worthMatching).slice(0, MAX_MATCHED);
+  if (loose.length > 0) {
+    try {
+      const { matches } = await source.matchFields({ fields: loose.map(({ id, label, options: choices }) => ({ id, label: label.slice(0, 300), options: choices })), keys: Object.keys(values) });
+      for (const match of matches) {
+        const value = values[match.key];
+        if (value && loose.some((field) => field.id === match.id)) swap(await ask<FieldReport | null>({ type: "set-field", id: match.id, value, status: "review", key: match.key }));
+      }
+    } catch {
+      // no matching this time, those questions stay as they were
+    }
+  }
 
   // written questions: a saved answer when one fits, otherwise a draft marked for review
   for (const question of fields.filter((field) => worthDrafting(field) && field.status !== "review").slice(0, MAX_DRAFTS)) {
     try {
       const result = await source.answer({ question: question.label.slice(0, 500), jdText: options.jdText, resumeId: options.resumeId ?? undefined, jobId: options.jobId ?? undefined });
       const next = await ask<FieldReport | null>({ type: "set-field", id: question.id, value: result.answer, status: result.source === "saved" ? "filled" : "review" });
-      if (next) fields = fields.map((field) => (field.id === next.id ? next : field));
+      swap(next);
     } catch {
       // no answer this time, the field stays red for the person
     }

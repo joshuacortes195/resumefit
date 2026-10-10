@@ -82,6 +82,18 @@ export function currentValue(field: FormField): string {
   return first.value;
 }
 
+// the choices a dropdown or a group of radio buttons offers, as the words on them
+export function optionsOf(field: FormField): string[] | undefined {
+  const texts =
+    field.kind === "select"
+      ? [...(field.elements[0] as HTMLSelectElement).options].filter((option) => option.value !== "").map((option) => option.text)
+      : field.kind === "radio" || field.kind === "checkbox"
+        ? field.elements.map(optionText)
+        : [];
+  const clean = texts.map((text) => text.replace(/\s+/g, " ").trim().slice(0, 80)).filter(Boolean);
+  return clean.length > 0 ? clean.slice(0, 15) : undefined;
+}
+
 // fills one field with an answer and says how it went
 export function fillField(field: FormField, answer: string | undefined, resume: { name: string; type: string; base64: string } | null): FillStatus {
   const [first] = field.elements;
@@ -123,7 +135,7 @@ export function fillForm(fields: FormField[], values: Partial<Record<FieldKey, s
     const status = field.key === "question" ? (field.required ? "missing" : "skipped") : fillField(field, answer, resume);
     // some sites show the value a moment later, or in a way we cannot read back. what we put in is shown then, so a filled field never reads as empty
     const put = field.kind === "file" ? (resume?.name ?? "") : (answer ?? "");
-    return { id: field.id, key: field.key, label: field.label, kind: field.kind, required: field.required, status, value: currentValue(field) || (status === "filled" ? put : "") };
+    return { id: field.id, key: field.key, label: field.label, kind: field.kind, required: field.required, status, value: currentValue(field) || (status === "filled" ? put : ""), options: optionsOf(field) };
   });
 }
 
