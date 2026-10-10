@@ -43,16 +43,22 @@ test("build a resume from scratch and download it", async ({ page }) => {
   await expect(page.getByRole("textbox", { name: "Bullets 3" })).toHaveValue(/Trained \[N\] new team members/);
   await expect(preview).toContainText("Jan 2023 - Present");
 
-  // skills, typed and picked from a job description
+  // skills, typed and suggested from the job title alone
   await page.getByRole("button", { name: "Next: Core Skills" }).click();
   await page.getByLabel("Add a skill").fill("SQL, Tableau");
   await page.getByLabel("Add a skill").press("Enter");
-  await page.getByLabel("Suggest skills for my target job").fill("We need a data analyst with strong Python, SQL and communication skills.");
+  await expect(page.getByLabel("Suggest skills for my target job")).toHaveValue("Data Analyst");
+  await page.getByRole("button", { name: "Show skills" }).click();
+  await page.getByRole("button", { name: "+ Forecasting" }).click();
+  await expect(page.getByLabel("Your skills")).toContainText("Forecasting");
+  // one we already have is not offered again
+  await expect(page.getByRole("button", { name: "+ SQL" })).toHaveCount(0);
+  // a pasted job description still works
+  await page.getByText("Or paste a job description instead").click();
+  await page.getByLabel("Job description").fill("We need a data analyst with strong Python, SQL and communication skills.");
   await page.getByRole("button", { name: "Find skills in this job" }).click();
   await page.getByRole("button", { name: "+ Python" }).click();
   await expect(page.getByLabel("Your skills")).toContainText("Python");
-  // one we already have is not offered again
-  await expect(page.getByRole("button", { name: "+ SQL" })).toHaveCount(0);
 
   // education
   await page.getByRole("button", { name: "Next: Education" }).click();
@@ -62,8 +68,15 @@ test("build a resume from scratch and download it", async ({ page }) => {
   await page.getByLabel("School", { exact: true }).fill("State University");
   await page.getByLabel("Graduation year").fill("2022");
 
-  // summary drafted from the rest
+  // a project, with each point in its own box
   await page.getByRole("button", { name: "Next: Additional" }).click();
+  await page.getByRole("button", { name: "Add project" }).click();
+  await page.getByLabel("Project 1 name").fill("Trail Map");
+  await page.getByRole("textbox", { name: "Project 1 bullet points 1" }).fill("Offline maps for hikers");
+  await page.getByRole("button", { name: "Add bullet point" }).click();
+  await page.getByRole("textbox", { name: "Project 1 bullet points 2" }).fill("Used by 2,000 people");
+  await expect(preview.getByRole("listitem").filter({ hasText: "Used by 2,000 people" })).toHaveText("Used by 2,000 people");
+  // summary drafted from the rest
   await page.getByRole("button", { name: "Next: Summary" }).click();
   await page.getByRole("button", { name: "Generate with AI" }).click();
   await expect(page.getByLabel("Summary")).toHaveValue(/four years of experience/);
@@ -87,8 +100,45 @@ test("build a resume from scratch and download it", async ({ page }) => {
   await page.goto("/resumes");
   await expect(page.getByRole("row", { name: /Sam Rivera resume/ })).toBeVisible();
   await page.getByRole("link", { name: "Edit Sam Rivera resume in the builder" }).click();
+  // it opens on the step that was last open, the profile is one click away
+  await page.getByRole("button", { name: /Profile$/ }).click();
   await expect(page.getByLabel("Name")).toHaveValue("Sam Rivera");
   await expect(page.getByLabel("Resume preview")).toContainText("Built 14 dashboards used by 200 staff");
+
+  // leaving the builder and coming back lands on the same resume, on the step that was open
+  await page.getByRole("button", { name: "Next: Experience" }).click();
+  await page.getByLabel("Company").fill("Corner Studio West");
+  await page.goto("/tracker");
+  await page.goto("/builder");
+  await expect(page).toHaveURL(/\/builder\/[0-9a-f-]{36}$/);
+  await expect(page.getByLabel("Company")).toHaveValue("Corner Studio West");
+
+  // save and close keeps the resume and frees the builder up for a new one
+  await page.getByRole("button", { name: "Save and close" }).click();
+  await expect(page.getByRole("row", { name: /Sam Rivera resume/ })).toBeVisible();
+  await page.goto("/builder");
+  await expect(page.getByRole("button", { name: /Create a new resume/ })).toBeVisible();
+});
+
+test("cancelling a new resume asks first, then deletes it", async ({ page }) => {
+  await page.goto("/builder");
+  await page.getByRole("button", { name: /Create a new resume/ }).click();
+  await page.getByRole("button", { name: "Continue to Profile" }).click();
+  await page.getByLabel("Name").fill("Throwaway Person");
+  await expect(page.getByText("All changes saved")).toBeVisible();
+
+  // backing out of the question keeps everything
+  await page.getByRole("button", { name: "Cancel", exact: true }).click();
+  await expect(page.getByRole("dialog")).toContainText("Are you sure you want to cancel?");
+  await page.getByRole("button", { name: "Keep working" }).click();
+  await expect(page.getByLabel("Name")).toHaveValue("Throwaway Person");
+
+  // saying yes deletes it and goes back to the start
+  await page.getByRole("button", { name: "Cancel", exact: true }).click();
+  await page.getByRole("button", { name: "Yes, delete it" }).click();
+  await expect(page.getByRole("button", { name: /Create a new resume/ })).toBeVisible();
+  await page.goto("/resumes");
+  await expect(page.getByText("Throwaway Person")).toHaveCount(0);
 });
 
 test("upload a resume into the builder", async ({ page }) => {

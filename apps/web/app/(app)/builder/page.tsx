@@ -1,6 +1,10 @@
 import { Suspense } from "react";
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { BuilderStart } from "@/components/builder/start";
+import { getCurrentUser } from "@/lib/auth";
+import { DRAFT_COOKIE, parseDraft } from "@/lib/builder/open-draft";
+import { getResume } from "@/lib/data/resumes";
 
 export const metadata = { title: "Resume Builder" };
 
@@ -19,9 +23,15 @@ export default function BuilderPage({ searchParams }: { searchParams: Promise<{ 
   );
 }
 
-// sends "edit in builder" links on to the editor
+// sends "edit in builder" links, and anyone with a resume still open, on to the editor
 async function OpenExisting({ searchParams }: { searchParams: Promise<{ resume?: string }> }) {
   const { resume } = await searchParams;
   if (resume && /^[0-9a-f-]{36}$/i.test(resume)) redirect(`/builder/${resume}`);
+  // a resume that was being worked on opens again, right where it was left
+  const draft = parseDraft((await cookies()).get(DRAFT_COOKIE)?.value);
+  if (draft) {
+    const user = await getCurrentUser();
+    if (await getResume(user.id, draft.id)) redirect(`/builder/${draft.id}`);
+  }
   return null;
 }

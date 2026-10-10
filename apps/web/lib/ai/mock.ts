@@ -48,6 +48,8 @@ export const mockCall: ProviderCall = async ({ system, prompt }) => {
     text = "I enjoy this kind of work and have done it before. [Add a specific example here.]";
   } else if (system.startsWith("You turn a person's short description")) {
     text = JSON.stringify({ bullets: ["Served [N] customers a day at a busy counter", "Trained [N] new team members on the register"] });
+  } else if (system.startsWith("You list the skills")) {
+    text = JSON.stringify({ skills: ["Inventory Management", "SAP", "Excel", "Forecasting", "SQL", "Communication"] });
   } else if (system.startsWith("You write the summary")) {
     text = "Frontend engineer with four years of experience building fast, accessible web apps.";
   }

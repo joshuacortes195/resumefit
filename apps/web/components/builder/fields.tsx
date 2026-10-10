@@ -82,7 +82,7 @@ export function LineList({ label, items, onChange, placeholder, addLabel, multil
             {multiline ? (
               <textarea aria-label={`${label} ${index + 1}`} value={item} placeholder={placeholder} rows={2} onChange={(event) => onChange(items.map((entry, position) => (position === index ? event.target.value : entry)))} className={`${INPUT} resize-y`} />
             ) : (
-              <input aria-label={`${label} ${index + 1}`} value={item} placeholder={placeholder} onChange={(event) => onChange(items.map((entry, position) => (position === index ? event.target.value : entry)))} className={INPUT} />
+              <input aria-label={`${label} ${index + 1}`} value={item} placeholder={placeholder} onChange={(event) => onChange(items.map((entry, position) => (position === index ? event.target.value.replace(/\n/g, " ") : entry)))} className={INPUT} />
             )}
             <ItemControls name={`${label.toLowerCase()} ${index + 1}`} index={index} count={items.length} onMove={(to) => onChange(move(items, index, to))} onRemove={() => onChange(items.filter((_, position) => position !== index))} />
           </li>

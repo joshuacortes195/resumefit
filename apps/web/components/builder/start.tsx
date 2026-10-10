@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { FilePlus2, Upload, UserSearch } from "lucide-react";
 import { startBlankResume } from "@/app/actions/builder";
 import { CARD } from "@/components/ui/buttons";
+import { rememberDraft } from "@/lib/builder/open-draft";
 
 // the three ways into the builder
 export function BuilderStart() {
@@ -20,8 +21,13 @@ export function BuilderStart() {
     setBusy("new");
     startTransition(async () => {
       const result = await startBlankResume();
-      if (result.ok) router.push(`/builder/${result.id}?new=1`);
-      else {
+      if (result.ok) {
+        // remember it, so leaving and coming back lands on this resume again
+        rememberDraft(result.id, true);
+        router.push(`/builder/${result.id}?new=1`);
+        // this screen is kept around, so the cards must be ready again if someone comes back to it
+        setBusy(null);
+      } else {
         setError(result.error);
         setBusy(null);
       }
@@ -40,7 +46,12 @@ export function BuilderStart() {
       const response = await fetch("/api/builder/import", { method: "POST", body: form });
       const result = (await response.json()) as { id?: string; error?: string };
       if (!response.ok || !result.id) throw new Error(result.error ?? "We could not read that file. Try another one.");
-      router.push(`/builder/${result.id}`);
+      rememberDraft(result.id, true);
+      // the cards stay busy until the editor is showing, then reset for the next visit
+      startTransition(() => {
+        router.push(`/builder/${result.id}`);
+        setBusy(null);
+      });
     } catch (problem) {
       setError(problem instanceof Error ? problem.message : "We could not read that file. Try another one.");
       setBusy(null);

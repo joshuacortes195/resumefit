@@ -1,18 +1,21 @@
 "use client";
 
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { BookOpen, Check, Download, Plus, Redo2, ScanSearch, ShieldCheck, Sparkles, Undo2, X } from "lucide-react";
 import { parseResume, searchabilityChecks, formattingChecks, type Check as ReportCheck } from "@resumefit/scoring";
 import { CURATED_HARD_SKILLS, SOFT_SKILLS } from "@resumefit/skills-data/curated";
-import { saveBuilder, skillsFromJob, writeBullets, writeSummary } from "@/app/actions/builder";
+import { discardDraft, saveBuilder, skillsForTitle, skillsFromJob, writeBullets, writeSummary } from "@/app/actions/builder";
 import { AiNotice } from "@/components/ai-notice";
 import { Field, ItemControls, LineList, move } from "@/components/builder/fields";
 import { ResumePreview } from "@/components/builder/preview";
 import { CARD, INPUT, LINK_BUTTON, PRIMARY_BUTTON, SECONDARY_BUTTON } from "@/components/ui/buttons";
+import { Modal } from "@/components/ui/modal";
 import { StatusIcon } from "@/components/ui/status-icon";
 import { GUIDE, SAMPLE_DATA, STEPS } from "@/lib/builder/guide";
 import { builderLayoutMeta, builderToText, layOut } from "@/lib/builder/layout";
+import { forgetDraft, openDraft, rememberDraft, stepKey } from "@/lib/builder/open-draft";
 import { TEMPLATES } from "@/lib/builder/templates";
 import { ACCENTS, newId, type Accent, type BuilderData, type TemplateSettings } from "@/lib/builder/types";
 
@@ -22,6 +25,8 @@ type EditorProps = {
   initialSettings: TemplateSettings;
   // a brand new resume opens on the template picker
   isNew: boolean;
+  // started in the builder and not finished yet, so it can still be cancelled
+  fresh: boolean;
   ai: { available: boolean; remaining: number | null };
 };
 
@@ -41,7 +46,8 @@ const MARGINS = [
 ] as const;
 
 // the resume builder: the form on the left, the live page in the middle, help on the right
-export function BuilderEditor({ id, initialData, initialSettings, isNew, ai }: EditorProps) {
+export function BuilderEditor({ id, initialData, initialSettings, isNew, fresh, ai }: EditorProps) {
+  const router = useRouter();
   const [snapshot, setSnapshot] = useState<Snapshot>({ data: initialData, settings: initialSettings });
   const [past, setPast] = useState<Snapshot[]>([]);
   const [future, setFuture] = useState<Snapshot[]>([]);
@@ -53,6 +59,8 @@ export function BuilderEditor({ id, initialData, initialSettings, isNew, ai }: E
   const [savedText, setSavedText] = useState(() => JSON.stringify({ data: initialData, settings: initialSettings }));
   const [saveError, setSaveError] = useState<string | null>(null);
   const [remaining, setRemaining] = useState(ai.remaining);
+  const [cancelling, setCancelling] = useState(false);
+  const [leaving, startLeaving] = useTransition();
   const { data, settings } = snapshot;
   const serialized = useMemo(() => JSON.stringify(snapshot), [snapshot]);
   const saveState: "saved" | "saving" | "error" = saveError ? "error" : serialized === savedText ? "saved" : "saving";
@@ -92,6 +100,67 @@ export function BuilderEditor({ id, initialData, initialSettings, isNew, ai }: E
     return () => clearTimeout(timer);
   }, [serialized, savedText, snapshot, id]);
 
+  // this resume is the one the builder opens on next time, until it is closed or cancelled
+  useEffect(() => {
+    if (openDraft()?.id !== id) rememberDraft(id, fresh);
+    // and it opens on the step that was last being filled in
+    const step = Number(localStorage.getItem(stepKey(id)));
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (!isNew && step > 0 && step < STEPS.length) setStep(step);
+  }, [id, fresh, isNew]);
+
+  // moves to a step and remembers it
+  function goToStep(index: number) {
+    setStep(index);
+    localStorage.setItem(stepKey(id), String(index));
+  }
+
+  // keeps the newest unsaved work at hand for when the page is left
+  const unsaved = useRef<Snapshot | null>(null);
+  useEffect(() => {
+    unsaved.current = serialized === savedText ? null : snapshot;
+  }, [serialized, savedText, snapshot]);
+
+  // leaving the builder saves straight away instead of waiting for the usual pause
+  useEffect(() => {
+    const flush = () => {
+      if (unsaved.current) void saveBuilder(id, unsaved.current.data, unsaved.current.settings);
+    };
+    const hidden = () => document.visibilityState === "hidden" && flush();
+    document.addEventListener("visibilitychange", hidden);
+    return () => {
+      document.removeEventListener("visibilitychange", hidden);
+      flush();
+    };
+  }, [id]);
+
+  // saves what is there and goes back to the list of resumes
+  function close() {
+    startLeaving(async () => {
+      if (unsaved.current) await saveBuilder(id, unsaved.current.data, unsaved.current.settings);
+      unsaved.current = null;
+      forgetDraft();
+      localStorage.removeItem(stepKey(id));
+      router.push("/resumes");
+    });
+  }
+
+  // deletes the resume that was started, only after the person has said they are sure
+  function cancel() {
+    startLeaving(async () => {
+      unsaved.current = null;
+      const result = await discardDraft(id);
+      if (!result.ok) {
+        setSaveError(result.error);
+        setCancelling(false);
+        return;
+      }
+      forgetDraft();
+      localStorage.removeItem(stepKey(id));
+      router.push("/builder");
+    });
+  }
+
   // the preview shows made up answers when asked, or when nothing has been typed yet
   const blank = !data.profile.name && data.experience.length === 0 && data.education.length === 0;
   const laid = useMemo(() => layOut(showSample || (blank && tab === "style") ? SAMPLE_DATA : data, settings.template), [data, settings.template, showSample, blank, tab]);
@@ -115,7 +184,17 @@ export function BuilderEditor({ id, initialData, initialSettings, isNew, ai }: E
           <ShieldCheck className="size-3.5" aria-hidden />
           ATS friendly
         </span>
+        {/* cancel throws a new resume away, save and close keeps it */}
+        {fresh && (
+          <button type="button" disabled={leaving} onClick={() => setCancelling(true)} className={SECONDARY_BUTTON}>
+            Cancel
+          </button>
+        )}
+        <button type="button" disabled={leaving} onClick={close} className={SECONDARY_BUTTON}>
+          Save and close
+        </button>
       </div>
+      <p className="mt-1 text-sm text-muted">Your work is saved as you type. Leave whenever you like and it will be here when you come back.</p>
 
       {/* the seven steps */}
       <ol className="mt-4 flex gap-1 overflow-x-auto pb-1">
@@ -125,7 +204,7 @@ export function BuilderEditor({ id, initialData, initialSettings, isNew, ai }: E
               type="button"
               aria-current={step === index ? "step" : undefined}
               onClick={() => {
-                setStep(index);
+                goToStep(index);
                 setTab("editor");
               }}
               className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors duration-150 ${step === index ? "bg-primary-soft text-primary" : "text-muted hover:bg-primary-soft/60 hover:text-foreground"}`}
@@ -179,11 +258,11 @@ export function BuilderEditor({ id, initialData, initialSettings, isNew, ai }: E
           {/* back and next */}
           {tab === "editor" && (
             <div className="mt-6 flex justify-between border-t border-border pt-4">
-              <button type="button" disabled={step === 0} onClick={() => setStep(step - 1)} className={SECONDARY_BUTTON}>
+              <button type="button" disabled={step === 0} onClick={() => goToStep(step - 1)} className={SECONDARY_BUTTON}>
                 Back
               </button>
               {step < STEPS.length - 1 && (
-                <button type="button" onClick={() => setStep(step + 1)} className={PRIMARY_BUTTON}>
+                <button type="button" onClick={() => goToStep(step + 1)} className={PRIMARY_BUTTON}>
                   Next: {STEPS[step + 1]}
                 </button>
               )}
@@ -234,6 +313,19 @@ export function BuilderEditor({ id, initialData, initialSettings, isNew, ai }: E
           </aside>
         )}
       </div>
+
+      {/* the double check before a started resume is thrown away */}
+      <Modal open={cancelling} onClose={() => setCancelling(false)} title="Are you sure you want to cancel?">
+        <p className="text-sm text-muted">This deletes the resume you started and everything you typed into it. It cannot be brought back.</p>
+        <div className="mt-5 flex flex-wrap justify-end gap-2">
+          <button type="button" onClick={() => setCancelling(false)} className={SECONDARY_BUTTON}>
+            Keep working
+          </button>
+          <button type="button" disabled={leaving} onClick={cancel} className={`${PRIMARY_BUTTON} bg-danger hover:bg-danger`}>
+            {leaving ? "Deleting..." : "Yes, delete it"}
+          </button>
+        </div>
+      </Modal>
     </div>
   );
 }
@@ -417,6 +509,8 @@ const KNOWN_SKILLS = [...CURATED_HARD_SKILLS, ...SOFT_SKILLS].map((skill) => ski
 // step 3: skills as tags
 function SkillsStep({ data, onChange }: StepProps) {
   const [draft, setDraft] = useState("");
+  // starts out as the job title from the profile step, which is usually the job they are after
+  const [target, setTarget] = useState(data.profile.title);
   const [jdText, setJdText] = useState("");
   const [suggested, setSuggested] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -431,6 +525,15 @@ function SkillsStep({ data, onChange }: StepProps) {
       .filter((skill) => skill && !has(skill));
     if (fresh.length > 0) onChange({ skills: [...data.skills, ...fresh] });
     setDraft("");
+  }
+
+  // runs one of the two ways of finding skills and shows what came back
+  function suggest(find: () => Promise<{ ok: true; skills: string[] } | { ok: false; error: string }>) {
+    startTransition(async () => {
+      const result = await find();
+      setError(result.ok ? null : result.error);
+      setSuggested(result.ok ? result.skills : []);
+    });
   }
 
   return (
@@ -479,26 +582,37 @@ function SkillsStep({ data, onChange }: StepProps) {
         </ul>
       )}
 
-      {/* pull skills out of a job description */}
+      {/* type a job title and get the skills that job usually asks for */}
       <div className="space-y-2 rounded-lg bg-background p-3">
-        <label className="block text-sm font-medium">
+        <label htmlFor="target-job" className="block text-sm font-medium">
           Suggest skills for my target job
-          <textarea value={jdText} onChange={(event) => setJdText(event.target.value)} rows={3} placeholder="Paste the job description here." className={`${INPUT} mt-1 resize-y bg-surface font-normal`} />
         </label>
-        <button
-          type="button"
-          disabled={pending}
-          onClick={() =>
-            startTransition(async () => {
-              const result = await skillsFromJob(jdText);
-              setError(result.ok ? null : result.error);
-              setSuggested(result.ok ? result.skills : []);
-            })
-          }
-          className={`${SECONDARY_BUTTON} bg-surface px-3 py-1.5`}
-        >
-          {pending ? "Looking..." : "Find skills in this job"}
-        </button>
+        <div className="flex gap-2">
+          <input
+            id="target-job"
+            value={target}
+            onChange={(event) => setTarget(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") {
+                event.preventDefault();
+                suggest(() => skillsForTitle(target));
+              }
+            }}
+            placeholder="Job title, like Supply Chain Analyst"
+            className={`${INPUT} min-w-0 flex-1 bg-surface`}
+          />
+          <button type="button" disabled={pending} onClick={() => suggest(() => skillsForTitle(target))} className={`${SECONDARY_BUTTON} shrink-0 bg-surface`}>
+            {pending ? "Looking..." : "Show skills"}
+          </button>
+        </div>
+        {/* a posting can still be pasted for skills from one exact job */}
+        <details className="text-sm">
+          <summary className="cursor-pointer text-muted hover:text-foreground">Or paste a job description instead</summary>
+          <textarea aria-label="Job description" value={jdText} onChange={(event) => setJdText(event.target.value)} rows={3} placeholder="Paste the job description here." className={`${INPUT} mt-2 resize-y bg-surface`} />
+          <button type="button" disabled={pending} onClick={() => suggest(() => skillsFromJob(jdText))} className={`${SECONDARY_BUTTON} mt-2 bg-surface px-3 py-1.5`}>
+            Find skills in this job
+          </button>
+        </details>
         {error && (
           <p role="alert" className="text-sm text-danger">
             {error}
@@ -569,7 +683,14 @@ function AdditionalStep({ data, onChange }: StepProps) {
                 <input aria-label={`Project ${index + 1} name`} value={project.name} placeholder="Project name" onChange={(event) => set({ projects: extra.projects.map((entry, position) => (position === index ? { ...entry, name: event.target.value } : entry)) })} className={INPUT} />
                 <ItemControls name={project.name || `project ${index + 1}`} index={index} count={extra.projects.length} onMove={(to) => set({ projects: move(extra.projects, index, to) })} onRemove={() => set({ projects: extra.projects.filter((_, position) => position !== index) })} />
               </div>
-              <textarea aria-label={`Project ${index + 1} description`} value={project.description} rows={2} placeholder="What you built and what came of it. One point per line." onChange={(event) => set({ projects: extra.projects.map((entry, position) => (position === index ? { ...entry, description: event.target.value } : entry)) })} className={`${INPUT} resize-y`} />
+              {/* every point about the project gets its own box, and its own bullet on the page */}
+              <LineList
+                label={`Project ${index + 1} bullet points`}
+                items={project.description.split("\n")}
+                onChange={(lines) => set({ projects: extra.projects.map((entry, position) => (position === index ? { ...entry, description: lines.join("\n") } : entry)) })}
+                placeholder="What you built, or what came of it"
+                addLabel="Add bullet point"
+              />
             </div>
           ))}
         </div>

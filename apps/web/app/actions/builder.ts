@@ -5,14 +5,16 @@ import { z } from "zod";
 import { countSkills } from "@resumefit/scoring";
 import { HARD_SKILLS, SOFT_SKILLS } from "@resumefit/skills-data";
 import { remainingToday } from "@/lib/ai/limits";
-import { BUILDER_BULLETS_SYSTEM, BUILDER_SUMMARY_SYSTEM, builderBulletsPrompt, builderBulletsSchema, builderSummaryPrompt } from "@/lib/ai/prompts/builder";
+import { BUILDER_BULLETS_SYSTEM, BUILDER_SKILLS_SYSTEM, BUILDER_SUMMARY_SYSTEM, builderBulletsPrompt, builderBulletsSchema, builderSkillsSchema, builderSummaryPrompt } from "@/lib/ai/prompts/builder";
 import { tidy } from "@/lib/ai/prompts/style";
 import { redact } from "@/lib/ai/redact";
-import { AiBusyError, AiLimitError, AiUnavailableError, generateJSON, generateText } from "@/lib/ai/router";
+import { AiBusyError, AiLimitError, AiUnavailableError, aiAvailable, generateJSON, generateText } from "@/lib/ai/router";
 import { getCurrentUser } from "@/lib/auth";
 import { builderToText } from "@/lib/builder/layout";
 import { builderDataSchema, templateSettingsSchema } from "@/lib/builder/types";
 import { createBuilderResume, saveBuilderResume } from "@/lib/data/builder";
+import { deleteResume } from "@/lib/data/resumes";
+import { savedJobs } from "@/lib/jobs-feed";
 
 type Result<T = object> = ({ ok: true } & T) | { ok: false; error: string };
 
@@ -78,4 +80,50 @@ export async function skillsFromJob(jdText: string): Promise<Result<{ skills: st
   const counts = countSkills(text.slice(0, 60_000), [...HARD_SKILLS, ...SOFT_SKILLS]);
   const skills = [...counts].sort((a, b) => b[1] - a[1]).map(([name]) => name);
   return skills.length > 0 ? { ok: true, skills: skills.slice(0, 24) } : { ok: false, error: "We did not recognize any skills in that text. Try pasting more of the job description." };
+}
+
+// words in a job title that say nothing about the kind of work
+const TITLE_FILLER = new Set(["senior", "junior", "lead", "staff", "principal", "associate", "the", "and", "for", "intern", "internship", "entry", "level", "new", "grad", "summer", "fall", "spring", "winter", "part", "full", "time", "remote"]);
+
+// suggests skills from a job title alone. real postings with that title are read first, a model fills in when there are too few
+export async function skillsForTitle(title: string): Promise<Result<{ skills: string[] }>> {
+  const wanted = title.trim().slice(0, 100);
+  if (wanted.length < 2) return { ok: false, error: "Type the job title you are aiming for, like Supply Chain Analyst." };
+  const user = await getCurrentUser();
+  const words = wanted
+    .toLowerCase()
+    .split(/[^a-z0-9+#]+/)
+    .filter((word) => word.length > 1 && !TITLE_FILLER.has(word));
+
+  // count the skills that open jobs with this title ask for
+  const tally = new Map<string, number>();
+  if (words.length > 0) {
+    const { jobs } = await savedJobs();
+    for (const job of jobs) {
+      const jobTitle = job.title.toLowerCase();
+      if (!words.every((word) => jobTitle.includes(word))) continue;
+      for (const skill of job.skills) tally.set(skill, (tally.get(skill) ?? 0) + 1);
+    }
+  }
+  const skills = [...tally].sort((a, b) => b[1] - a[1]).map(([name]) => name);
+
+  // not enough postings to go on, so ask for the usual skills of that job
+  if (skills.length < 10 && (await aiAvailable(user.id))) {
+    try {
+      const reply = await generateJSON("builder", { system: BUILDER_SKILLS_SYSTEM, prompt: `Job title: ${wanted}` }, builderSkillsSchema, { userId: user.id, fast: true });
+      for (const skill of reply.skills.map((entry) => tidy(entry).slice(0, 60))) if (skill && !skills.some((known) => known.toLowerCase() === skill.toLowerCase())) skills.push(skill);
+    } catch (error) {
+      if (skills.length === 0) return problem(error);
+    }
+  }
+  return skills.length > 0 ? { ok: true, skills: skills.slice(0, 24) } : { ok: false, error: "We could not find skills for that title. Try a more common way of saying it, or paste a job description below." };
+}
+
+// throws away a resume that was started in the builder and then cancelled
+export async function discardDraft(id: string): Promise<Result> {
+  if (!z.uuid().safeParse(id).success) return { ok: false, error: "We could not find that resume." };
+  const user = await getCurrentUser();
+  await deleteResume(user.id, id);
+  revalidatePath("/resumes");
+  return { ok: true };
 }

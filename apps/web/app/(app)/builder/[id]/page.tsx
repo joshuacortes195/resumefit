@@ -1,10 +1,12 @@
 import { Suspense } from "react";
+import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
 import { BuilderEditor } from "@/components/builder/editor";
 import { ReportSkeleton } from "@/components/ui/skeleton";
 import { remainingToday } from "@/lib/ai/limits";
 import { aiAvailable } from "@/lib/ai/router";
 import { getCurrentUser } from "@/lib/auth";
+import { DRAFT_COOKIE, parseDraft } from "@/lib/builder/open-draft";
 import { toBuilderResume } from "@/lib/data/builder";
 import { getResume } from "@/lib/data/resumes";
 
@@ -29,5 +31,8 @@ async function EditorLoader({ params, searchParams }: Props) {
   if (!row) notFound();
   const resume = toBuilderResume(row);
   const [available, remaining] = await Promise.all([aiAvailable(user.id), remainingToday(user.id, "builder")]);
-  return <BuilderEditor key={resume.id} id={resume.id} initialData={resume.data} initialSettings={resume.settings} isNew={query.new === "1"} ai={{ available, remaining }} />;
+  // a resume started in the builder and not finished yet can still be cancelled
+  const draft = parseDraft((await cookies()).get(DRAFT_COOKIE)?.value);
+  const fresh = query.new === "1" || (draft?.id === resume.id && draft.fresh);
+  return <BuilderEditor key={resume.id} id={resume.id} initialData={resume.data} initialSettings={resume.settings} isNew={query.new === "1"} fresh={fresh} ai={{ available, remaining }} />;
 }
