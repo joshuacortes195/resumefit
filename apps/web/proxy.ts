@@ -2,7 +2,7 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 // pages anyone can open without signing in
-const PUBLIC = /^\/(sign-in|auth\/|privacy|terms|api\/ext\/|scans\/sample)/;
+const PUBLIC = /^\/(sign-in|auth\/|privacy|terms|api\/ext\/|api\/health$|scans\/sample)/;
 
 // the names this computer goes by
 const LOCAL_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]"]);

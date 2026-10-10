@@ -96,6 +96,8 @@ The migrations switch on row level security for every table with no policies, wh
    | `CF_ACCOUNT_ID`, `CF_API_TOKEN` | optional fallback, Cloudflare Workers AI |
 
 4. Deploy. After this, every push to `main` deploys by itself.
+
+   There is no sleeping server to wake up: pages are served on demand and the first visit after a quiet spell takes about a second. Supabase pauses a free database that has had no activity for a week, so `apps/web/vercel.json` has Vercel visit `/api/health` once a day, which is enough to keep it awake.
 5. Go back to Supabase and put the real Vercel address into the Site URL and Redirect URLs.
 
 ### 3. First sign in and inviting friends

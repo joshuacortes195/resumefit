@@ -23,7 +23,7 @@ export function ReportSkeleton() {
 // stand in for a card with a table in it
 export function TableSkeleton({ rows = 5 }: { rows?: number }) {
   return (
-    <div role="status" aria-label="Loading" className="space-y-3 rounded-2xl border border-border bg-surface p-6">
+    <div role="status" aria-label="Loading" className="space-y-3 rounded-2xl border border-border/70 bg-surface shadow-card p-6">
       {Array.from({ length: rows }, (_, index) => (
         <Skeleton key={index} className="h-10" />
       ))}

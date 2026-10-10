@@ -34,7 +34,7 @@ export function Tour({ steps, onClose }: { steps: TourStep[]; onClose: () => voi
   }, [onClose]);
 
   return (
-    <div role="dialog" aria-label="Report tour" className="fixed bottom-24 right-4 z-40 w-[min(22rem,calc(100vw-2rem))] animate-pop rounded-2xl border border-border bg-surface p-5 shadow-xl print:hidden">
+    <div role="dialog" aria-label="Report tour" className="fixed bottom-24 right-4 z-40 w-[min(22rem,calc(100vw-2rem))] animate-pop rounded-2xl border border-border/70 bg-surface shadow-card p-5 shadow-xl print:hidden">
       {step ? (
         <>
           <p className="text-xs text-muted">

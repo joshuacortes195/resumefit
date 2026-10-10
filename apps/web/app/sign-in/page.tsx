@@ -13,7 +13,7 @@ export const metadata = { title: "Sign in" };
 export default function SignInPage({ searchParams }: { searchParams: Promise<{ error?: string; invite?: string }> }) {
   return (
     <main className="flex min-h-screen items-center justify-center p-4">
-      <div className="w-full max-w-sm animate-rise rounded-2xl border border-border bg-surface p-6">
+      <div className="w-full max-w-sm animate-rise rounded-2xl border border-border/70 bg-surface shadow-card p-6">
         <Logo />
         <h1 className="mt-6 text-xl font-semibold tracking-tight">Sign in</h1>
         <Suspense fallback={null}>

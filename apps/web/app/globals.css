@@ -3,40 +3,51 @@
 /* dark mode turns on when the html tag has the dark class */
 @custom-variant dark (&:where(.dark, .dark *));
 
-/* brand colors for light mode, cool paper with ink text and a cobalt accent */
+/* colors for light mode: warm paper, white sheets, ink for text and buttons, teal for links, and a highlighter */
 :root {
-  --background: #f4f5f8;
+  --background: #f7f6f2;
   --surface: #ffffff;
-  --foreground: #151a2d;
-  --muted: #5b6478;
-  --border: #e1e4ec;
-  --primary: #3447d4;
-  --primary-hover: #2a39b0;
-  --primary-soft: #eceefc;
+  --foreground: #1c1b18;
+  --muted: #66655e;
+  --border: #e4e2da;
+  /* the accent, used for links, active things and progress */
+  --primary: #0a6960;
+  --primary-hover: #074f48;
+  /* a quiet tint for hovers and the circles behind icons */
+  --primary-soft: #eeede7;
   --on-primary: #ffffff;
-  --marker: #e4f56a;
-  --on-marker: #2a3000;
-  --success: #15803d;
-  --warning: #b45309;
-  --danger: #b91c1c;
+  /* main buttons are ink, like something written on the page */
+  --ink: #1c1b18;
+  --ink-hover: #3a3832;
+  --on-ink: #ffffff;
+  --marker: #ffe45c;
+  --on-marker: #2b2500;
+  --success: #2a7a4b;
+  --warning: #a86400;
+  --danger: #c2362b;
+  --card-shadow: 0 1px 2px rgb(28 27 24 / 0.05), 0 6px 20px rgb(28 27 24 / 0.04);
 }
 
-/* brand colors for dark mode */
+/* colors for dark mode: warm charcoal, not blue, with the buttons flipped to off white */
 .dark {
-  --background: #0d1020;
-  --surface: #151930;
-  --foreground: #e6e8f2;
-  --muted: #9aa2b8;
-  --border: #252a44;
-  --primary: #8b98ff;
-  --primary-hover: #a5afff;
-  --primary-soft: #1e2347;
-  --on-primary: #0d1020;
-  --marker: #d7ea55;
-  --on-marker: #1f2400;
-  --success: #4ade80;
-  --warning: #fbbf24;
-  --danger: #f87171;
+  --background: #161614;
+  --surface: #1f1f1c;
+  --foreground: #eeede7;
+  --muted: #a6a49b;
+  --border: #32312c;
+  --primary: #5fd4c4;
+  --primary-hover: #8be3d6;
+  --primary-soft: #2a2a26;
+  --on-primary: #0f201d;
+  --ink: #eeede7;
+  --ink-hover: #ffffff;
+  --on-ink: #1c1b18;
+  --marker: #f0dc5a;
+  --on-marker: #1f1b00;
+  --success: #6ccf8e;
+  --warning: #f0b653;
+  --danger: #ff8577;
+  --card-shadow: 0 0 0 rgb(0 0 0 / 0);
 }
 
 /* lets tailwind classes like bg-surface and text-muted use the colors above */
@@ -50,6 +61,10 @@
   --color-primary-hover: var(--primary-hover);
   --color-primary-soft: var(--primary-soft);
   --color-on-primary: var(--on-primary);
+  --color-ink: var(--ink);
+  --color-ink-hover: var(--ink-hover);
+  --color-on-ink: var(--on-ink);
+  --shadow-card: var(--card-shadow);
   --color-marker: var(--marker);
   --color-on-marker: var(--on-marker);
   --color-success: var(--success);

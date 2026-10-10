@@ -44,7 +44,7 @@ export function Modal({ open, onClose, title, children, size = "md" }: ModalProp
       // a click on the dark area around the box closes it
       onClick={(event) => event.target === ref.current && onClose()}
       aria-label={title}
-      className={`m-auto w-[calc(100%-2rem)] rounded-2xl border border-border bg-surface p-0 text-foreground shadow-xl backdrop:bg-black/50 open:animate-pop ${
+      className={`m-auto w-[calc(100%-2rem)] rounded-2xl border border-border/70 bg-surface shadow-card p-0 text-foreground shadow-xl backdrop:bg-black/50 open:animate-pop ${
         size === "wide" ? "max-w-4xl" : "max-w-md"
       }`}
     >

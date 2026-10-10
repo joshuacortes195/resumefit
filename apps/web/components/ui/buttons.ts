@@ -2,7 +2,7 @@
 
 // the main action on a page
 export const PRIMARY_BUTTON =
-  "inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-on-primary transition duration-150 hover:bg-primary-hover active:scale-[0.98] disabled:opacity-50 disabled:active:scale-100";
+  "inline-flex items-center justify-center gap-2 rounded-lg bg-ink px-4 py-2.5 text-sm font-semibold text-on-ink transition duration-150 hover:bg-ink-hover active:scale-[0.98] disabled:opacity-50 disabled:active:scale-100";
 
 // a quieter action next to the main one
 export const SECONDARY_BUTTON =
@@ -15,4 +15,4 @@ export const LINK_BUTTON = "font-semibold text-primary underline-offset-2 transi
 export const INPUT = "w-full rounded-lg border border-border bg-background px-3 py-2 text-sm transition-colors duration-150 focus:border-primary";
 
 // cards that hold a section of a page
-export const CARD = "rounded-2xl border border-border bg-surface";
+export const CARD = "rounded-2xl border border-border/70 bg-surface shadow-card";

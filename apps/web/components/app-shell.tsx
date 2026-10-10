@@ -25,7 +25,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex min-h-screen flex-col">
       {/* top bar */}
-      <header className="sticky top-0 z-30 flex h-14 items-center gap-2 border-b border-border bg-surface/85 px-3 backdrop-blur print:hidden">
+      <header className="sticky top-0 z-30 flex h-14 items-center gap-2 border-b border-border bg-background/85 px-3 backdrop-blur print:hidden">
         {/* hamburger, phones only */}
         <button
           type="button"
@@ -60,7 +60,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               aria-haspopup="menu"
               aria-expanded={menuOpen}
               onClick={() => setMenuOpen((value) => !value)}
-              className="flex size-9 items-center justify-center rounded-full bg-primary-soft text-primary transition-transform duration-150 active:scale-95"
+              className="flex size-9 items-center justify-center rounded-full border border-border bg-surface text-foreground transition-transform duration-150 active:scale-95"
             >
               <UserRound className="size-5" aria-hidden />
             </button>
@@ -92,7 +92,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <div className="flex flex-1">
         {/* desktop sidebar */}
         <aside
-          className={`sticky top-14 hidden h-[calc(100vh-3.5rem)] shrink-0 border-r border-border bg-surface transition-[width] duration-200 ease-settle md:block print:hidden ${
+          className={`sticky top-14 hidden h-[calc(100vh-3.5rem)] shrink-0 border-r border-border bg-background transition-[width] duration-200 ease-settle md:block print:hidden ${
             collapsed ? "w-16" : "w-60"
           }`}
         >
