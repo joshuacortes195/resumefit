@@ -1,9 +1,11 @@
 import { adapterFor } from "./lib/adapters";
+import { findApplyLink } from "./lib/apply-link";
+import { showBar } from "./lib/bar";
 import { findFields, looksLikeApplication, type FormField } from "./lib/fields";
 import { currentValue, fillField, fillForm, highlight } from "./lib/fill";
 import { hasCaptcha, looksConfirmed, readJob } from "./lib/job-page";
 import { isLinkedinProfile, readLinkedinProfile } from "./lib/linkedin-page";
-import type { FieldReport, PageInfo, PageRequest } from "./lib/types";
+import type { FieldReport, PageInfo, PageRequest, WorkerRequest } from "./lib/types";
 
 // this file is put into the page only when the person asks for it. it reads and fills, and never submits anything
 
@@ -38,6 +40,42 @@ function readPage(): PageInfo {
   };
 }
 
+// tells the background worker something happened on this page
+const tellWorker = (message: WorkerRequest) => void chrome.runtime.sendMessage(message).catch(() => undefined);
+
+// which field the bar's "Show next" button stopped on last
+let cursor = -1;
+
+// scrolls to the next field that still wants the person's eyes
+function showNext(): void {
+  const waiting = fields.filter((field) => /^(missing|review)$/.test(field.elements[0]?.getAttribute("data-resumefit-status") ?? ""));
+  if (waiting.length === 0) return;
+  cursor = (cursor + 1) % waiting.length;
+  const element = waiting[cursor]?.elements[0];
+  element?.scrollIntoView({ behavior: "smooth", block: "center" });
+  element?.focus({ preventScroll: true });
+}
+
+// true once we are watching for the "thanks for applying" page
+let watching = false;
+
+// after a fill, keeps an eye out for the form being swapped for a thank you message, on sites that never load a new page
+function watchForConfirmation(): void {
+  if (watching || looksConfirmed(document)) return;
+  watching = true;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const observer = new MutationObserver(() => {
+    // wait for the page to settle before reading it
+    clearTimeout(timer);
+    timer = setTimeout(() => {
+      if (!looksConfirmed(document) || looksLikeApplication(findFields(document, adapterFor(location.hostname)))) return;
+      observer.disconnect();
+      tellWorker({ type: "rf-confirmed" });
+    }, 1200);
+  });
+  observer.observe(document.body, { childList: true, subtree: true });
+}
+
 if (!window.__resumefitLoaded) {
   window.__resumefitLoaded = true;
 
@@ -69,6 +107,13 @@ if (!window.__resumefitLoaded) {
     } else if (request.type === "read-linkedin") {
       // the profile on screen, read only because the person pressed the import button
       respond(readLinkedinProfile(document, location.href));
+    } else if (request.type === "find-apply") {
+      // where this posting's Apply button leads
+      respond(findApplyLink(document, location.href));
+    } else if (request.type === "show-bar") {
+      showBar(document, request.bar, { onNext: showNext, onRefill: () => tellWorker({ type: "rf-refill" }) });
+      if (request.bar.state === "done") watchForConfirmation();
+      respond(true);
     } else if (request.type === "selection") {
       respond(String(getSelection() ?? ""));
     }

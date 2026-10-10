@@ -1,4 +1,4 @@
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, or } from "drizzle-orm";
 import type { ApplicationStatus } from "@resumefit/shared";
 import { getDb, schema } from "@/db";
 
@@ -33,13 +33,15 @@ export async function listApplications(userId: string): Promise<ApplicationItem[
 // what the extension reports about one autofill run
 export type ApplicationReport = { jobId: string | null; ats: string | null; applyUrl: string; status: ApplicationStatus; fieldsFilled: number; fieldsNeedingAttention: number };
 
-// records an autofill run, updating the row for the same page when there is one
+// records an autofill run, updating the row for the same job or the same page when there is one
 export async function recordApplication(userId: string, report: ApplicationReport): Promise<string> {
   const db = await getDb();
+  // the form can sit at a different address than the posting, so a run for a known job is found by the job
+  const same = report.jobId ? or(eq(schema.applications.jobId, report.jobId), eq(schema.applications.applyUrl, report.applyUrl)) : eq(schema.applications.applyUrl, report.applyUrl);
   const [existing] = await db
     .select({ id: schema.applications.id })
     .from(schema.applications)
-    .where(and(eq(schema.applications.userId, userId), eq(schema.applications.applyUrl, report.applyUrl)))
+    .where(and(eq(schema.applications.userId, userId), same))
     .limit(1);
   if (existing) {
     await db.update(schema.applications).set(report).where(eq(schema.applications.id, existing.id));

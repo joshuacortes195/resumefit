@@ -126,3 +126,6 @@ export const ADAPTERS: Adapter[] = [greenhouse, lever, ashby, workable, workday,
 export function adapterFor(hostname: string): Adapter {
   return ADAPTERS.find((adapter) => adapter.hosts.test(hostname)) ?? generic;
 }
+
+// the job sites we ask to fill in without being opened by hand, asked for once when the extension is connected
+export const HANDS_FREE_ORIGINS = ["greenhouse.io", "lever.co", "ashbyhq.com", "workable.com", "myworkdayjobs.com", "smartrecruiters.com", "icims.com", "jobvite.com", "bamboohr.com", "taleo.net"].map((host) => `https://*.${host}/*`);

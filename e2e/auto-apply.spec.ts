@@ -129,7 +129,10 @@ test("fill in the profile, connect the extension and follow an application throu
 
   // the first Auto Apply explains itself before opening anything
   await page.goto("/auto-apply");
-  await page.getByRole("region", { name: "From your tracker" }).getByRole("button", { name: "Auto Apply" }).first().click();
+  // the card shows how its application went, and its button now reads Open again
+  const tracked = page.getByRole("region", { name: "From your tracker" });
+  await expect(tracked.getByRole("listitem").filter({ hasText: "Support Specialist" })).toContainText("Applied");
+  await tracked.getByRole("button", { name: "Open again" }).first().click();
   await expect(page.getByRole("dialog")).toContainText("You always submit.");
   // answer for the made up job site ourselves, so the test never touches the real internet
   await page.context().route("https://jobs.example.com/**", (route) => route.fulfill({ contentType: "text/html", body: "<h1>Apply here</h1>" }));

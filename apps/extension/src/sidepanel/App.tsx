@@ -1,8 +1,13 @@
 import { useCallback, useEffect, useState } from "react";
+import { HANDS_FREE_ORIGINS } from "../lib/adapters";
 import { api, ApiError, getConnection, parseConnectionCode, saveConnection, type Connection } from "../lib/api";
-import type { Account, FieldReport, LinkedinImport, PageInfo } from "../lib/types";
-import { profileValues } from "../lib/values";
-import { askPage, localToday, readPage } from "./page";
+import { fillEverything, tally } from "../lib/pipeline";
+import { getRun, runKey } from "../lib/runs";
+import type { Account, FieldReport, LinkedinImport, PageInfo, Run, WorkerRequest } from "../lib/types";
+import { activeTab, askPage, localToday, readPage } from "./page";
+
+// asks chrome, once, to let us fill the big job sites without being opened by hand. it has to be asked from a click
+const askHandsFree = () => chrome.permissions.request({ origins: HANDS_FREE_ORIGINS }).catch(() => false);
 
 // a message from anything that can go wrong, ready to show
 const messageOf = (error: unknown) => (error instanceof Error ? error.message : "Something went wrong. Try again.");
@@ -64,6 +69,8 @@ export function App() {
             <button
               className="primary"
               onClick={async () => {
+                // chrome asks about the job sites in the same click
+                await askHandsFree();
                 await saveConnection(offer);
                 await chrome.storage.session.remove("connectionOffer");
                 setOffer(null);
@@ -117,6 +124,8 @@ function Connect({ error, onConnected }: { error: string | null; onConnected: ()
               setProblem("That does not look like a connection code. Copy it again from the Chrome Extension page.");
               return;
             }
+            // chrome asks about the job sites in the same click
+            await askHandsFree();
             await saveConnection(parsed);
             onConnected();
           }}
@@ -135,6 +144,7 @@ function Workspace({ connection, account, onDisconnect }: { connection: Connecti
   const [jobId, setJobId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [handsFree, setHandsFree] = useState(true);
 
   // reads the tab again, used on open and whenever the person moves on
   const check = useCallback(async () => {
@@ -142,6 +152,11 @@ function Workspace({ connection, account, onDisconnect }: { connection: Connecti
     setError(null);
     try {
       setPage(await readPage());
+      // an application Auto Apply opened here that we could not get into until now: fill it, no button needed
+      const tab = await activeTab();
+      const run = tab?.id ? await getRun(tab.id) : null;
+      if (run?.jobId) setJobId(run.jobId);
+      if (tab?.id && run?.stage === "blocked") void chrome.runtime.sendMessage({ type: "rf-advance", tabId: tab.id } satisfies WorkerRequest);
     } catch (problem) {
       setPage(null);
       setError(messageOf(problem));
@@ -159,6 +174,15 @@ function Workspace({ connection, account, onDisconnect }: { connection: Connecti
     });
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void check();
+    void chrome.permissions.contains({ origins: HANDS_FREE_ORIGINS }).then(setHandsFree);
+    // when the background worker finishes filling this tab, show how it went
+    const onRun = (changes: Record<string, chrome.storage.StorageChange>) =>
+      void activeTab().then((tab) => {
+        const next = tab?.id ? (changes[runKey(tab.id)]?.newValue as Run | undefined) : undefined;
+        if (next?.stage === "review" || next?.stage === "applied") void check();
+      });
+    chrome.storage.session.onChanged.addListener(onRun);
+    return () => chrome.storage.session.onChanged.removeListener(onRun);
   }, [check]);
 
   const open = (path: string) => void chrome.tabs.create({ url: `${connection.apiBase}${path}` });
@@ -180,6 +204,15 @@ function Workspace({ connection, account, onDisconnect }: { connection: Connecti
           </button>
         </p>
       )}
+      {/* one click lets Auto Apply fill the big job sites by itself */}
+      {!handsFree && (
+        <p className="notice small">
+          Let Auto Apply fill applications on Greenhouse, Lever, Ashby and the other big job sites as soon as they open.{" "}
+          <button className="link" onClick={async () => setHandsFree(await askHandsFree())}>
+            Turn it on
+          </button>
+        </p>
+      )}
       {error && (
         <p role="alert" className="error">
           {error}
@@ -191,7 +224,8 @@ function Workspace({ connection, account, onDisconnect }: { connection: Connecti
 
       {page?.linkedinProfile && <LinkedinCard open={open} />}
       {page?.confirmed && <p className="notice">This page looks like your application went through. Nice work.</p>}
-      {page?.hasForm && <Autofill page={page} account={account} jobId={jobId} onPage={setPage} />}
+      {/* the key starts the card afresh when the page was read again and its fields changed */}
+      {page?.hasForm && <Autofill key={page.fields.map((field) => field.id + field.status).join()} page={page} account={account} jobId={jobId} onPage={setPage} />}
       {page?.job && !page.hasForm && !page.linkedinProfile && <JobCard job={page.job} account={account} jobId={jobId} onJob={setJobId} open={open} heading="Job on this page" />}
       {page && !page.job && !page.hasForm && !pasted && !page.linkedinProfile && (
         <div className="card">
@@ -369,35 +403,27 @@ function Autofill({ page, account, jobId, onPage }: { page: PageInfo; account: A
   const linked = jobId ? account.resumes.find((resume) => resume.linkedJobId === jobId) : undefined;
   const [resumeId, setResumeId] = useState(linked?.id ?? account.resumes.find((resume) => resume.isBase)?.id ?? account.resumes[0]?.id ?? "");
   const [fields, setFields] = useState<FieldReport[]>(page.fields);
-  const [filled, setFilled] = useState(false);
+  // a form the background worker already filled comes in with its fields marked
+  const [filled, setFilled] = useState(page.fields.some((field) => field.status !== "skipped"));
   const [busy, setBusy] = useState(false);
   const [applied, setApplied] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // tells the web app how this application is going
   const reportStatus = (status: "needs_review" | "applied", list: FieldReport[]) =>
-    api
-      .reportApplication({
-        jobId,
-        ats: page.ats?.name ?? null,
-        applyUrl: page.url,
-        status,
-        fieldsFilled: list.filter((field) => field.status === "filled" || field.status === "review").length,
-        fieldsNeedingAttention: list.filter((field) => field.status === "missing" || field.status === "review").length,
-        today: localToday(),
-      })
-      .catch(() => undefined);
+    api.reportApplication({ jobId, ats: page.ats?.name ?? null, applyUrl: page.url, status, fieldsFilled: tally(list).filled, fieldsNeedingAttention: tally(list).needs, today: localToday() }).catch(() => undefined);
 
-  // fills the form from the profile. it stops there, nothing is submitted
+  // fills the form from the profile and drafts the written answers. it stops there, nothing is submitted
   async function autofill() {
     setBusy(true);
     setError(null);
     try {
-      const resume = resumeId ? await api.resumeFile(resumeId) : null;
-      const results = await askPage<FieldReport[]>({ type: "autofill", values: profileValues(account), resume });
+      const results = await fillEverything(askPage, account, { resumeId: resumeId || null, jobId, jdText: page.job?.description ?? "" });
       setFields(results);
       setFilled(true);
       void reportStatus("needs_review", results);
+      // the same summary on the page itself, for when the panel is closed
+      void askPage({ type: "show-bar", bar: { state: "done", ...tally(results), captcha: page.captcha, multiPage: page.ats?.id === "workday" || page.ats?.id === "taleo" } }).catch(() => undefined);
     } catch (problem) {
       setError(messageOf(problem));
     } finally {
@@ -433,7 +459,7 @@ function Autofill({ page, account, jobId, onPage }: { page: PageInfo; account: A
 
       <div className="row" style={{ marginTop: 10 }}>
         <button className="primary" onClick={autofill} disabled={busy}>
-          {busy ? "Filling..." : filled ? "Fill again" : "Autofill"}
+          {busy ? "Filling and drafting answers..." : filled ? "Fill again" : "Autofill"}
         </button>
         {filled && (
           <button

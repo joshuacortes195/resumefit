@@ -12,7 +12,7 @@ A free tool for matching a resume to a job description, tracking applications an
 - **Resume builder and manager**: eight single column templates, a step by step editor with a live preview, PDF and Word export, and every version kept in one place. The builder reopens the resume you were working on, and suggests skills from a job title.
 - **LinkedIn Optimizer**: scores your profile against the jobs you want and lists the keywords it is missing. The extension can read your own profile page into it, or you can upload LinkedIn's PDF of your profile.
 - **Find Jobs**: open roles from the public job boards of about 160 companies plus a wider job site that covers fields like healthcare, logistics and finance. Pick a resume and every job gets a fit label. An admin can switch it off.
-- **Auto Apply**: pick a resume, get open roles that suit it, and start an application in one click. The job goes onto the tracker and the extension fills in the form.
+- **Auto Apply**: pick a resume, get open roles that suit it, and start up to five applications in one click. Each job goes onto the tracker, the extension opens the form, fills it in, attaches the resume and drafts the written answers. You review and press submit, and the job moves to Applied when the site says thanks.
 - **Chrome extension**: save or scan a job from the page you are on, and autofill application forms. You always review and press submit yourself.
 
 The match score is plain code with no language model behind it, so it works with nothing set up and always gives the same answer for the same input. The writing features run on free tiers only (Google Gemini, then Groq, then Cloudflare Workers AI) and the app keeps working when they are off or busy.

@@ -311,6 +311,11 @@ describe("reading the page", () => {
     expect(looksConfirmed(document)).toBe(true);
     expect(looksConfirmed(load("greenhouse"))).toBe(false);
   });
+
+  it("is not fooled by a thank you message that is still tucked away", () => {
+    document.body.innerHTML = '<main><form><input name="email"></form><script>const done = "Thank you for applying";</script><div hidden>Your application has been submitted</div></main>';
+    expect(looksConfirmed(document)).toBe(false);
+  });
 });
 
 describe("profile values", () => {

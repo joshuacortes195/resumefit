@@ -21,7 +21,7 @@ export default function ExtensionPage() {
     <div className="mx-auto max-w-3xl space-y-6">
       <div>
         <h1 className="text-3xl font-semibold">Chrome Extension</h1>
-        <p className="mt-1 text-muted">Save jobs, scan them and fill in applications right from the page you are on. You always review and press submit yourself.</p>
+        <p className="mt-1 text-muted">Save jobs, scan them and have applications filled in for you. You always review and press submit yourself.</p>
       </div>
 
       <section className={`${CARD} p-6`}>
@@ -69,9 +69,11 @@ export default function ExtensionPage() {
         <ul className="mt-3 list-disc space-y-1.5 pl-5 text-sm">
           <li><strong>On a job posting:</strong> save the job to your tracker, or scan it against your resume and see your match rate and the top missing skills without leaving the page.</li>
           <li><strong>On any page:</strong> highlight a job description, right click and choose &quot;Scan this job description with ResumeFit&quot;.</li>
-          <li><strong>On an application form:</strong> press Autofill. It fills in your details, attaches your resume and colors each field: green is filled from your profile, amber is a draft to review, red needs you.</li>
+          <li><strong>From Auto Apply:</strong> press Auto Apply on a job and the extension opens the application, fills it in and puts a small bar on the page that says what still needs you. Up to five can be started together.</li>
+          <li><strong>On an application form you opened yourself:</strong> press Autofill. It fills in your details, attaches your resume and colors each field: green is filled from your profile, amber is a draft to review, red needs you.</li>
           <li><strong>On your LinkedIn profile:</strong> press Import my profile and the LinkedIn Optimizer opens with your headline, About, experience and skills filled in.</li>
-          <li><strong>Written questions:</strong> it uses an answer you saved before when one fits, otherwise it can draft one from your resume for you to edit.</li>
+          <li><strong>Written questions:</strong> it uses an answer you saved before when one fits, otherwise it drafts one from your resume and the job description and marks it amber for you to read and edit.</li>
+          <li><strong>After you submit:</strong> when the site shows its thank you page, the job moves to Applied on your tracker by itself.</li>
         </ul>
         <h3 className="mt-5 font-semibold">Where autofill works</h3>
         <p className="mt-1 text-sm">
@@ -87,7 +89,7 @@ export default function ExtensionPage() {
         <ul className="mt-3 list-disc space-y-1.5 pl-5 text-sm">
           <li>It never presses Submit, Apply or Next for you. You review every field and send the application yourself.</li>
           <li>It never solves or skips a captcha.</li>
-          <li>It never runs by itself. Nothing happens on a page until you open the panel and press a button.</li>
+          <li>It never starts by itself. It only opens or fills an application when you press Auto Apply here or Autofill in the panel.</li>
           <li>It never guesses demographic answers. Those come only from what you chose in your profile, which starts on &quot;Decline to self-identify&quot;.</li>
         </ul>
       </section>
@@ -95,8 +97,9 @@ export default function ExtensionPage() {
       <section className={`${CARD} p-6`}>
         <h2 className="text-xl font-semibold">Privacy</h2>
         <p className="mt-2 text-sm">
-          The extension asks Chrome for access one site at a time, the first time you use it there. It reads the job posting or form on the page you are looking at, only when you press a button. On your computer it stores your
-          connection key and nothing else. Everything it sends goes to your own ResumeFit account.
+          When you connect it, Chrome asks once whether it may work on the big job sites (Greenhouse, Lever, Ashby, Workable, Workday and a few more), so Auto Apply can fill those in as they open. Any other site is asked for one at a
+          time, the first time you use it there. It reads a job posting or form only when you press Auto Apply or a button in the panel. On your computer it stores your connection key and nothing else. Everything it sends goes to
+          your own ResumeFit account.
         </p>
       </section>
 
@@ -110,6 +113,13 @@ export default function ExtensionPage() {
           <div>
             <dt className="font-semibold">&quot;Check this page&quot; asks for permission</dt>
             <dd className="text-muted">That is Chrome asking whether ResumeFit may read this one site. Choose Allow and press the button again.</dd>
+          </div>
+          <div>
+            <dt className="font-semibold">Auto Apply opened the page but did not fill it</dt>
+            <dd className="text-muted">
+              Download the extension again and reload it on chrome://extensions so you have the newest one, then open its side panel and press Turn it on. On a company&apos;s own careers site, click the ResumeFit icon once and it
+              fills the form.
+            </dd>
           </div>
           <div>
             <dt className="font-semibold">A field was not filled</dt>

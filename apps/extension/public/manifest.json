@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "ResumeFit",
-  "version": "0.1.0",
-  "description": "Save jobs, scan them against your resume and fill in applications. You always review and submit yourself.",
+  "version": "0.2.0",
+  "description": "Save jobs, scan them against your resume and have applications filled in for you. You always review and submit yourself.",
   "action": { "default_title": "Open ResumeFit" },
   "side_panel": { "default_path": "sidepanel.html" },
   "background": { "service_worker": "background.js", "type": "module" },

@@ -93,7 +93,34 @@ export type PageRequest =
   | { type: "set-field"; id: string; value: string; status: FillStatus }
   | { type: "focus-field"; id: string }
   | { type: "selection" }
-  | { type: "read-linkedin" };
+  | { type: "read-linkedin" }
+  | { type: "find-apply" }
+  | { type: "show-bar"; bar: BarState };
+
+// what the little bar on the page is saying
+export type BarState =
+  | { state: "working" }
+  | { state: "done"; filled: number; needs: number; captcha: boolean; multiPage: boolean }
+  | { state: "no-form" }
+  | { state: "applied" }
+  | { state: "error"; message: string };
+
+// one application the web app asked us to open and fill, kept per tab
+export type Run = {
+  jobId: string | null;
+  resumeId: string | null;
+  // how many times we followed an Apply link to get to the form
+  hops: number;
+  // opening: waiting for the form. blocked: we may not read this site yet. review: filled, the person is checking it
+  stage: "opening" | "blocked" | "filling" | "review" | "applied";
+  // the page the form was filled on, and how it went
+  url: string;
+  filled: number;
+  needs: number;
+};
+
+// messages the page and the side panel send to the background worker
+export type WorkerRequest = { type: "rf-refill" } | { type: "rf-confirmed" } | { type: "rf-advance"; tabId: number };
 
 // a linkedin profile read off the page the person is on
 export type LinkedinImport = { headline: string; about: string; experience: string; skills: string[]; url: string };
