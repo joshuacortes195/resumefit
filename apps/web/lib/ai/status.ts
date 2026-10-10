@@ -2,7 +2,7 @@ import { and, eq } from "drizzle-orm";
 import { getDb, schema } from "@/db";
 import { AI_FEATURES, usedToday, type AiFeature } from "@/lib/ai/limits";
 import { dailyCaps } from "@/lib/data/settings";
-import { providerHealth, readyProviders } from "@/lib/ai/router";
+import { readyProviders, savedProviderHealth } from "@/lib/ai/router";
 
 // what the settings page shows about the writing helpers
 export type AiStatus = {
@@ -25,7 +25,7 @@ export async function aiStatus(userId: string): Promise<AiStatus> {
       .where(and(eq(schema.userAiKeys.userId, userId), eq(schema.userAiKeys.provider, "gemini")))
       .limit(1),
   ]);
-  const health = providerHealth();
+  const health = await savedProviderHealth();
   const names = new Set(ready.map((provider) => provider.name));
 
   const remaining: AiStatus["remaining"] = {};

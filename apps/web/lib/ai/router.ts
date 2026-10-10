@@ -52,6 +52,32 @@ export function providerHealth(): Record<string, ProviderHealth> {
   return health;
 }
 
+// the same notes, kept in the database. on a host that runs many short lived copies of the app,
+// memory alone would lose the reason a provider failed before anyone could read it
+export async function savedProviderHealth(): Promise<Record<string, ProviderHealth>> {
+  try {
+    const db = await getDb();
+    const [row] = await db.select({ value: schema.appSettings.value }).from(schema.appSettings).where(eq(schema.appSettings.key, "ai-health")).limit(1);
+    const saved = (row?.value ?? {}) as Record<string, { lastOk: string | null; lastError: string | null; lastErrorAt: string | null; rateLimitHits: number }>;
+    return Object.fromEntries(Object.entries(saved).map(([name, entry]) => [name, { ...entry, lastOk: entry.lastOk ? new Date(entry.lastOk) : null, lastErrorAt: entry.lastErrorAt ? new Date(entry.lastErrorAt) : null }]));
+  } catch {
+    return health;
+  }
+}
+
+// writes the notes for one provider to the database, quietly giving up if that fails
+async function saveHealth(name: string): Promise<void> {
+  try {
+    const entry = health[name];
+    if (!entry) return;
+    const all = { ...(await savedProviderHealth()), [name]: entry };
+    const db = await getDb();
+    await db.insert(schema.appSettings).values({ key: "ai-health", value: all }).onConflictDoUpdate({ target: schema.appSettings.key, set: { value: all } });
+  } catch {
+    // health notes are a nice to have, never a reason to fail a request
+  }
+}
+
 // notes down how a call went
 function record(name: string, error?: ProviderError | Error) {
   const entry = (health[name] ??= { lastOk: null, lastError: null, lastErrorAt: null, rateLimitHits: 0 });
@@ -59,7 +85,9 @@ function record(name: string, error?: ProviderError | Error) {
     entry.lastOk = new Date();
     return;
   }
-  entry.lastError = error.message.slice(0, 200);
+  // the status code says most of what went wrong: 429 is a rate limit, 404 a model that does not exist, 400 a request the provider would not take
+  const status = error instanceof ProviderError && error.status ? `${error.status}: ` : "";
+  entry.lastError = `${status}${error.message}`.slice(0, 300);
   entry.lastErrorAt = new Date();
   if (error instanceof ProviderError && error.status === 429) entry.rateLimitHits += 1;
 }
@@ -144,11 +172,15 @@ async function attempt<T>(
     try {
       const { value, tokensIn, tokensOut } = await run(provider, model, AbortSignal.timeout(options.timeoutMs ?? 25_000));
       record(provider.name);
+      if (health[provider.name]?.lastError) await saveHealth(provider.name);
       if (!options.untracked) await logUsage({ userId: options.userId, feature, provider: provider.name, model, tokensIn, tokensOut });
       return value;
     } catch (error) {
       // rate limits, outages, timeouts and unusable answers all mean "try the next one"
       record(provider.name, error instanceof Error ? error : new Error("unknown error"));
+      // also into the server log and the database, so the reason can be found afterwards
+      console.error(`ai provider ${provider.name} (${model}) failed for ${feature}: ${health[provider.name]?.lastError ?? "unknown"}`);
+      await saveHealth(provider.name);
     }
   }
   throw new AiBusyError();

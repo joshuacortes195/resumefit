@@ -4,7 +4,7 @@ import { AdminPanel } from "@/components/admin-panel";
 import { CARD } from "@/components/ui/buttons";
 import { TableSkeleton } from "@/components/ui/skeleton";
 import { DAILY_CAPS, type AiFeature } from "@/lib/ai/limits";
-import { providerHealth, readyProviders } from "@/lib/ai/router";
+import { readyProviders, savedProviderHealth } from "@/lib/ai/router";
 import { getCurrentUser } from "@/lib/auth";
 import { listInvites, listUsers, usageByDay } from "@/lib/data/admin";
 import { dailyCaps, featureFlags, FLAGS, type Flag } from "@/lib/data/settings";
@@ -35,7 +35,7 @@ async function AdminContent() {
   if (!user.isAdmin) notFound();
 
   const [users, invites, usage, caps, flags, ready] = await Promise.all([listUsers(), listInvites(), usageByDay(), dailyCaps(), featureFlags(), readyProviders()]);
-  const health = providerHealth();
+  const health = await savedProviderHealth();
   const readyNames = new Set(ready.map((provider) => provider.name));
 
   return (
@@ -49,7 +49,7 @@ async function AdminContent() {
       {/* which providers are answering */}
       <section className={`${CARD} p-6`}>
         <h2 className="text-xl font-semibold">Provider health</h2>
-        <p className="mt-1 text-sm text-muted">Since the server last restarted.</p>
+        <p className="mt-1 text-sm text-muted">The most recent answer and the most recent problem from each provider.</p>
         <table className="mt-4 w-full text-sm">
           <thead>
             <tr className="border-b border-border text-left text-muted">
@@ -67,7 +67,7 @@ async function AdminContent() {
                 <td className="py-2.5">{readyNames.has(name) ? "Yes" : "No"}</td>
                 <td className="py-2.5 text-muted">{health[name]?.lastOk ? WHEN.format(health[name].lastOk) : "None yet"}</td>
                 <td className="py-2.5 tabular-nums">{health[name]?.rateLimitHits ?? 0}</td>
-                <td className="max-w-64 truncate py-2.5 text-muted">{health[name]?.lastError ?? "None"}</td>
+                <td className="max-w-md py-2.5 text-muted">{health[name]?.lastError ?? "None"}</td>
               </tr>
             ))}
           </tbody>
