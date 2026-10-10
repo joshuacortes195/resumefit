@@ -42,6 +42,15 @@ export async function fillEverything(ask: Ask, account: Account, options: { resu
   return fields;
 }
 
+// whether a filled form may be sent without the person: only when nothing at all is left for them.
+// a captcha, a form spread over pages, a drafted answer or an empty required field each hand it back
+export function canAutoSubmit(fields: FieldReport[], page: { captcha: boolean; multiPage: boolean }): boolean {
+  const { filled, needs } = tally(fields);
+  const resumeOk = fields.filter((field) => field.key === "resume").every((field) => field.status === "filled");
+  const hasBasics = fields.some((field) => field.key === "email" && field.status === "filled");
+  return !page.captcha && !page.multiPage && needs === 0 && filled >= 3 && resumeOk && hasBasics;
+}
+
 // how many fields got an answer and how many still want the person's eyes
 export function tally(fields: FieldReport[]): { filled: number; needs: number } {
   return {

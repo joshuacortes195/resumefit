@@ -28,7 +28,7 @@ export default function TermsPage() {
 
       <section>
         <h2>The extension fills, you submit</h2>
-        <p>Autofill only fills in forms. You review every application and press the site&apos;s own submit button yourself. Check each field before you do.</p>
+        <p>Autofill fills in forms. You review every application and press the site&apos;s own submit button yourself, unless you switch on Submit for me, which sends applications that are completely filled from your profile. Either way, what is sent is your responsibility, so keep your profile and saved answers correct.</p>
       </section>
 
       <section>

@@ -31,7 +31,7 @@ export default function PrivacyPage() {
 
       <section>
         <h2>The browser extension</h2>
-        <p>The extension reads a job posting or application form only when you ask it to, by pressing Auto Apply or a button in its panel. It fills in forms with your saved details. It never presses submit for you.</p>
+        <p>The extension reads a job posting or application form only when you ask it to, by pressing Auto Apply or a button in its panel. It fills in forms with your saved details. It only presses submit for you if you switch on Submit for me.</p>
       </section>
 
       <section>

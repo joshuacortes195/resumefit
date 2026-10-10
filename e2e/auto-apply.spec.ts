@@ -142,6 +142,25 @@ test("fill in the profile, connect the extension and follow an application throu
   await opened.waitForURL(/jobs\.example\.com/);
   expect(opened.url()).toBe("https://jobs.example.com/harbor/77");
 
+  // submit for me is off until it is switched on, and the rules are shown first
+  await page.goto("/auto-apply");
+  expect((await (await request.get("/api/ext/me", { headers })).json()).autoSubmit).toBe(false);
+  const submitSwitch = page.getByRole("switch", { name: "Submit for me" });
+  await expect(submitSwitch).toHaveAttribute("aria-checked", "false");
+  await submitSwitch.click();
+  await expect(page.getByRole("dialog")).toContainText("There is no captcha");
+  await page.getByRole("button", { name: "Keep it off" }).click();
+  await expect(submitSwitch).toHaveAttribute("aria-checked", "false");
+  await submitSwitch.click();
+  await page.getByRole("button", { name: "Turn it on" }).click();
+  await expect(submitSwitch).toHaveAttribute("aria-checked", "true");
+  await expect.poll(async () => (await (await request.get("/api/ext/me", { headers })).json()).autoSubmit).toBe(true);
+  // and it stays on after a reload, then goes off in one click
+  await page.reload();
+  await expect(submitSwitch).toHaveAttribute("aria-checked", "true");
+  await submitSwitch.click();
+  await expect.poll(async () => (await (await request.get("/api/ext/me", { headers })).json()).autoSubmit).toBe(false);
+
   // disconnecting cuts the key off straight away
   await page.goto("/extension");
   await page.getByRole("button", { name: "Disconnect" }).click();

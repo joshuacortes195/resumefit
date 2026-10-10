@@ -1,8 +1,15 @@
 // @vitest-environment happy-dom
 import { describe, expect, it } from "vitest";
 import { findApplyLink } from "./apply-link";
-import { showBar } from "./bar";
-import { fillEverything, MAX_DRAFTS, pickResume, tally, worthDrafting, type Ask } from "./pipeline";
+import { showBar, tickBar } from "./bar";
+import { readFileSync } from "node:fs";
+import path from "node:path";
+import { adapterFor } from "./adapters";
+import { findFields } from "./fields";
+import { fillForm, highlight } from "./fill";
+import { canAutoSubmit, fillEverything, MAX_DRAFTS, pickResume, tally, worthDrafting, type Ask } from "./pipeline";
+import { findSubmit, pressSubmit } from "./submit";
+import { profileValues } from "./values";
 import type { Account, FieldReport, PageRequest } from "./types";
 
 // a field as the page reports it, with only the interesting bits spelled out
@@ -98,6 +105,76 @@ describe("filling a whole form in one go", () => {
   });
 });
 
+describe("submit for me", () => {
+  // loads a saved form, fills it the way a run does and marks each field
+  function filled(name: string, host: string, account = ACCOUNT) {
+    document.documentElement.innerHTML = readFileSync(path.join(import.meta.dirname, "../../test/fixtures", `${name}.html`), "utf8");
+    const fields = findFields(document, adapterFor(host));
+    const reports = fillForm(fields, profileValues(account), { name: "resume.pdf", type: "application/pdf", base64: btoa("%PDF-1.4") });
+    for (const report of reports) highlight(fields.find((entry) => entry.id === report.id)!, report.status);
+    return { fields, reports };
+  }
+
+  it("only goes ahead when nothing at all is left for the person", () => {
+    const ready = [field("a", { key: "email", status: "filled" }), field("b", { key: "firstName", status: "filled" }), field("c", { key: "resume", kind: "file", status: "filled" }), field("d", { required: false, status: "skipped" })];
+    const page = { captcha: false, multiPage: false };
+    expect(canAutoSubmit(ready, page)).toBe(true);
+    expect(canAutoSubmit(ready, { ...page, captcha: true })).toBe(false);
+    expect(canAutoSubmit(ready, { ...page, multiPage: true })).toBe(false);
+    // a drafted answer has to be read first, and an empty required field has to be answered
+    expect(canAutoSubmit([...ready, field("e", { status: "review", value: "A draft." })], page)).toBe(false);
+    expect(canAutoSubmit([...ready, field("f", { status: "missing" })], page)).toBe(false);
+    // a resume field we could not attach to
+    expect(canAutoSubmit([...ready.slice(0, 2), field("c", { key: "resume", kind: "file", required: false, status: "skipped" }), ready[3]!], page)).toBe(false);
+  });
+
+  it("finds the button that sends each kind of form", () => {
+    for (const [name, host, words] of [
+      ["greenhouse", "boards.greenhouse.io", "Submit Application"],
+      ["lever", "jobs.lever.co", "Submit application"],
+      ["ashby", "jobs.ashbyhq.com", "Submit Application"],
+      ["generic", "careers.example.com", "Send application"],
+    ] as const) {
+      const button = findSubmit(document, filled(name, host).fields);
+      expect(button?.textContent || button?.getAttribute("value"), name).toBe(words);
+    }
+  });
+
+  it("will not guess between two buttons, and never presses Next", () => {
+    document.body.innerHTML = `<form><input name="email" id="email"><button type="submit">Next</button><button type="button">Save draft</button></form>`;
+    expect(findSubmit(document, findFields(document, adapterFor("careers.example.com")))).toBeNull();
+    document.body.innerHTML = `<form><input name="email" id="email"><button>Apply</button><button>Submit</button></form>`;
+    expect(findSubmit(document, findFields(document, adapterFor("careers.example.com")))).toBeNull();
+  });
+
+  it("leaves the form alone while a field still needs checking", () => {
+    // the greenhouse form has a written question, which a plain fill leaves red
+    const { fields } = filled("greenhouse", "boards.greenhouse.io");
+    let clicks = 0;
+    document.querySelector("#submit_app")?.addEventListener("click", (event) => {
+      event.preventDefault();
+      clicks++;
+    });
+    expect(pressSubmit(document, fields)).toMatchObject({ sent: false });
+    expect(clicks).toBe(0);
+    // once every field is marked as filled, the site's own button is clicked, once
+    for (const entry of fields) highlight(entry, "filled");
+    for (const control of document.querySelectorAll("[required]")) control.removeAttribute("required");
+    expect(pressSubmit(document, fields)).toEqual({ sent: true });
+    expect(clicks).toBe(1);
+  });
+
+  it("lets the form's own rules stop it", () => {
+    document.body.innerHTML = `<form><input name="email" id="email" value="a@example.com"><input type="checkbox" required><button type="submit">Submit application</button></form>`;
+    const fields = findFields(document, adapterFor("careers.example.com"));
+    let clicks = 0;
+    document.querySelector("button")?.addEventListener("click", () => clicks++);
+    // the box that only the person can tick is still empty
+    expect(pressSubmit(document, fields)).toMatchObject({ sent: false });
+    expect(clicks).toBe(0);
+  });
+});
+
 describe("the bar on the page", () => {
   const read = () => document.getElementById("resumefit-bar")?.shadowRoot;
 
@@ -117,6 +194,18 @@ describe("the bar on the page", () => {
     // closing takes it off the page
     buttons[2]?.click();
     expect(document.getElementById("resumefit-bar")).toBeNull();
+  });
+
+  it("counts down with a way to cancel", () => {
+    let cancelled = 0;
+    showBar(document, { state: "sending", seconds: 8 }, { onNext: () => undefined, onRefill: () => undefined, onCancel: () => cancelled++ });
+    expect(read()?.querySelector(".title")?.textContent).toBe("Sending this application in 8s");
+    tickBar(document, 7);
+    expect(read()?.querySelector(".title")?.textContent).toBe("Sending this application in 7s");
+    const buttons = [...(read()?.querySelectorAll("button") ?? [])];
+    expect(buttons.map((button) => button.textContent)).toEqual(["Cancel"]);
+    buttons[0]?.click();
+    expect(cancelled).toBe(1);
   });
 
   it("replaces itself when the state changes", () => {

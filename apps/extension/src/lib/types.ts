@@ -62,6 +62,8 @@ export type Account = {
   user: { email: string; name: string | null };
   profile: Profile;
   profileReady: boolean;
+  // true when the person switched on "Submit for me" in the web app
+  autoSubmit?: boolean;
   // title and company of the newest job on the base resume
   current: { title: string | null; company: string | null };
   resumes: { id: string; name: string; isBase: boolean; linkedJobId: string | null }[];
@@ -95,7 +97,9 @@ export type PageRequest =
   | { type: "selection" }
   | { type: "read-linkedin" }
   | { type: "find-apply" }
-  | { type: "show-bar"; bar: BarState };
+  | { type: "show-bar"; bar: BarState }
+  // counts down on the page, then presses the site's Submit button. done is what the bar goes back to if the person cancels
+  | { type: "auto-submit"; seconds: number; done: BarState };
 
 // what the little bar on the page is saying
 export type BarState =
@@ -103,6 +107,10 @@ export type BarState =
   | { state: "done"; filled: number; needs: number; captcha: boolean; multiPage: boolean }
   | { state: "no-form" }
   | { state: "applied" }
+  // counting down to pressing Submit, pressed and waiting for the site, or left for the person with the reason
+  | { state: "sending"; seconds: number }
+  | { state: "sent" }
+  | { state: "held"; message: string }
   | { state: "error"; message: string };
 
 // one application the web app asked us to open and fill, kept per tab
@@ -117,6 +125,8 @@ export type Run = {
   url: string;
   filled: number;
   needs: number;
+  // true once we have counted down to Submit on this application, so it is only ever tried once
+  submitTried?: boolean;
 };
 
 // messages the page and the side panel send to the background worker

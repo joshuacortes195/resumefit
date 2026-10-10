@@ -1,13 +1,15 @@
 import { adapterFor } from "./lib/adapters";
 import { findApplyLink } from "./lib/apply-link";
-import { showBar } from "./lib/bar";
+import { showBar, tickBar } from "./lib/bar";
 import { findFields, looksLikeApplication, type FormField } from "./lib/fields";
 import { currentValue, fillField, fillForm, highlight } from "./lib/fill";
 import { hasCaptcha, looksConfirmed, readJob } from "./lib/job-page";
 import { isLinkedinProfile, readLinkedinProfile } from "./lib/linkedin-page";
-import type { FieldReport, PageInfo, PageRequest, WorkerRequest } from "./lib/types";
+import { pressSubmit } from "./lib/submit";
+import type { BarState, FieldReport, PageInfo, PageRequest, WorkerRequest } from "./lib/types";
 
-// this file is put into the page only when the person asks for it. it reads and fills, and never submits anything
+// this file is put into the page only when the person asks for it. it reads and fills.
+// it presses Submit only when the person switched on "Submit for me", after a countdown they can cancel
 
 declare global {
   interface Window {
@@ -76,6 +78,38 @@ function watchForConfirmation(): void {
   observer.observe(document.body, { childList: true, subtree: true });
 }
 
+// what the bar's buttons do
+const barActions = { onNext: showNext, onRefill: () => tellWorker({ type: "rf-refill" }) };
+
+// counts down on the bar, then presses the site's Submit button. Cancel hands the application back to the person
+function countDownToSubmit(seconds: number, done: BarState): void {
+  let left = seconds;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  showBar(document, { state: "sending", seconds: left }, {
+    ...barActions,
+    onCancel: () => {
+      clearTimeout(timer);
+      showBar(document, done, barActions);
+    },
+  });
+  const tick = () => {
+    left--;
+    if (left > 0) {
+      tickBar(document, left);
+      timer = setTimeout(tick, 1000);
+      return;
+    }
+    const result = pressSubmit(document, fields);
+    if (!result.sent) return showBar(document, { state: "held", message: result.reason }, barActions);
+    showBar(document, { state: "sent" }, barActions);
+    // if the site never says thanks, say so and leave it with the person
+    setTimeout(() => {
+      if (!looksConfirmed(document)) showBar(document, { state: "held", message: "We pressed Submit but the site has not confirmed it. Check the page for anything it is asking for." }, barActions);
+    }, 12_000);
+  };
+  timer = setTimeout(tick, 1000);
+}
+
 if (!window.__resumefitLoaded) {
   window.__resumefitLoaded = true;
 
@@ -111,8 +145,12 @@ if (!window.__resumefitLoaded) {
       // where this posting's Apply button leads
       respond(findApplyLink(document, location.href));
     } else if (request.type === "show-bar") {
-      showBar(document, request.bar, { onNext: showNext, onRefill: () => tellWorker({ type: "rf-refill" }) });
+      showBar(document, request.bar, barActions);
       if (request.bar.state === "done") watchForConfirmation();
+      respond(true);
+    } else if (request.type === "auto-submit") {
+      watchForConfirmation();
+      countDownToSubmit(request.seconds, request.done);
       respond(true);
     } else if (request.type === "selection") {
       respond(String(getSelection() ?? ""));

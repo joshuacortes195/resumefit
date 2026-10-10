@@ -4,7 +4,7 @@ import { CARD } from "@/components/ui/buttons";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getCurrentUser } from "@/lib/auth";
 import { listApplications } from "@/lib/data/applications";
-import { extensionId, extensionStatus } from "@/lib/data/extension";
+import { autoSubmit, extensionId, extensionStatus } from "@/lib/data/extension";
 import { listJobs } from "@/lib/data/jobs";
 import { getProfile, profileReady } from "@/lib/data/profile";
 import { listResumes } from "@/lib/data/resumes";
@@ -19,7 +19,7 @@ export const maxDuration = 60;
 const STEPS = [
   { title: "Pick jobs and hit Auto Apply", text: "We line up open roles that suit your resume. Start one, or tick up to five and start them together." },
   { title: "We open and fill it", text: "The extension opens each application and types in your details, attaches your resume and drafts the written answers." },
-  { title: "Review and submit", text: "A bar on the page shows what needs you. You check it and press the site's own Submit button." },
+  { title: "Review and submit", text: "A bar on the page shows what needs you. You check it and press the site's own Submit button, unless you switch on Submit for me." },
   { title: "It tracks itself", text: "When the site says thanks, the job moves to Applied on your tracker." },
 ];
 
@@ -29,7 +29,7 @@ export default function AutoApplyPage() {
     <div className="mx-auto max-w-5xl space-y-6">
       <div>
         <h1 className="text-3xl font-semibold">Auto Apply</h1>
-        <p className="mt-1 max-w-2xl text-muted">One click opens the application and fills it out. You review it and hit submit. Free, with no credits to run out of.</p>
+        <p className="mt-1 max-w-2xl text-muted">One click opens the application and fills it out. You review it and hit submit, or let us send the ones that need nothing from you. Free, with no credits to run out of.</p>
       </div>
 
       {/* this really is a sequence, so the steps are numbered */}
@@ -53,7 +53,7 @@ export default function AutoApplyPage() {
 // loads the jobs that can be applied to and the applications so far
 async function AutoApplyLoader() {
   const user = await getCurrentUser();
-  const [jobs, applications, profile, extension, resumes, flags, knownExtension] = await Promise.all([
+  const [jobs, applications, profile, extension, resumes, flags, knownExtension, submitForMe] = await Promise.all([
     listJobs(user.id),
     listApplications(user.id),
     getProfile(user.id),
@@ -61,6 +61,7 @@ async function AutoApplyLoader() {
     listResumes(user.id),
     featureFlags(),
     extensionId(user.id),
+    autoSubmit(user.id),
   ]);
   return (
     <AutoApply
@@ -84,6 +85,7 @@ async function AutoApplyLoader() {
       profileReady={profileReady(profile)}
       extensionConnected={extension.connected}
       extensionId={knownExtension}
+      submitForMe={submitForMe}
     />
   );
 }

@@ -23,7 +23,7 @@ export function PromoBanner() {
     <div className="flex animate-rise items-center gap-3 rounded-xl border border-primary/25 bg-primary-soft px-4 py-3 text-sm">
       <Zap className="size-4 shrink-0 text-primary" aria-hidden />
       <p className="flex-1">
-        <strong>Auto Apply</strong> fills out applications for you. You review everything and press submit yourself.{" "}
+        <strong>Auto Apply</strong> fills out applications for you. You review and press submit, or let it send the finished ones.{" "}
         <Link href="/auto-apply" className="font-semibold text-primary hover:underline">
           See how it works
         </Link>

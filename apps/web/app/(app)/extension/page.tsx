@@ -21,7 +21,7 @@ export default function ExtensionPage() {
     <div className="mx-auto max-w-3xl space-y-6">
       <div>
         <h1 className="text-3xl font-semibold">Chrome Extension</h1>
-        <p className="mt-1 text-muted">Save jobs, scan them and have applications filled in for you. You always review and press submit yourself.</p>
+        <p className="mt-1 text-muted">Save jobs, scan them and have applications filled in for you. Nothing is sent unless you press Submit or switch on Submit for me.</p>
       </div>
 
       <section className={`${CARD} p-6`}>
@@ -87,7 +87,8 @@ export default function ExtensionPage() {
       <section className={`${CARD} p-6`}>
         <h2 className="text-xl font-semibold">What it never does</h2>
         <ul className="mt-3 list-disc space-y-1.5 pl-5 text-sm">
-          <li>It never presses Submit, Apply or Next for you. You review every field and send the application yourself.</li>
+          <li>It never presses Submit for you, unless you switched on Submit for me on the Auto Apply page. Even then it only sends a form that is completely filled from your profile, after a countdown you can cancel.</li>
+          <li>It never presses Next, and never ticks an &quot;I agree&quot; box for you.</li>
           <li>It never solves or skips a captcha.</li>
           <li>It never starts by itself. It only opens or fills an application when you press Auto Apply here or Autofill in the panel.</li>
           <li>It never guesses demographic answers. Those come only from what you chose in your profile, which starts on &quot;Decline to self-identify&quot;.</li>

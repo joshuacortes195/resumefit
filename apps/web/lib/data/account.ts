@@ -48,5 +48,6 @@ export async function deleteAccount(userId: string): Promise<void> {
   // a linkedin profile still waiting to be used goes too
   await db.delete(schema.appSettings).where(eq(schema.appSettings.key, `linkedin-import:${userId}`));
   await db.delete(schema.appSettings).where(eq(schema.appSettings.key, `extension-id:${userId}`));
+  await db.delete(schema.appSettings).where(eq(schema.appSettings.key, `auto-submit:${userId}`));
   await db.delete(schema.users).where(eq(schema.users.id, userId));
 }

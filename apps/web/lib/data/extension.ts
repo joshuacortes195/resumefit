@@ -54,6 +54,21 @@ export async function extensionId(userId: string): Promise<string> {
   return typeof row?.value === "string" ? row.value : "";
 }
 
+// where we keep whether a person switched on "Submit for me"
+const submitKey = (userId: string) => `auto-submit:${userId}`;
+
+// true when the person asked for finished applications to be sent for them. off unless they turned it on
+export async function autoSubmit(userId: string): Promise<boolean> {
+  const db = await getDb();
+  const [row] = await db.select({ value: schema.appSettings.value }).from(schema.appSettings).where(eq(schema.appSettings.key, submitKey(userId))).limit(1);
+  return row?.value === true;
+}
+
+export async function saveAutoSubmit(userId: string, on: boolean): Promise<void> {
+  const db = await getDb();
+  await db.insert(schema.appSettings).values({ key: submitKey(userId), value: on }).onConflictDoUpdate({ target: schema.appSettings.key, set: { value: on } });
+}
+
 // when the extension last checked in, null when it is not connected
 export async function extensionStatus(userId: string): Promise<{ connected: boolean; lastUsedAt: Date | null }> {
   const db = await getDb();

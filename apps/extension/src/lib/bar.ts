@@ -46,6 +46,9 @@ const STYLES = `
 function wording(bar: BarState): { title: string; note: string; dot: string } {
   if (bar.state === "working") return { title: "ResumeFit is filling this in", note: "Your details, your resume and the written questions. Nothing is sent.", dot: "spin" };
   if (bar.state === "applied") return { title: "Application sent", note: "Marked as applied on your tracker.", dot: "" };
+  if (bar.state === "sending") return { title: countdownTitle(bar.seconds), note: "Everything is filled from your profile. Press Cancel to send it yourself.", dot: "spin" };
+  if (bar.state === "sent") return { title: "Submit pressed, waiting for the site", note: "We mark it as applied when the site says thanks.", dot: "spin" };
+  if (bar.state === "held") return { title: "Left for you to send", note: bar.message, dot: "warn" };
   if (bar.state === "no-form") return { title: "No application form on this page yet", note: "Press the site's Apply button. We fill the form in when it shows.", dot: "warn" };
   if (bar.state === "error") return { title: "Could not fill this one", note: bar.message, dot: "bad" };
   const fields = `${bar.filled} ${bar.filled === 1 ? "field" : "fields"}`;
@@ -59,8 +62,17 @@ function wording(bar: BarState): { title: string; note: string; dot: string } {
   return { title: bar.needs === 0 ? `Filled ${fields}. Ready for you to review` : `Filled ${fields}, ${bar.needs} ${bar.needs === 1 ? "needs" : "need"} you`, note, dot: bar.needs === 0 ? "" : "warn" };
 }
 
+// the headline while counting down to Submit
+const countdownTitle = (seconds: number) => `Sending this application in ${seconds}s`;
+
+// changes the number in the countdown without redrawing the whole bar
+export function tickBar(doc: Document, seconds: number): void {
+  const title = doc.getElementById(HOST_ID)?.shadowRoot?.querySelector(".title");
+  if (title) title.textContent = countdownTitle(seconds);
+}
+
 // shows the bar, or changes what it says when it is already there
-export function showBar(doc: Document, bar: BarState, actions: { onNext: () => void; onRefill: () => void }): void {
+export function showBar(doc: Document, bar: BarState, actions: { onNext: () => void; onRefill: () => void; onCancel?: () => void }): void {
   doc.getElementById(HOST_ID)?.remove();
   const host = doc.createElement("div");
   host.id = HOST_ID;
@@ -96,7 +108,13 @@ export function showBar(doc: Document, bar: BarState, actions: { onNext: () => v
     again.addEventListener("click", actions.onRefill);
     box.append(again);
   }
-  if (bar.state !== "working") {
+  // stops the countdown, the application is then the person's to send
+  if (bar.state === "sending") {
+    const cancel = make("button", "main", "Cancel");
+    cancel.addEventListener("click", () => actions.onCancel?.());
+    box.append(cancel);
+  }
+  if (bar.state !== "working" && bar.state !== "sending" && bar.state !== "sent") {
     const close = make("button", "close", "×");
     close.setAttribute("aria-label", "Hide ResumeFit");
     close.addEventListener("click", () => host.remove());

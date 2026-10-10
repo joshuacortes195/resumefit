@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import type { ActionResult } from "@/app/actions/scans";
 import { getCurrentUser } from "@/lib/auth";
-import { createExtensionToken, revokeExtensionTokens } from "@/lib/data/extension";
+import { createExtensionToken, revokeExtensionTokens, saveAutoSubmit } from "@/lib/data/extension";
 import { saveProfile } from "@/lib/data/profile";
 import { profileSchema, type ProfileInput } from "@/lib/profile";
 
@@ -19,6 +19,14 @@ export async function saveProfileAction(input: ProfileInput): Promise<ActionResu
   const user = await getCurrentUser();
   await saveProfile(user.id, parsed.data);
   revalidatePath("/settings");
+  revalidatePath("/auto-apply");
+  return { ok: true };
+}
+
+// switches "Submit for me" on or off for Auto Apply
+export async function setAutoSubmit(on: boolean): Promise<ActionResult> {
+  const user = await getCurrentUser();
+  await saveAutoSubmit(user.id, on === true);
   revalidatePath("/auto-apply");
   return { ok: true };
 }

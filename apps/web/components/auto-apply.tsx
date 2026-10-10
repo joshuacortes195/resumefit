@@ -3,9 +3,10 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Bell, BellRing, Briefcase, Check, CircleAlert, ExternalLink, Settings2, Zap } from "lucide-react";
+import { Bell, BellRing, Briefcase, Check, CircleAlert, ExternalLink, Send, Settings2, Zap } from "lucide-react";
 import type { ApplicationStatus } from "@resumefit/shared";
 import { findJobs, saveFoundJob } from "@/app/actions/find-jobs";
+import { setAutoSubmit } from "@/app/actions/profile";
 import { CompanyLogo } from "@/components/company-logo";
 import { FitBadge } from "@/components/fit-badge";
 import type { ResumeOption } from "@/components/scan-form";
@@ -23,7 +24,7 @@ import type { JobResult } from "@/lib/jobs-feed";
 export type ApplyJob = { id: string; title: string; company: string | null; url: string; matchRate: number | null; createdAt: string };
 export type ApplicationEntry = { id: string; jobId: string | null; jobTitle: string | null; company: string | null; ats: string | null; applyUrl: string | null; status: ApplicationStatus; fieldsFilled: number; fieldsNeedingAttention: number; updatedAt: string };
 
-type AutoApplyProps = { jobs: ApplyJob[]; applications: ApplicationEntry[]; resumes: ResumeOption[]; suggest: boolean; profileReady: boolean; extensionConnected: boolean; extensionId: string };
+type AutoApplyProps = { jobs: ApplyJob[]; applications: ApplicationEntry[]; resumes: ResumeOption[]; suggest: boolean; profileReady: boolean; extensionConnected: boolean; extensionId: string; submitForMe: boolean };
 
 // something Auto Apply can be pressed on: a card from the tracker, or an opening we suggested
 type Target = { key: string; url: string; jobId?: string; found?: JobResult };
@@ -53,7 +54,7 @@ function age(iso: string): string {
 }
 
 // the tabs, the jobs you can apply to and the list of applications so far
-export function AutoApply({ jobs, applications, resumes, suggest, profileReady, extensionConnected, extensionId }: AutoApplyProps) {
+export function AutoApply({ jobs, applications, resumes, suggest, profileReady, extensionConnected, extensionId, submitForMe }: AutoApplyProps) {
   const router = useRouter();
   const [tab, setTab] = useState<"jobs" | "applications">("jobs");
   const [consenting, setConsenting] = useState<Target[] | null>(null);
@@ -64,6 +65,19 @@ export function AutoApply({ jobs, applications, resumes, suggest, profileReady, 
   // which tracker card each started suggestion became
   const [savedAs, setSavedAs] = useState<Record<string, string>>({});
   const [starting, setStarting] = useState(false);
+  // "Submit for me": what the switch shows, and whether its explanation is open
+  const [submits, setSubmits] = useState(submitForMe);
+  const [explaining, setExplaining] = useState(false);
+  const [, startSwitch] = useTransition();
+
+  // flips "Submit for me" and saves it. the switch moves straight away and moves back if saving fails
+  function switchSubmit(on: boolean) {
+    setSubmits(on);
+    startSwitch(async () => {
+      const result = await setAutoSubmit(on).catch(() => ({ ok: false as const }));
+      if (!result.ok) setSubmits(!on);
+    });
+  }
   // while this is in the future, the page keeps asking how the applications are going
   const [watchUntil, setWatchUntil] = useState(0);
   const [resumeId, setResumeId] = useState((resumes.find((resume) => resume.isBase) ?? resumes[0])?.id ?? "");
@@ -277,6 +291,33 @@ export function AutoApply({ jobs, applications, resumes, suggest, profileReady, 
         </section>
       </div>
 
+      {/* off unless the person turns it on, and the rules are spelled out before it goes on */}
+      <section className={`${CARD} flex flex-wrap items-center gap-x-6 gap-y-3 p-5`} aria-labelledby="submit-heading">
+        <div className="min-w-64 flex-1">
+          <h2 id="submit-heading" className="flex items-center gap-2 font-semibold">
+            <Send className="size-4 text-muted" aria-hidden />
+            Submit for me
+          </h2>
+          <p className="mt-1 text-sm text-muted">
+            {submits
+              ? "On. When a form is completely filled from your profile and has no captcha, we count down on the page and press Submit. Anything else waits for you."
+              : "Off. You press Submit on every application yourself. Turn this on and we send the ones that need nothing from you."}
+          </p>
+          {submits && extension !== null && extension.installed && !extension.canSubmit && <p className="mt-1 text-sm text-warning">Your extension is too old for this. Download the new one from the Chrome Extension page.</p>}
+        </div>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={submits}
+          aria-labelledby="submit-heading"
+          onClick={() => (submits ? switchSubmit(false) : setExplaining(true))}
+          className={`relative h-6 w-11 shrink-0 rounded-full transition-colors duration-200 ${submits ? "bg-primary" : "bg-border"}`}
+        >
+          {/* the knob slides across */}
+          <span aria-hidden className={`absolute left-0.5 top-0.5 size-5 rounded-full bg-surface shadow-sm transition-transform duration-200 ease-settle ${submits ? "translate-x-5" : ""}`} />
+        </button>
+      </section>
+
       <div>
         <Tabs
           label="Auto apply views"
@@ -483,12 +524,50 @@ export function AutoApply({ jobs, applications, resumes, suggest, profileReady, 
         </div>
       )}
 
+      {/* the rules for "Submit for me", agreed to before it goes on */}
+      <Modal open={explaining} onClose={() => setExplaining(false)} title="Turn on Submit for me?">
+        <p className="text-sm">We press the site&apos;s Submit button for you, but only when every one of these is true:</p>
+        <ul className="mt-3 list-disc space-y-2 pl-5 text-sm">
+          <li>You started the application from Auto Apply.</li>
+          <li>Every field we found was filled from your profile, your resume attached, and nothing is left red or amber.</li>
+          <li>No answer was freshly drafted. Only answers you saved yourself count.</li>
+          <li>There is no captcha, and the form is a single page.</li>
+        </ul>
+        <p className="mt-3 text-sm">
+          The page counts down for a few seconds first, with a Cancel button. If any rule is not met, the application waits for you like before. <strong>What gets sent goes out under your name</strong>, so keep your profile and saved
+          answers correct.
+        </p>
+        <div className="mt-5 flex justify-end gap-2">
+          <button type="button" onClick={() => setExplaining(false)} className={SECONDARY_BUTTON}>
+            Keep it off
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              switchSubmit(true);
+              setExplaining(false);
+            }}
+            className={PRIMARY_BUTTON}
+          >
+            Turn it on
+          </button>
+        </div>
+      </Modal>
+
       {/* shown once, before the first application */}
       <Modal open={consenting !== null} onClose={() => setConsenting(null)} title="Before your first Auto Apply">
         <ul className="list-disc space-y-2 pl-5 text-sm">
           <li>We save the job to your tracker and open the application in a new tab. The extension fills in your details, attaches your resume and drafts the written answers, then a bar on the page tells you what is left.</li>
           <li>
-            <strong>You always submit.</strong> The extension never presses Submit and never does a captcha. Read every field, fix what needs fixing, then send it yourself.
+            {submits ? (
+              <>
+                <strong>Submit for me is on.</strong> A form that is completely filled from your profile, with no captcha, is sent after a countdown you can cancel. Everything else waits for you to read and send.
+              </>
+            ) : (
+              <>
+                <strong>You always submit.</strong> The extension never presses Submit and never does a captcha. Read every field, fix what needs fixing, then send it yourself.
+              </>
+            )}
           </li>
           <li>Written answers use what you saved in your profile when one fits. A fresh draft is marked amber so you read it first.</li>
           <li>Demographic questions are answered only with what you chose in your profile.</li>

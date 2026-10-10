@@ -40,7 +40,7 @@ const TOPICS: { title: string; questions: { q: string; a: React.ReactNode }[] }[
   {
     title: "Extension and Auto Apply",
     questions: [
-      { q: "Does it submit applications for me?", a: "No, and it never will. Auto Apply opens the application, fills in the form and colors each field so you can see what needs checking. You press the site's Submit button, and the job then moves to Applied by itself." },
+      { q: "Does it submit applications for me?", a: "Only if you ask it to. Normally Auto Apply opens the application, fills in the form and colors each field so you can see what needs checking, and you press the site's Submit button. If you switch on Submit for me on the Auto Apply page, a form that is completely filled from your profile, with no captcha, is sent after a short countdown you can cancel. Either way the job moves to Applied by itself." },
       { q: "A field was filled in wrong or left empty.", a: "Fix it on the page, it is your application. If it is something we should have known, add it to your profile in Settings. Red fields are ones we had no answer for." },
       { q: "How do I connect it?", a: <>Follow the steps on the <Link href="/extension" className={LINK_BUTTON}>Chrome Extension</Link> page. A connection lasts 90 days.</> },
     ],

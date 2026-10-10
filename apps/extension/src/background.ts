@@ -1,12 +1,12 @@
 import { adapterFor, HANDS_FREE_ORIGINS } from "./lib/adapters";
 import { api, getConnection, type Connection } from "./lib/api";
-import { fillEverything, pickResume, tally, type Ask } from "./lib/pipeline";
+import { canAutoSubmit, fillEverything, pickResume, tally, type Ask } from "./lib/pipeline";
 import { clearRun, getRun, newRun, setRun } from "./lib/runs";
 import type { BarState, PageInfo, Run, WorkerRequest } from "./lib/types";
 import { localToday } from "./sidepanel/page";
 
 // the background worker: opens the side panel, owns the right click menu, takes the connection from the web app
-// and, when the web app asks, opens an application and fills it in. it never presses submit
+// and, when the web app asks, opens an application and fills it in. submit is only pressed for people who switched that on
 
 // clicking the toolbar button opens the side panel
 chrome.runtime.onInstalled.addListener(() => {
@@ -71,6 +71,9 @@ chrome.runtime.onMessageExternal.addListener((message: { type?: string; token?: 
 // one application the web app wants opened
 type ApplyRequest = { url?: string; jobId?: string; resumeId?: string };
 
+// how long the page counts down before Submit is pressed for the person, so they can stop it
+const SUBMIT_COUNTDOWN = 8;
+
 // how many applications one press may open, so nobody ends up with a wall of tabs
 const MAX_AT_ONCE = 5;
 
@@ -126,10 +129,15 @@ async function advance(tabId: number, force = false): Promise<void> {
 
     const account = await api.me();
     const fields = await fillEverything(ask, account, { resumeId: pickResume(account, run.jobId, run.resumeId), jobId: run.jobId, jdText: page.job?.description ?? "" });
-    run = { ...run, ...tally(fields), stage: "review" };
+    const multiPage = adapterFor(new URL(page.url).hostname).multiPage === true;
+    const done: BarState = { state: "done", ...tally(fields), captcha: page.captcha, multiPage };
+    // "Submit for me": only for jobs started from Auto Apply, only once, and only when nothing at all is left for the person
+    const send = account.autoSubmit === true && run.jobId !== null && !run.submitTried && canAutoSubmit(fields, { captcha: page.captcha, multiPage });
+    run = { ...run, ...tally(fields), stage: "review", submitTried: run.submitTried || send };
     await setRun(tabId, run);
     void report(run, "needs_review", page.ats?.name ?? null);
-    await say({ state: "done", filled: run.filled, needs: run.needs, captcha: page.captcha, multiPage: adapterFor(new URL(page.url).hostname).multiPage === true });
+    if (send) await ask({ type: "auto-submit", seconds: SUBMIT_COUNTDOWN, done });
+    else await say(done);
   } catch (problem) {
     // back to waiting, so Fill again or a reload can have another go
     await setRun(tabId, { ...run, stage: "opening" });
