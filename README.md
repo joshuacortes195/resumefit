@@ -8,10 +8,11 @@ A free tool for matching a resume to a job description, tracking applications an
 - **Match report**: a match rate out of 100, with searchability, hard skills, soft skills, recruiter tips and formatting each broken down into pass or fail findings. The job description is shown with found and missing skills marked up. Add your own skills, edit and rescan, and see how the score moved.
 - **Optimize**: line by line rewrite suggestions you accept or reject, with the match rate updating as you go. Anything that would add a skill your resume does not mention has to be confirmed first.
 - **Cover letters, thank-you notes and interview practice**: drafts built only from what is in your resume, and feedback on practice answers.
-- **Job tracker**: a drag and drop board from Saved to Offer, with notes, interviews, a cover letter and the resume used for each job.
-- **Resume builder and manager**: eight single column templates, a step by step editor with a live preview, PDF and Word export, and every version kept in one place.
-- **LinkedIn Optimizer**: scores your profile against the jobs you want and lists the keywords it is missing.
-- **Find Jobs** (optional, off until an admin switches it on): open roles from the public job boards of a handful of companies, ranked against your resume.
+- **Job tracker**: a drag and drop board from Saved to Offer, with notes, interviews, a cover letter and the resume used for each job. Paste the link to a posting and the title, company and description fill themselves in. The dashboard shows the same board.
+- **Resume builder and manager**: eight single column templates, a step by step editor with a live preview, PDF and Word export, and every version kept in one place. The builder reopens the resume you were working on, and suggests skills from a job title.
+- **LinkedIn Optimizer**: scores your profile against the jobs you want and lists the keywords it is missing. The extension can read your own profile page into it, or you can upload LinkedIn's PDF of your profile.
+- **Find Jobs**: open roles from the public job boards of about 160 companies plus a wider job site that covers fields like healthcare, logistics and finance. Pick a resume and every job gets a fit label. An admin can switch it off.
+- **Auto Apply**: pick a resume, get open roles that suit it, and start an application in one click. The job goes onto the tracker and the extension fills in the form.
 - **Chrome extension**: save or scan a job from the page you are on, and autofill application forms. You always review and press submit yourself.
 
 The match score is plain code with no language model behind it, so it works with nothing set up and always gives the same answer for the same input. The writing features run on free tiers only (Google Gemini, then Groq, then Cloudflare Workers AI) and the app keeps working when they are off or busy.
@@ -47,7 +48,7 @@ To try the writing features locally, get a free Gemini key from [Google AI Studi
 | --- | --- |
 | `pnpm dev` | run the web app locally |
 | `pnpm build` | production build of the web app |
-| `pnpm build:extension` | build the Chrome extension into `apps/extension/dist` |
+| `pnpm build:extension` | build the Chrome extension into `apps/extension/dist`, and refresh the zip people download from the app |
 | `pnpm typecheck` | type check every package |
 | `pnpm lint` | lint the web app |
 | `pnpm test` | run unit tests |
@@ -97,7 +98,7 @@ The migrations switch on row level security for every table with no policies, wh
 
 4. Deploy. After this, every push to `main` deploys by itself.
 
-   There is no sleeping server to wake up: pages are served on demand and the first visit after a quiet spell takes about a second. Supabase pauses a free database that has had no activity for a week, so `apps/web/vercel.json` has Vercel visit `/api/health` once a day, which is enough to keep it awake.
+   There is no sleeping server to wake up: pages are served on demand and the first visit after a quiet spell takes about a second. Supabase pauses a free database that has had no activity for a week, so `apps/web/vercel.json` has Vercel visit `/api/health` once a day, which is enough to keep it awake. A second daily visit, to `/api/cron/feed`, refreshes the saved job openings.
 5. Go back to Supabase and put the real Vercel address into the Site URL and Redirect URLs.
 
 ### 3. First sign in and inviting friends
@@ -108,15 +109,19 @@ Keep `ENCRYPTION_KEY` safe and do not change it later. It locks the API keys peo
 
 ## The Chrome extension
 
-It is not in the Chrome Web Store, so it is loaded by hand:
+It is not in the Chrome Web Store, so it is loaded by hand. The Chrome Extension page in the app has a download button and the steps, which is all a friend needs:
 
-1. Run `pnpm build:extension`.
-2. Open `chrome://extensions`, turn on **Developer mode**, press **Load unpacked** and pick `apps/extension/dist`.
-3. In the web app, open Chrome Extension in the menu and press **Connect extension**. Paste the code it shows into the extension's side panel.
+1. Download `resumefit-extension.zip` from that page and unzip it.
+2. Open `chrome://extensions`, turn on **Developer mode**, press **Load unpacked** and pick the unzipped `resumefit-extension` folder.
+3. Back on the Chrome Extension page, press **Connect extension**. Paste the code it shows into the extension's side panel.
 
-To share it with friends, zip the `dist` folder and send it to them. If your app does not live on a `vercel.app` address, add its address to `externally_connectable` in `apps/extension/public/manifest.json` and rebuild. The paste a code way of connecting works on any address.
+If you change the extension, run `pnpm build:extension` and commit `apps/web/public/resumefit-extension.zip`, which is the file that button downloads. If your app does not live on a `vercel.app` address, add its address to `externally_connectable` in `apps/extension/public/manifest.json` and rebuild. The paste a code way of connecting works on any address.
 
 What it will and will not do is spelled out on the Chrome Extension page in the app. The short version: it fills forms, it never submits them.
+
+## Where the jobs come from
+
+Find Jobs and Auto Apply read the public job boards companies host on Greenhouse, Lever and Ashby (the list is in `apps/web/lib/job-boards.ts`), and The Muse's public job listings for other fields. Nothing is scraped and no key is needed. Openings are saved once a day, so a search never waits on another site. LinkedIn and Indeed are left out on purpose: they do not allow it.
 
 ## Scoring
 
