@@ -3,14 +3,14 @@ import { jdHints } from "@/lib/ai/jd";
 import { getCurrentUser } from "@/lib/auth";
 import { getJob, updateJob } from "@/lib/data/jobs";
 import { createScan, DAILY_SCAN_LIMIT, getScan, scansToday } from "@/lib/data/scans";
-import { errorResponse, field, RequestError, resolveResume } from "@/lib/scan-request";
+import { errorResponse, field, RequestError, resolveResume, webUrl } from "@/lib/scan-request";
 
 // the job side of a new scan
 const jobSchema = z.object({
   jdText: z.string({ error: "Paste the job description first." }).min(50, "Paste the full job description, this one looks too short.").max(60_000, "That job description is too long to scan."),
   jobTitle: z.string().max(200).optional(),
   company: z.string().max(200).optional(),
-  jobUrl: z.url("That job link does not look right. Paste the full address, starting with https://").max(2000).optional(),
+  jobUrl: webUrl("That job link does not look right. Paste the full address, starting with https://").optional(),
 });
 
 // runs a new scan from the form: a resume (file, text or saved) plus a job description

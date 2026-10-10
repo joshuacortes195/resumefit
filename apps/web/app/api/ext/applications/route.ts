@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { webUrl } from "@/lib/scan-request";
 import { APPLICATION_STATUSES } from "@resumefit/shared";
 import { recordApplication } from "@/lib/data/applications";
 import { getJob, updateJob } from "@/lib/data/jobs";
@@ -9,7 +10,7 @@ export const OPTIONS = preflight;
 const reportSchema = z.object({
   jobId: z.uuid().nullable().default(null),
   ats: z.string().max(60).nullable().default(null),
-  applyUrl: z.url().max(2000),
+  applyUrl: webUrl(),
   status: z.enum(APPLICATION_STATUSES),
   fieldsFilled: z.number().int().min(0).max(500).default(0),
   fieldsNeedingAttention: z.number().int().min(0).max(500).default(0),

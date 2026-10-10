@@ -5,14 +5,9 @@ import { SignInForm } from "@/components/sign-in-form";
 import { PRIMARY_BUTTON } from "@/components/ui/buttons";
 import { authMode } from "@/lib/auth";
 import { serverEnv } from "@/lib/env";
+import { SIGN_IN_ERRORS } from "@/lib/invite";
 
 export const metadata = { title: "Sign in" };
-
-// messages for the short error codes other pages send people here with
-const ERRORS: Record<string, string> = {
-  invite: "You need an invite code to join. Enter it below and sign in again.",
-  google: "Google sign in did not work. Try again, or use an email link.",
-};
 
 // sign in screen
 export default function SignInPage({ searchParams }: { searchParams: Promise<{ error?: string; invite?: string }> }) {
@@ -54,7 +49,7 @@ async function SignInBody({ searchParams }: { searchParams: Promise<{ error?: st
   return (
     <>
       <p className="mt-1 text-sm text-muted">{inviteOnly ? "ResumeFit is invite only for now. New here? Enter the code you were given." : "No password needed. We email you a link."}</p>
-      <SignInForm inviteOnly={inviteOnly} invite={(invite ?? "").slice(0, 60)} error={error ? (ERRORS[error] ?? error.slice(0, 200)) : null} />
+      <SignInForm inviteOnly={inviteOnly} invite={(invite ?? "").slice(0, 60)} error={error ? (SIGN_IN_ERRORS[error] ?? SIGN_IN_ERRORS.link ?? null) : null} />
     </>
   );
 }

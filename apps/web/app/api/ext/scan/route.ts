@@ -1,4 +1,6 @@
 import { z } from "zod";
+import { webUrl } from "@/lib/scan-request";
+import { getJob } from "@/lib/data/jobs";
 import { getResume, listResumes } from "@/lib/data/resumes";
 import { createScan, DAILY_SCAN_LIMIT, scansToday } from "@/lib/data/scans";
 import type { LayoutMeta } from "@resumefit/scoring";
@@ -10,7 +12,7 @@ const scanSchema = z.object({
   jdText: z.string().min(50).max(60_000),
   title: z.string().max(200).optional(),
   company: z.string().max(200).optional(),
-  url: z.url().max(2000).optional(),
+  url: webUrl().optional(),
   resumeId: z.uuid().optional(),
   jobId: z.uuid().optional(),
 });
@@ -34,7 +36,8 @@ export const POST = extRoute(async (request, user) => {
     jobTitle: parsed.data.title,
     company: parsed.data.company,
     jobUrl: parsed.data.url,
-    jobId: parsed.data.jobId,
+    // only a job that belongs to this person, anything else is quietly dropped
+    jobId: parsed.data.jobId && (await getJob(user.id, parsed.data.jobId)) ? parsed.data.jobId : null,
   });
   const missing = [...scan.report.hardSkills, ...scan.report.softSkills].filter((skill) => skill.match === "missing").map((skill) => skill.name);
   return { scanId: scan.id, matchRate: scan.matchRate, missing: missing.slice(0, 8), resumeName: resume.name };

@@ -164,3 +164,23 @@ describe("files we cannot read", () => {
     await expect(readResumeFile(new Uint8Array(6 * 1024 * 1024), "a.pdf")).rejects.toThrow(/5 MB/);
   });
 });
+
+describe("limits on what a file can hold", () => {
+  it("turns away a pdf with far more pages than a resume", async () => {
+    const { PDFDocument, StandardFonts } = await import("pdf-lib");
+    const doc = await PDFDocument.create();
+    const font = await doc.embedFont(StandardFonts.Helvetica);
+    for (let page = 0; page < 16; page++) doc.addPage([612, 792]).drawText("Work Experience and lots of other text on every page", { x: 54, y: 700, size: 11, font });
+    await expect(readResumeFile(await doc.save(), "book.pdf")).rejects.toThrow(/16 pages/);
+  });
+
+  it("turns away a word file that unpacks to something huge", async () => {
+    const JSZip = (await import("jszip")).default;
+    const zip = new JSZip();
+    // thirty megabytes of the same letter squeezes down to almost nothing
+    zip.file("word/document.xml", "a".repeat(30 * 1024 * 1024));
+    const bomb = await zip.generateAsync({ type: "uint8array", compression: "DEFLATE" });
+    expect(bomb.byteLength).toBeLessThan(1024 * 1024);
+    await expect(readResumeFile(bomb, "resume.docx")).rejects.toThrow(/far bigger inside/);
+  });
+});

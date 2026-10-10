@@ -1,5 +1,6 @@
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
+import { webUrl } from "@/lib/scan-request";
 import { detectAts } from "@resumefit/scoring";
 import { getDb, schema } from "@/db";
 import { createJob } from "@/lib/data/jobs";
@@ -11,7 +12,7 @@ const jobSchema = z.object({
   title: z.string().trim().min(1).max(200),
   company: z.string().trim().max(200).optional(),
   location: z.string().trim().max(200).optional(),
-  url: z.url().max(2000).optional(),
+  url: webUrl().optional(),
   description: z.string().max(60_000).optional(),
 });
 

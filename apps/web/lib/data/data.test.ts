@@ -123,3 +123,21 @@ describe("scans", () => {
     expect(await getScan(user.id, scan.id)).toBeNull();
   });
 });
+
+describe("keeping people's data apart", () => {
+  it("will not hang a scan off someone else's job", async () => {
+    const { getDb, schema } = await import("@/db");
+    const { createJob } = await import("./jobs");
+    const { randomUUID } = await import("node:crypto");
+    const db = await getDb();
+    const stranger = randomUUID();
+    await db.insert(schema.users).values({ id: stranger, email: `stranger-${stranger}@example.com` });
+    const theirJob = await createJob(stranger, { title: "Their secret job", company: "Elsewhere" });
+
+    const user = await getCurrentUser();
+    const scan = await createScan(user.id, { resumeId: null, resumeText: RESUME, layout: null, jdText: `${JD}\nUnique line for this test only`, jobId: theirJob.id });
+    expect(scan.jobId).toBeNull();
+    const listed = (await listScans(user.id, { search: "Unique line for this test only" })).items[0];
+    expect(listed).toMatchObject({ jobId: null, jobStatus: null });
+  });
+});

@@ -184,9 +184,9 @@ export function AutoApply({ jobs, applications, profileReady, extensionConnected
                           <span className="block truncate text-muted">{application.company ?? ""}</span>
                         </td>
                         <td className="py-3 pr-4">
-                          {application.applyUrl ? (
+                          {application.applyUrl && /^https?:\/\//.test(application.applyUrl) ? (
                             <a href={application.applyUrl} target="_blank" rel="noreferrer" className={`inline-flex items-center gap-1 ${LINK_BUTTON}`}>
-                              {application.ats ?? new URL(application.applyUrl).hostname.replace(/^www\./, "")}
+                              {application.ats ?? (URL.canParse(application.applyUrl) ? new URL(application.applyUrl).hostname.replace(/^www\./, "") : "Job site")}
                               <ExternalLink className="size-3.5" aria-hidden />
                             </a>
                           ) : (

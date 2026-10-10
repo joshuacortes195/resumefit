@@ -12,8 +12,13 @@ describe("scanning with the full skill list", () => {
     const started = performance.now();
     for (let run = 0; run < 5; run++) scanResume({ resumeText: resume, jdText: jd, hardSkills: HARD_SKILLS, softSkills: SOFT_SKILLS });
     const each = (performance.now() - started) / 5;
-    // the target is a scan in well under a second, with room to spare on a slow machine
-    expect(each).toBeLessThan(400);
+    // a scan should take a few hundredths of a second, this leaves plenty of room for a slow or busy machine
+    expect(each).toBeLessThan(150);
+
+    // skills handed over in a fresh list each time, the way the app does it, must be just as quick
+    const again = performance.now();
+    for (let run = 0; run < 5; run++) scanResume({ resumeText: resume, jdText: jd, hardSkills: [...HARD_SKILLS], softSkills: [...SOFT_SKILLS], customSkills: [{ name: "Storybook", category: "hard" }] });
+    expect((performance.now() - again) / 5).toBeLessThan(150);
   });
 
   it("finds skills that only the big list knows", () => {

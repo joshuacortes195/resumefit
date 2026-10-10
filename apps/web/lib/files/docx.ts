@@ -1,7 +1,7 @@
 import type { LayoutMeta } from "@resumefit/scoring";
 import { XMLParser } from "fast-xml-parser";
 import JSZip from "jszip";
-import { FileError, isLightColor, type ExtractedFile } from "./shared";
+import { FileError, isLightColor, MAX_UNPACKED_BYTES, type ExtractedFile } from "./shared";
 
 // one xml element the way the parser hands it to us, children stay in document order
 type XmlNode = Record<string, unknown>;
@@ -83,6 +83,9 @@ export async function readDocx(bytes: Uint8Array, fileName: string | null): Prom
   } catch {
     throw new FileError("We could not open this file. Make sure it is a .docx saved from Word or Google Docs.");
   }
+  // add up what the archive says it unpacks to before unpacking any of it
+  const unpacked = Object.values(zip.files).reduce((total, entry) => total + ((entry as unknown as { _data?: { uncompressedSize?: number } })._data?.uncompressedSize ?? 0), 0);
+  if (unpacked > MAX_UNPACKED_BYTES) throw new FileError("This document is far bigger inside than a resume should be. Save a fresh copy from Word or Google Docs and try again.");
   const read = async (path: string) => (await zip.file(path)?.async("string")) ?? null;
   const documentXml = await read("word/document.xml");
   if (!documentXml) throw new FileError("This does not look like a Word document. Save it as .docx and try again.");

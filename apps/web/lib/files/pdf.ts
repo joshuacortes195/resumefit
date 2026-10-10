@@ -1,7 +1,7 @@
 import type { LayoutMeta } from "@resumefit/scoring";
 import { isBullet } from "@resumefit/scoring";
 import { getDocumentProxy } from "unpdf";
-import { FileError, isLightColor, mostCommon, type ExtractedFile } from "./shared";
+import { FileError, isLightColor, MAX_PDF_PAGES, mostCommon, type ExtractedFile } from "./shared";
 
 // one piece of text on the page with where it sits
 type Chunk = { text: string; x0: number; x1: number; size: number };
@@ -147,6 +147,7 @@ export async function readPdf(bytes: Uint8Array, fileName: string | null): Promi
     const locked = /password/i.test(String(error));
     throw new FileError(locked ? "This PDF is password protected. Remove the password and upload it again." : "We could not open this PDF. Try saving it again or upload a DOCX.");
   }
+  if (pdf.numPages > MAX_PDF_PAGES) throw new FileError(`This PDF has ${pdf.numPages} pages. Resumes are one or two, so upload just the resume.`);
   const { OPS } = (await import("unpdf/pdfjs")) as unknown as { OPS: Ops };
   const imageOps = new Set([OPS.paintImageXObject, OPS.paintInlineImageXObject, OPS.paintImageXObjectRepeat, OPS.paintImageMaskXObject].filter((op) => op !== undefined));
 

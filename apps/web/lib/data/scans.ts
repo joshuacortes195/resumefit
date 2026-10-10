@@ -142,6 +142,15 @@ export type NewScan = {
 export async function createScan(userId: string, input: NewScan): Promise<SavedScan> {
   const db = await getDb();
   const today = new Date();
+  // a scan can only hang off a job that belongs to the same person
+  if (input.jobId) {
+    const [owned] = await db
+      .select({ id: schema.jobs.id })
+      .from(schema.jobs)
+      .where(and(eq(schema.jobs.id, input.jobId), eq(schema.jobs.userId, userId)))
+      .limit(1);
+    if (!owned) input = { ...input, jobId: null };
+  }
   const report = runScan({ resumeText: input.resumeText, jdText: input.jdText, jobTitle: input.jobTitle, jobUrl: input.jobUrl, layout: input.layout, today, hints: input.hints }, await getDictionary(userId));
   const [row] = await db
     .insert(schema.scans)
@@ -282,7 +291,8 @@ export async function listScans(userId: string, options: ScanListOptions = {}): 
       jobStatus: schema.jobs.status,
     })
     .from(schema.scans)
-    .leftJoin(schema.jobs, eq(schema.scans.jobId, schema.jobs.id))
+    // the job has to be this person's too, belt and braces
+    .leftJoin(schema.jobs, and(eq(schema.scans.jobId, schema.jobs.id), eq(schema.jobs.userId, userId)))
     .where(where)
     .orderBy(order, desc(schema.scans.createdAt))
     .limit(pageSize)

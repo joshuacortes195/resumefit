@@ -15,6 +15,7 @@ export function App() {
   const [connection, setConnection] = useState<Connection | null | undefined>(undefined);
   const [account, setAccount] = useState<Account | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [offer, setOffer] = useState<Connection | null>(null);
 
   // loads the saved connection and the account behind it
   const load = useCallback(async () => {
@@ -40,9 +41,49 @@ export function App() {
     // the web app can connect us while the panel is open
     const onChange = (changes: Record<string, chrome.storage.StorageChange>) => changes.connection && void load();
     chrome.storage.local.onChanged.addListener(onChange);
-    return () => chrome.storage.local.onChanged.removeListener(onChange);
+    // an offer may already be waiting, or may arrive while the panel is open
+    void chrome.storage.session.get("connectionOffer").then((stored) => setOffer((stored.connectionOffer as Connection | undefined) ?? null));
+    const onOffer = (changes: Record<string, chrome.storage.StorageChange>) => changes.connectionOffer && setOffer((changes.connectionOffer.newValue as Connection | undefined) ?? null);
+    chrome.storage.session.onChanged.addListener(onOffer);
+    return () => {
+      chrome.storage.local.onChanged.removeListener(onChange);
+      chrome.storage.session.onChanged.removeListener(onOffer);
+    };
   }, [load]);
 
+  // a connection the web app offered, waiting for a yes
+  if (offer) {
+    return (
+      <div className="panel">
+        <div className="card">
+          <h1>Connect to this account?</h1>
+          <p className="muted" style={{ marginTop: 6 }}>
+            <strong style={{ color: "var(--foreground)" }}>{offer.apiBase}</strong> wants to connect this extension to your ResumeFit account there. Only say yes if you just pressed Connect extension on that site.
+          </p>
+          <div className="row" style={{ marginTop: 10 }}>
+            <button
+              className="primary"
+              onClick={async () => {
+                await saveConnection(offer);
+                await chrome.storage.session.remove("connectionOffer");
+                setOffer(null);
+              }}
+            >
+              Connect
+            </button>
+            <button
+              onClick={async () => {
+                await chrome.storage.session.remove("connectionOffer");
+                setOffer(null);
+              }}
+            >
+              No thanks
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
   if (connection === undefined) return <div className="panel muted">Loading...</div>;
   if (!connection) return <Connect error={error} onConnected={load} />;
   if (!account) return <div className="panel">{error ? <p className="error">{error}</p> : <p className="muted">Loading your account...</p>}</div>;

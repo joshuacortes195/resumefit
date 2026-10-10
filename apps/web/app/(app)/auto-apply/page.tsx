@@ -52,7 +52,7 @@ async function AutoApplyLoader() {
   return (
     <AutoApply
       jobs={jobs
-        .filter((job) => job.url && /^https?:\/\//.test(job.url) && job.status !== "rejected")
+        .filter((job) => job.url && /^https?:\/\//.test(job.url) && URL.canParse(job.url) && job.status !== "rejected")
         .map((job) => ({ id: job.id, title: job.title, company: job.company, url: job.url ?? "", matchRate: job.matchRate, createdAt: job.createdAt.toISOString() }))}
       applications={applications.map((application) => ({
         id: application.id,

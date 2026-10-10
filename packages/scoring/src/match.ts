@@ -26,19 +26,46 @@ function termPattern(term: string): RegExp {
 }
 
 // one way of writing a skill, with what is needed to look for it quickly
-type Spelling = { term: string; name: string; start: string; pattern: RegExp };
+type Spelling = { term: string; name: string; start: string; key: string; pattern: RegExp };
 
-// the spellings of each skill list, worked out once. the lists run to thousands of entries and are reused on every scan
-const spellingCache = new WeakMap<SkillTerm[], Spelling[]>();
+// the words of a text, cut at the same places a skill name is allowed to start and end
+function wordSet(lower: string): Set<string> {
+  return new Set(lower.match(new RegExp(`[${SKILL_CHARS}]+`, "g")) ?? []);
+}
+
+// true when a spelling cannot be in the text, decided without running its pattern
+function ruledOut(spelling: Spelling, lower: string, words: Set<string>): boolean {
+  // the first word of the spelling has to be a whole word of the text, which is one cheap lookup
+  if (spelling.key) return !words.has(spelling.key);
+  // names that start with a symbol, like .NET, fall back to a plain search
+  return !lower.includes(spelling.start);
+}
+
+// the spellings of one skill, worked out once and kept with the skill itself.
+// building a pattern is the slow part, and scans put the same skills into fresh lists all the time
+const termCache = new WeakMap<SkillTerm, Spelling[]>();
+// the sorted spellings of a whole list, for lists that are reused as they are
+const listCache = new WeakMap<SkillTerm[], Spelling[]>();
+
+// the ways one skill can be written
+function spellingsOfTerm(skill: SkillTerm): Spelling[] {
+  let spellings = termCache.get(skill);
+  if (!spellings) {
+    spellings = [skill.name, ...(skill.aliases ?? [])].map((term) => {
+      const start = (term.trim().toLowerCase().split(/[\s-]/)[0] ?? "").trim();
+      return { term, name: skill.name, start, key: start.match(new RegExp(`^[${SKILL_CHARS}]+`))?.[0] ?? "", pattern: termPattern(term) };
+    });
+    termCache.set(skill, spellings);
+  }
+  return spellings;
+}
 
 // every spelling of every skill, longest first so "Node.js" is taken before "Node"
 function spellingsOf(skills: SkillTerm[]): Spelling[] {
-  let spellings = spellingCache.get(skills);
+  let spellings = listCache.get(skills);
   if (!spellings) {
-    spellings = skills
-      .flatMap((skill) => [skill.name, ...(skill.aliases ?? [])].map((term) => ({ term, name: skill.name, start: (term.trim().toLowerCase().split(/[\s-]/)[0] ?? "").trim(), pattern: termPattern(term) })))
-      .sort((a, b) => b.term.length - a.term.length);
-    spellingCache.set(skills, spellings);
+    spellings = skills.flatMap(spellingsOfTerm).sort((a, b) => b.term.length - a.term.length);
+    listCache.set(skills, spellings);
   }
   return spellings;
 }
@@ -48,9 +75,11 @@ export function countSkills(text: string, skills: SkillTerm[]): Map<string, numb
   const counts = new Map<string, number>();
   const lower = text.toLowerCase();
   let remaining = text;
-  for (const { name, start, pattern } of spellingsOf(skills)) {
-    // a spelling whose first word is nowhere in the text cannot be there, which rules out nearly all of them cheaply
-    if (!lower.includes(start)) continue;
+  const words = wordSet(lower);
+  for (const spelling of spellingsOf(skills)) {
+    // nearly every spelling is ruled out here, before its pattern is ever run
+    if (ruledOut(spelling, lower, words)) continue;
+    const { name, pattern } = spelling;
     let found = 0;
     pattern.lastIndex = 0;
     // blank out each hit so a shorter spelling cannot count the same words again
@@ -143,8 +172,10 @@ export function findSkillSpans(text: string, skills: SkillTerm[]): SkillSpan[] {
   const spans: SkillSpan[] = [];
   const lower = text.toLowerCase();
   let remaining = text;
-  for (const { name, start, pattern } of spellingsOf(skills)) {
-    if (!lower.includes(start)) continue;
+  const words = wordSet(lower);
+  for (const spelling of spellingsOf(skills)) {
+    if (ruledOut(spelling, lower, words)) continue;
+    const { name, pattern } = spelling;
     pattern.lastIndex = 0;
     // blank out each hit so a shorter spelling cannot mark the same words again
     remaining = remaining.replace(pattern, (hit, offset: number) => {

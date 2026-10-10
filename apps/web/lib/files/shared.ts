@@ -46,3 +46,9 @@ export function mostCommon<T>(values: T[]): T | null {
   }
   return best;
 }
+
+// more pages than any resume has. past this we stop reading, so a huge file cannot tie the server up
+export const MAX_PDF_PAGES = 15;
+
+// the most a word file may unpack to. a tiny zip can hide gigabytes
+export const MAX_UNPACKED_BYTES = 25 * 1024 * 1024;

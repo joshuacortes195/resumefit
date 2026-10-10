@@ -29,7 +29,7 @@ export function ExtensionConnect({ connected, lastUsed }: ConnectProps) {
       const delivered = await tellExtension({ type: "resumefit-connect", token, apiBase: location.origin }, extensionId.trim() || undefined);
       if (delivered) {
         setCode(null);
-        setStatus("Connected. Open the extension's side panel and it is ready to go.");
+        setStatus("Sent. Open the extension's side panel and press Connect there to finish.");
       } else {
         // could not reach it, so show the code to paste instead
         setCode(connectionCode(token));

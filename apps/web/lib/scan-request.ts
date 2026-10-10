@@ -68,3 +68,17 @@ export function errorResponse(error: unknown): Response {
   console.error(error instanceof Error ? error.message : "request failed");
   return Response.json({ error: "Something went wrong on our side. Try again in a moment." }, { status: 500 });
 }
+
+// a web address that starts with http or https. anything else, like a javascript: link, is turned away
+export const webUrl = (message = "That link does not look right. Paste the full address, starting with https://") =>
+  z
+    .string()
+    .trim()
+    .max(2000)
+    .refine((value) => {
+      try {
+        return ["http:", "https:"].includes(new URL(value).protocol);
+      } catch {
+        return false;
+      }
+    }, message);

@@ -61,11 +61,12 @@ function blockText(element: Element): string {
     .trim();
 }
 
-// takes the tags out of a description that came as html inside structured data
+// takes the tags out of a description that came as html inside structured data.
+// it is parsed into a separate, inert document, so images in it never load and scripts in it never run
 function stripTags(html: string, doc: Document): string {
-  const holder = doc.createElement("div");
-  holder.innerHTML = html;
-  return blockText(holder);
+  const View = doc.defaultView ?? window;
+  const inert = new View.DOMParser().parseFromString(html, "text/html");
+  return blockText(inert.body);
 }
 
 // structured data that job sites publish for search engines, the cleanest source when it is there
