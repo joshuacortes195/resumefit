@@ -1,22 +1,27 @@
 "use client";
 
 import { useRef, useState, useTransition } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Plus, Trash2, Upload, UserSearch } from "lucide-react";
 import type { LinkedinProfile } from "@resumefit/scoring";
 import { createLinkedinReport } from "@/app/actions/practice";
 import { CARD, INPUT, LINK_BUTTON, PRIMARY_BUTTON, SECONDARY_BUTTON } from "@/components/ui/buttons";
 
+type ProfileFields = { headline: string; about: string; experience: string; skills: string; url: string };
+
 type LinkedinFormProps = {
+  // a profile the extension read off linkedin a moment ago, already in the boxes
+  imported: ProfileFields | null;
   // tracked jobs that have a description, offered as a shortcut for step two
   jobs: { id: string; label: string; description: string }[];
 };
 
 // step one: your profile. step two: the jobs to compare it with
-export function LinkedinForm({ jobs }: LinkedinFormProps) {
+export function LinkedinForm({ imported, jobs }: LinkedinFormProps) {
   const router = useRouter();
   const fileRef = useRef<HTMLInputElement>(null);
-  const [profile, setProfile] = useState({ headline: "", about: "", experience: "", skills: "", url: "" });
+  const [profile, setProfile] = useState<ProfileFields>(imported ?? { headline: "", about: "", experience: "", skills: "", url: "" });
   const [targets, setTargets] = useState<string[]>([""]);
   const [error, setError] = useState<string | null>(null);
   const [reading, setReading] = useState(false);
@@ -63,14 +68,34 @@ export function LinkedinForm({ jobs }: LinkedinFormProps) {
           </button>
           <input ref={fileRef} type="file" accept=".pdf" aria-label="LinkedIn profile PDF" className="sr-only" tabIndex={-1} onChange={(event) => importPdf(event.target.files?.[0])} />
         </div>
+        {imported && (
+          <p role="status" className="rounded-lg bg-primary-soft px-3 py-2 text-sm">
+            Imported from your LinkedIn profile with the extension. Check each part, add anything that is missing, then add the jobs you want below.
+          </p>
+        )}
+        {/* the three ways of getting a profile in here */}
         <details className="text-sm text-muted">
-          <summary className={`cursor-pointer ${LINK_BUTTON}`}>How do I get my profile as a PDF?</summary>
-          <ol className="mt-2 list-decimal space-y-1 pl-5">
+          <summary className={`cursor-pointer ${LINK_BUTTON}`}>How do I get my profile in here?</summary>
+          <p className="mt-3 font-semibold text-foreground">Fastest: import it with the extension</p>
+          <ol className="mt-1 list-decimal space-y-1 pl-5">
+            <li>
+              Install the{" "}
+              <Link href="/extension" className={LINK_BUTTON}>
+                ResumeFit extension
+              </Link>{" "}
+              and connect it.
+            </li>
+            <li>Open your own profile on linkedin.com and scroll down it once.</li>
+            <li>Click the ResumeFit icon in Chrome and press Import my profile. This page opens with everything filled in.</li>
+          </ol>
+          <p className="mt-3 font-semibold text-foreground">Or upload it as a PDF</p>
+          <ol className="mt-1 list-decimal space-y-1 pl-5">
             <li>Open your own profile on linkedin.com.</li>
             <li>Under your name, press the Resources button (some accounts show More).</li>
-            <li>Choose Save to PDF, then upload that file here.</li>
+            <li>Choose Save to PDF. LinkedIn downloads a file of your whole profile. It is a document, not a screenshot.</li>
+            <li>Press Upload profile PDF above and pick that file.</li>
           </ol>
-          <p className="mt-2">We never sign in to LinkedIn or read your profile ourselves. You can also just paste each part below.</p>
+          <p className="mt-3">Pasting your profile link will not work: LinkedIn only shows profiles to people who are signed in, so a website cannot read one from its address. You can always paste each part into the boxes below.</p>
         </details>
 
         <label className="block text-sm font-medium">

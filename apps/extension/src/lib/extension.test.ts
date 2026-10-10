@@ -6,6 +6,7 @@ import { adapterFor, generic, greenhouse, lever, ashby, workday } from "./adapte
 import { findFields, looksLikeApplication, type FormField } from "./fields";
 import { fillForm, pickOption, setNativeValue } from "./fill";
 import { hasCaptcha, looksConfirmed, readJob } from "./job-page";
+import { isLinkedinProfile, readLinkedinProfile } from "./linkedin-page";
 import { matchKey } from "./synonyms";
 import type { Account, FieldKey } from "./types";
 import { profileValues } from "./values";
@@ -322,5 +323,28 @@ describe("profile values", () => {
   it("says no to work authorization only when the person said so", () => {
     expect(profileValues({ ...ACCOUNT, profile: { ...ACCOUNT.profile, workAuthorization: "Not authorized" } }).workAuthorization).toBe("No");
     expect(VALUES.workAuthorization).toBe("Yes");
+  });
+});
+
+describe("importing a linkedin profile", () => {
+  it("only offers it on a profile page", () => {
+    expect(isLinkedinProfile("https://www.linkedin.com/in/jordan-lee/")).toBe(true);
+    expect(isLinkedinProfile("https://www.linkedin.com/in/jordan-lee/details/skills/")).toBe(true);
+    expect(isLinkedinProfile("https://www.linkedin.com/jobs/view/123")).toBe(false);
+    expect(isLinkedinProfile("https://notlinkedin.com/in/jordan-lee")).toBe(false);
+  });
+
+  it("reads the headline, about, experience and skills, without the buttons and counters", () => {
+    const profile = readLinkedinProfile(load("linkedin-profile"), "https://www.linkedin.com/in/jordan-lee/?trk=nav");
+    expect(profile.headline).toBe("Data Analyst | SQL and Tableau | Healthcare");
+    expect(profile.about).toBe("I help care teams decide faster with clear dashboards.");
+    expect(profile.experience).toBe("Data Analyst\nNorthwind Health · Full-time\nJan 2022 - Present · 3 yrs\nBuilt 14 Tableau dashboards used by 200 staff");
+    expect(profile.skills).toEqual(["SQL", "Tableau"]);
+    expect(profile.url).toBe("linkedin.com/in/jordan-lee");
+  });
+
+  it("comes back empty on a page that is not a profile", () => {
+    document.documentElement.innerHTML = "<main><p>Nothing to see</p></main>";
+    expect(readLinkedinProfile(document, "https://www.linkedin.com/feed/")).toMatchObject({ headline: "", about: "", experience: "", skills: [] });
   });
 });

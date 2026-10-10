@@ -17,6 +17,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@vitejs/plugin-react": "^5",
+    "fflate": "0.8.3",
     "typescript": "^5",
     "vite": "^7"
   }

@@ -9,6 +9,30 @@ const isId = (id: string) => /^[0-9a-f-]{36}$/i.test(id);
 // a saved linkedin report
 export type SavedLinkedinReport = { id: string; profile: LinkedinProfile; jobDescriptions: string[]; score: number; report: LinkedinReport; createdAt: Date };
 
+// where a profile sent over by the extension waits until the linkedin page picks it up
+const pendingKey = (userId: string) => `linkedin-import:${userId}`;
+const PENDING_FOR = 24 * 60 * 60 * 1000;
+
+export async function savePendingLinkedin(userId: string, profile: LinkedinProfile): Promise<void> {
+  const db = await getDb();
+  const value = { profile, at: Date.now() };
+  await db.insert(schema.appSettings).values({ key: pendingKey(userId), value }).onConflictDoUpdate({ target: schema.appSettings.key, set: { value } });
+}
+
+// the profile the extension sent, if one came in during the last day
+export async function pendingLinkedin(userId: string): Promise<LinkedinProfile | null> {
+  const db = await getDb();
+  const [row] = await db.select({ value: schema.appSettings.value }).from(schema.appSettings).where(eq(schema.appSettings.key, pendingKey(userId))).limit(1);
+  const saved = row?.value as { profile?: LinkedinProfile; at?: number } | undefined;
+  return saved?.profile && Date.now() - (saved.at ?? 0) < PENDING_FOR ? saved.profile : null;
+}
+
+// once it has been used, or the account goes, the waiting copy is thrown away
+export async function clearPendingLinkedin(userId: string): Promise<void> {
+  const db = await getDb();
+  await db.delete(schema.appSettings).where(eq(schema.appSettings.key, pendingKey(userId)));
+}
+
 export async function saveLinkedinReport(userId: string, profile: LinkedinProfile, jobDescriptions: string[], report: LinkedinReport): Promise<string> {
   const db = await getDb();
   const [row] = await db.insert(schema.linkedinReports).values({ userId, profileText: profile, jobDescriptions, score: report.score, findings: report }).returning({ id: schema.linkedinReports.id });

@@ -92,7 +92,11 @@ export type PageRequest =
   | { type: "autofill"; values: Partial<Record<FieldKey, string>>; resume: { name: string; type: string; base64: string } | null }
   | { type: "set-field"; id: string; value: string; status: FillStatus }
   | { type: "focus-field"; id: string }
-  | { type: "selection" };
+  | { type: "selection" }
+  | { type: "read-linkedin" };
+
+// a linkedin profile read off the page the person is on
+export type LinkedinImport = { headline: string; about: string; experience: string; skills: string[]; url: string };
 
 // what the page tells the side panel about itself
 export type PageInfo = {
@@ -105,4 +109,6 @@ export type PageInfo = {
   captcha: boolean;
   // true when the page reads like "thanks, we got your application"
   confirmed: boolean;
+  // true on a linkedin profile, which can be imported into the linkedin optimizer
+  linkedinProfile: boolean;
 };

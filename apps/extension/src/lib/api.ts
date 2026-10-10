@@ -1,4 +1,4 @@
-import type { Account, FieldKey } from "./types";
+import type { Account, FieldKey, LinkedinImport } from "./types";
 
 // where the web app lives and the key that lets us act for the person
 export type Connection = { apiBase: string; token: string };
@@ -64,6 +64,7 @@ export const api = {
   resumeFile: (id: string) => call<{ name: string; type: string; base64: string }>(`resumes/${id}`),
   answer: (input: { question: string; jdText: string; resumeId?: string }) => call<{ answer: string; source: "saved" | "ai"; remaining?: number | null }>("answer", input),
   saveAnswer: (entry: { question: string; answer: string }) => call<{ saved: boolean }>("qa", entry),
+  importLinkedin: (profile: LinkedinImport) => call<{ saved: boolean }>("linkedin", profile),
   reportApplication: (report: { jobId: string | null; ats: string | null; applyUrl: string; status: string; fieldsFilled: number; fieldsNeedingAttention: number; today?: string }) => call<{ id: string }>("applications", report),
 };
 

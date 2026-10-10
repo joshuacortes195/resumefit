@@ -6,7 +6,7 @@ import { CARD } from "@/components/ui/buttons";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getCurrentUser } from "@/lib/auth";
 import { listJobs, getJob } from "@/lib/data/jobs";
-import { listLinkedinReports } from "@/lib/data/practice";
+import { listLinkedinReports, pendingLinkedin } from "@/lib/data/practice";
 
 export const metadata = { title: "LinkedIn Optimizer" };
 
@@ -33,10 +33,12 @@ export default function LinkedinPage() {
 // the form, with tracked jobs offered as targets
 async function FormLoader() {
   const user = await getCurrentUser();
-  const jobs = await listJobs(user.id);
+  // a profile the extension just read is waiting here
+  const [jobs, imported] = await Promise.all([listJobs(user.id), pendingLinkedin(user.id)]);
   const full = await Promise.all(jobs.slice(0, 15).map((job) => getJob(user.id, job.id)));
   return (
     <LinkedinForm
+      imported={imported ? { headline: imported.headline, about: imported.about, experience: imported.experience, skills: imported.skills.join(", "), url: imported.url ?? "" } : null}
       jobs={full.flatMap((job) => (job?.description && job.description.length >= 50 ? [{ id: job.id, label: [job.title, job.company].filter(Boolean).join(", "), description: job.description }] : []))}
     />
   );

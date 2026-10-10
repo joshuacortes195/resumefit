@@ -45,5 +45,7 @@ export async function deleteAccount(userId: string): Promise<void> {
   const files = await db.select({ filePath: schema.resumes.filePath }).from(schema.resumes).where(eq(schema.resumes.userId, userId));
   for (const { filePath } of files) if (filePath) await deleteFile(filePath);
   // every other table hangs off the user and goes with it
+  // a linkedin profile still waiting to be used goes too
+  await db.delete(schema.appSettings).where(eq(schema.appSettings.key, `linkedin-import:${userId}`));
   await db.delete(schema.users).where(eq(schema.users.id, userId));
 }

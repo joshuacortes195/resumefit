@@ -12,7 +12,7 @@ import { redact } from "@/lib/ai/redact";
 import { AiBusyError, AiLimitError, AiUnavailableError, aiAvailable, generateJSON, generateText } from "@/lib/ai/router";
 import { getCurrentUser } from "@/lib/auth";
 import { getJob } from "@/lib/data/jobs";
-import { createPracticeSession, getLinkedinReport, getPracticeSession, saveLinkedinReport, savePracticeAnswer, type PracticeAnswer } from "@/lib/data/practice";
+import { clearPendingLinkedin, createPracticeSession, getLinkedinReport, getPracticeSession, saveLinkedinReport, savePracticeAnswer, type PracticeAnswer } from "@/lib/data/practice";
 import { getResume, listResumes } from "@/lib/data/resumes";
 import { fallbackQuestions, measureAnswer } from "@/lib/interview";
 
@@ -45,6 +45,8 @@ export async function createLinkedinReport(input: { profile: z.input<typeof prof
   const cleaned = { ...profile.data, skills: profile.data.skills.filter(Boolean), url: profile.data.url || undefined };
   const report = scoreLinkedin(cleaned, jobs.data, HARD_SKILLS, SOFT_SKILLS);
   const id = await saveLinkedinReport(user.id, cleaned, jobs.data, report);
+  // an import from the extension has done its job now
+  await clearPendingLinkedin(user.id);
   revalidatePath("/linkedin");
   return { ok: true, id };
 }

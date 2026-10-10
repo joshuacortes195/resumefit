@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { api, ApiError, getConnection, parseConnectionCode, saveConnection, type Connection } from "../lib/api";
-import type { Account, FieldReport, PageInfo } from "../lib/types";
+import type { Account, FieldReport, LinkedinImport, PageInfo } from "../lib/types";
 import { profileValues } from "../lib/values";
 import { askPage, localToday, readPage } from "./page";
 
@@ -189,10 +189,11 @@ function Workspace({ connection, account, onDisconnect }: { connection: Connecti
       {/* highlighted text sent from the right click menu */}
       {pasted && <JobCard job={{ title: pasted.title, company: "", location: "", description: pasted.text, url: pasted.url }} account={account} jobId={jobId} onJob={setJobId} open={open} heading="Selected text" />}
 
+      {page?.linkedinProfile && <LinkedinCard open={open} />}
       {page?.confirmed && <p className="notice">This page looks like your application went through. Nice work.</p>}
       {page?.hasForm && <Autofill page={page} account={account} jobId={jobId} onPage={setPage} />}
-      {page?.job && !page.hasForm && <JobCard job={page.job} account={account} jobId={jobId} onJob={setJobId} open={open} heading="Job on this page" />}
-      {page && !page.job && !page.hasForm && !pasted && (
+      {page?.job && !page.hasForm && !page.linkedinProfile && <JobCard job={page.job} account={account} jobId={jobId} onJob={setJobId} open={open} heading="Job on this page" />}
+      {page && !page.job && !page.hasForm && !pasted && !page.linkedinProfile && (
         <div className="card">
           <p>We did not find a job posting or an application form on this page.</p>
           <p className="muted small" style={{ marginTop: 6 }}>
@@ -210,6 +211,45 @@ function Workspace({ connection, account, onDisconnect }: { connection: Connecti
           Disconnect
         </button>
       </p>
+    </div>
+  );
+}
+
+// on a linkedin profile: read it and hand it to the linkedin optimizer
+function LinkedinCard({ open }: { open: (path: string) => void }) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // reads the profile on screen, sends it to the person's account and opens the optimizer with it filled in
+  async function importProfile() {
+    setBusy(true);
+    setError(null);
+    try {
+      const profile = await askPage<LinkedinImport>({ type: "read-linkedin" });
+      await api.importLinkedin(profile);
+      open("/linkedin");
+    } catch (problem) {
+      setError(messageOf(problem));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="card">
+      <p className="muted small">LinkedIn profile</p>
+      <h2 style={{ marginTop: 2 }}>Import my profile</h2>
+      <p className="muted small" style={{ marginTop: 6 }}>
+        Use this on your own profile. Scroll down it once so every section has loaded, then press the button. We read the headline, About, experience and skills shown on this page and open the LinkedIn Optimizer with them filled in.
+      </p>
+      <button className="primary" style={{ marginTop: 10 }} onClick={importProfile} disabled={busy}>
+        {busy ? "Reading your profile..." : "Import my profile"}
+      </button>
+      {error && (
+        <p role="alert" className="error small" style={{ marginTop: 8 }}>
+          {error}
+        </p>
+      )}
     </div>
   );
 }

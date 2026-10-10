@@ -2,6 +2,7 @@ import { adapterFor } from "./lib/adapters";
 import { findFields, looksLikeApplication, type FormField } from "./lib/fields";
 import { currentValue, fillField, fillForm, highlight } from "./lib/fill";
 import { hasCaptcha, looksConfirmed, readJob } from "./lib/job-page";
+import { isLinkedinProfile, readLinkedinProfile } from "./lib/linkedin-page";
 import type { FieldReport, PageInfo, PageRequest } from "./lib/types";
 
 // this file is put into the page only when the person asks for it. it reads and fills, and never submits anything
@@ -33,6 +34,7 @@ function readPage(): PageInfo {
     fields: hasForm ? fields.map((field) => report(field, (field.elements[0]?.getAttribute("data-resumefit-status") as FieldReport["status"] | null) ?? "skipped")) : [],
     captcha: hasCaptcha(document),
     confirmed: looksConfirmed(document),
+    linkedinProfile: isLinkedinProfile(location.href),
   };
 }
 
@@ -64,6 +66,9 @@ if (!window.__resumefitLoaded) {
       element?.scrollIntoView({ behavior: "smooth", block: "center" });
       element?.focus({ preventScroll: true });
       respond(true);
+    } else if (request.type === "read-linkedin") {
+      // the profile on screen, read only because the person pressed the import button
+      respond(readLinkedinProfile(document, location.href));
     } else if (request.type === "selection") {
       respond(String(getSelection() ?? ""));
     }

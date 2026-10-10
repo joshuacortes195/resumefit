@@ -120,6 +120,13 @@ test("fill in the profile, connect the extension and follow an application throu
   await page.goto("/settings");
   await expect(page.getByRole("textbox", { name: "Question 2" })).toHaveValue("Describe a time you calmed down an upset customer.");
 
+  // a linkedin profile the extension read is waiting in the optimizer, already filled in
+  await request.post("/api/ext/linkedin", { headers, data: { headline: "Support Specialist | Zendesk", about: "I help people get unstuck.", experience: "Support Specialist\nHarbor Freight Co", skills: ["Zendesk", "Excel"], url: "linkedin.com/in/sam" } });
+  await page.goto("/linkedin");
+  await expect(page.getByText("Imported from your LinkedIn profile")).toBeVisible();
+  await expect(page.getByLabel("Headline")).toHaveValue("Support Specialist | Zendesk");
+  await expect(page.getByLabel("Skills")).toHaveValue("Zendesk, Excel");
+
   // the first Auto Apply explains itself before opening anything
   await page.goto("/auto-apply");
   await page.getByRole("region", { name: "From your tracker" }).getByRole("button", { name: "Auto Apply" }).first().click();
