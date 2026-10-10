@@ -9,11 +9,14 @@ async function everything(userId: string) {
   const own = <T extends { userId: unknown }>(table: T) => eq(table.userId as never, userId);
   const [user] = await db.select().from(schema.users).where(eq(schema.users.id, userId));
   const [profile] = await db.select().from(schema.profiles).where(eq(schema.profiles.userId, userId));
+  // the newer application answers are saved as one bundle next to the profile
+  const [application] = await db.select({ value: schema.appSettings.value }).from(schema.appSettings).where(eq(schema.appSettings.key, `application:${userId}`));
   const jobs = await db.select().from(schema.jobs).where(own(schema.jobs));
   const jobIds = jobs.map((job) => job.id);
   return {
     account: user ? { email: user.email, name: user.name, createdAt: user.createdAt } : null,
     profile: profile ?? null,
+    application: application?.value ?? null,
     resumes: await db.select().from(schema.resumes).where(own(schema.resumes)),
     jobs,
     interviews: jobIds.length > 0 ? await db.select().from(schema.interviews).where(inArray(schema.interviews.jobId, jobIds)) : [],
@@ -49,5 +52,6 @@ export async function deleteAccount(userId: string): Promise<void> {
   await db.delete(schema.appSettings).where(eq(schema.appSettings.key, `linkedin-import:${userId}`));
   await db.delete(schema.appSettings).where(eq(schema.appSettings.key, `extension-id:${userId}`));
   await db.delete(schema.appSettings).where(eq(schema.appSettings.key, `auto-submit:${userId}`));
+  await db.delete(schema.appSettings).where(eq(schema.appSettings.key, `application:${userId}`));
   await db.delete(schema.users).where(eq(schema.users.id, userId));
 }

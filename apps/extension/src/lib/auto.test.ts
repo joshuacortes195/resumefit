@@ -9,6 +9,7 @@ import { findFields } from "./fields";
 import { fillForm, highlight } from "./fill";
 import { canAutoSubmit, fillEverything, MAX_DRAFTS, pickResume, tally, worthDrafting, type Ask } from "./pipeline";
 import { findSubmit, pressSubmit } from "./submit";
+import { matchKey } from "./synonyms";
 import { profileValues } from "./values";
 import type { Account, FieldReport, PageRequest } from "./types";
 
@@ -102,6 +103,51 @@ describe("filling a whole form in one go", () => {
     expect(pickResume(ACCOUNT, "job-1", "other")).toBe("tailored");
     expect(pickResume(ACCOUNT, "job-2", "other")).toBe("other");
     expect(pickResume(ACCOUNT, null, null)).toBe("base");
+  });
+});
+
+describe("the one application", () => {
+  it("recognizes the extra questions forms ask", () => {
+    const keys = (label: string) => matchKey([label]);
+    expect(keys("Are you Hispanic/Latino?")).toBe("eeoHispanic");
+    expect(keys("Race / Ethnicity")).toBe("eeoRace");
+    expect(keys("Pronouns")).toBe("pronouns");
+    expect(keys("Are you at least 18 years of age?")).toBe("over18");
+    expect(keys("Preferred first name")).toBe("preferredName");
+    expect(keys("First Name")).toBe("firstName");
+    expect(keys("Street address")).toBe("address");
+    expect(keys("School")).toBe("school");
+    expect(keys("Degree")).toBe("degree");
+    expect(keys("Field of study")).toBe("major");
+    expect(keys("Expected graduation date")).toBe("graduationYear");
+    expect(keys("GPA")).toBe("gpa");
+  });
+
+  it("answers them from what the person saved, and nothing else", () => {
+    const account = { ...ACCOUNT, profile: { ...ACCOUNT.profile, eeoRace: "Asian", eeoHispanic: "No", over18: true, pronouns: "They/them", school: "State University", degree: "Bachelor's degree", major: "Biology", graduationYear: "2024", streetAddress: "12 Elm St" } } as Account;
+    expect(profileValues(account)).toMatchObject({ eeoHispanic: "No", over18: "Yes", pronouns: "They/them", school: "State University", degree: "Bachelor's degree", major: "Biology", graduationYear: "2024", address: "12 Elm St", preferredName: "Jordan" });
+    // an older account that never saw these questions declines and leaves the rest alone
+    const older = profileValues(ACCOUNT);
+    expect(older.eeoHispanic).toBe("Decline to self-identify");
+    expect(older.over18).toBeUndefined();
+    expect(older.school).toBeUndefined();
+    // choosing Hispanic or Latino as race answers the separate question too
+    expect(profileValues({ ...ACCOUNT, profile: { ...ACCOUNT.profile, eeoRace: "Hispanic or Latino" } } as Account).eeoHispanic).toBe("Yes");
+  });
+
+  it("picks the matching choice on the form", () => {
+    document.body.innerHTML = `<form>
+      <label for="h">Are you Hispanic/Latino?</label><select id="h"><option value="">Select</option><option>Yes</option><option>No</option><option>I don't wish to answer</option></select>
+      <label for="d">Degree</label><select id="d"><option value="">Select</option><option>High School</option><option>Bachelor's Degree</option><option>Master's Degree</option></select>
+      <fieldset><legend>Are you at least 18 years of age?</legend><label><input type="radio" name="age" value="1">Yes</label><label><input type="radio" name="age" value="0">No</label></fieldset>
+      <label for="e">Email</label><input id="e"><label for="n">Full name</label><input id="n">
+    </form>`;
+    const account = { ...ACCOUNT, profile: { ...ACCOUNT.profile, eeoHispanic: "Decline to self-identify", degree: "Bachelor's degree", over18: true } } as Account;
+    fillForm(findFields(document, adapterFor("careers.example.com")), profileValues(account), null);
+    const chosen = (id: string) => (document.getElementById(id) as HTMLSelectElement).selectedOptions[0]?.text;
+    expect(chosen("h")).toBe("I don't wish to answer");
+    expect(chosen("d")).toBe("Bachelor's Degree");
+    expect((document.querySelector('input[name="age"][value="1"]') as HTMLInputElement).checked).toBe(true);
   });
 });
 

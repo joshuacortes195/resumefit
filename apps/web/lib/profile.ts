@@ -4,6 +4,7 @@ import { z } from "zod";
 export const DECLINE = "Decline to self-identify";
 export const EEO_OPTIONS = {
   eeoGender: [DECLINE, "Male", "Female", "Non-binary"],
+  eeoHispanic: [DECLINE, "Yes", "No"],
   eeoRace: [DECLINE, "American Indian or Alaska Native", "Asian", "Black or African American", "Hispanic or Latino", "Native Hawaiian or Other Pacific Islander", "White", "Two or More Races"],
   eeoVeteran: [DECLINE, "I am not a protected veteran", "I identify as one or more of the classifications of a protected veteran"],
   eeoDisability: [DECLINE, "Yes, I have a disability, or have had one in the past", "No, I do not have a disability and have not had one in the past"],
@@ -11,6 +12,8 @@ export const EEO_OPTIONS = {
 
 export const JOB_TYPES = ["Full-time", "Part-time", "Contract", "Internship", "Temporary"] as const;
 export const REMOTE_PREFERENCES = ["No preference", "Remote", "Hybrid", "On-site"] as const;
+export const PRONOUNS = ["", "He/him", "She/her", "They/them"] as const;
+export const DEGREES = ["", "High school diploma", "Associate's degree", "Bachelor's degree", "Master's degree", "MBA", "Doctorate", "Other"] as const;
 export const WORK_AUTHORIZATIONS = ["", "Authorized to work in the US", "US citizen", "Permanent resident", "Work visa", "Not authorized"] as const;
 
 // short optional text, empty becomes null
@@ -74,6 +77,40 @@ export const profileSchema = z.object({
   eeoVeteran: z.enum(EEO_OPTIONS.eeoVeteran),
   eeoDisability: z.enum(EEO_OPTIONS.eeoDisability),
   qaBank: z.array(qaSchema).max(100),
+  // the rest of the one application: things forms ask that are not in the first set above
+  preferredName: text(100),
+  pronouns: text(40),
+  streetAddress: text(200),
+  over18: yesNo,
+  howHeard: text(100),
+  noticePeriod: text(60),
+  school: text(200),
+  degree: text(100),
+  major: text(100),
+  graduationYear: z
+    .string()
+    .trim()
+    .refine((value) => value === "" || /^(19|20)\d{2}$/.test(value), "Use a four digit year, like 2024.")
+    .transform((value) => value || null),
+  gpa: text(10),
+  eeoHispanic: z.enum(EEO_OPTIONS.eeoHispanic),
 });
+
+// the newer answers, kept together in one saved bundle next to the profile
+export const EXTRA_KEYS = ["preferredName", "pronouns", "streetAddress", "over18", "howHeard", "noticePeriod", "school", "degree", "major", "graduationYear", "gpa", "eeoHispanic"] as const;
+export type ProfileExtras = Pick<Profile, (typeof EXTRA_KEYS)[number]>;
+
+// the parts of the one application and whether each has been filled in, for the checklist on Auto Apply
+export function applicationParts(profile: Profile, answered: boolean): { label: string; done: boolean }[] {
+  return [
+    { label: "Contact", done: Boolean(profile.fullName && profile.email && profile.phone && profile.city) },
+    { label: "Links", done: Boolean(profile.linkedinUrl || profile.githubUrl || profile.portfolioUrl) },
+    { label: "Work details", done: Boolean(profile.workAuthorization) && profile.needsSponsorship !== null },
+    { label: "Education", done: Boolean(profile.school && profile.degree) },
+    // declining is an answer too, so this counts once the form has been saved with these on it
+    { label: "Self-identification", done: answered },
+    { label: "Saved answers", done: profile.qaBank.length > 0 },
+  ];
+}
 export type ProfileInput = z.input<typeof profileSchema>;
 export type Profile = z.output<typeof profileSchema>;

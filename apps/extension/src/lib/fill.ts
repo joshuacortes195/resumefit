@@ -3,7 +3,7 @@ import { DECLINE_PATTERN, normalize } from "./synonyms";
 import type { FieldKey, FieldReport, FillStatus } from "./types";
 
 // keys where the answer is a personal choice we must never guess at
-const EEO_KEYS: FieldKey[] = ["eeoGender", "eeoRace", "eeoVeteran", "eeoDisability"];
+const EEO_KEYS: FieldKey[] = ["eeoGender", "eeoHispanic", "eeoRace", "eeoVeteran", "eeoDisability"];
 
 // sets a value the way typing would, so react, vue and angular forms all notice it
 export function setNativeValue(element: HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement, value: string): void {

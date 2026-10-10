@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Bell, BellRing, Briefcase, Check, CircleAlert, ExternalLink, Send, Settings2, Zap } from "lucide-react";
+import { Bell, BellRing, Briefcase, Check, CircleAlert, ClipboardList, ExternalLink, Send, Settings2, Zap } from "lucide-react";
 import type { ApplicationStatus } from "@resumefit/shared";
 import { findJobs, saveFoundJob } from "@/app/actions/find-jobs";
 import { setAutoSubmit } from "@/app/actions/profile";
@@ -24,7 +24,7 @@ import type { JobResult } from "@/lib/jobs-feed";
 export type ApplyJob = { id: string; title: string; company: string | null; url: string; matchRate: number | null; createdAt: string };
 export type ApplicationEntry = { id: string; jobId: string | null; jobTitle: string | null; company: string | null; ats: string | null; applyUrl: string | null; status: ApplicationStatus; fieldsFilled: number; fieldsNeedingAttention: number; updatedAt: string };
 
-type AutoApplyProps = { jobs: ApplyJob[]; applications: ApplicationEntry[]; resumes: ResumeOption[]; suggest: boolean; profileReady: boolean; extensionConnected: boolean; extensionId: string; submitForMe: boolean };
+type AutoApplyProps = { jobs: ApplyJob[]; applications: ApplicationEntry[]; resumes: ResumeOption[]; suggest: boolean; profileReady: boolean; extensionConnected: boolean; extensionId: string; submitForMe: boolean; parts: { label: string; done: boolean }[] };
 
 // something Auto Apply can be pressed on: a card from the tracker, or an opening we suggested
 type Target = { key: string; url: string; jobId?: string; found?: JobResult };
@@ -54,7 +54,7 @@ function age(iso: string): string {
 }
 
 // the tabs, the jobs you can apply to and the list of applications so far
-export function AutoApply({ jobs, applications, resumes, suggest, profileReady, extensionConnected, extensionId, submitForMe }: AutoApplyProps) {
+export function AutoApply({ jobs, applications, resumes, suggest, profileReady, extensionConnected, extensionId, submitForMe, parts }: AutoApplyProps) {
   const router = useRouter();
   const [tab, setTab] = useState<"jobs" | "applications">("jobs");
   const [consenting, setConsenting] = useState<Target[] | null>(null);
@@ -236,6 +236,37 @@ export function AutoApply({ jobs, applications, resumes, suggest, profileReady, 
 
   return (
     <div className="space-y-6">
+      {/* the one application everything is filled from, and how much of it is done */}
+      <section className={`${CARD} p-5`} aria-labelledby="application-heading">
+        <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-3">
+          <div className="min-w-64 flex-1">
+            <h2 id="application-heading" className="flex items-center gap-2 font-semibold">
+              <ClipboardList className="size-4 text-muted" aria-hidden />
+              Your one application
+            </h2>
+            <p className="mt-1 max-w-prose text-sm text-muted">
+              Fill it in once here: contact details, work eligibility, school, and the gender, race, veteran and disability questions. Every real application is answered from it.
+            </p>
+          </div>
+          <Link href="/settings#profile" className={parts.every((part) => part.done) ? SECONDARY_BUTTON : PRIMARY_BUTTON}>
+            {parts.every((part) => part.done) ? "Review my answers" : parts.some((part) => part.done) ? "Finish my application" : "Fill in my application"}
+          </Link>
+        </div>
+        {/* how far along it is */}
+        <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-border/70" role="progressbar" aria-label="Application filled in" aria-valuemin={0} aria-valuemax={parts.length} aria-valuenow={parts.filter((part) => part.done).length}>
+          <div className="h-full origin-left animate-bar rounded-full bg-primary" style={{ width: `${(parts.filter((part) => part.done).length / parts.length) * 100}%` }} />
+        </div>
+        <ul className="mt-3 flex flex-wrap gap-x-5 gap-y-1.5 text-sm">
+          {parts.map((part) => (
+            <li key={part.label} className={`flex items-center gap-1.5 ${part.done ? "" : "text-muted"}`}>
+              {part.done ? <Check className="size-4 text-success" aria-hidden /> : <span aria-hidden className="mx-1 size-2 rounded-full border border-muted" />}
+              {part.label}
+              <span className="sr-only">{part.done ? ", done" : ", not filled in yet"}</span>
+            </li>
+          ))}
+        </ul>
+      </section>
+
       {/* things to set up before the first run */}
       <div className="grid gap-4 md:grid-cols-2">
         <section className={`${CARD} p-5`}>

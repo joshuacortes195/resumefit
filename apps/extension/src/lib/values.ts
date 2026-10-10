@@ -6,9 +6,20 @@ export function profileValues(account: Account): Partial<Record<FieldKey, string
   const [first = "", ...rest] = (profile.fullName ?? "").trim().split(/\s+/);
   const yesNo = (value: boolean | null) => (value === null ? "" : value ? "Yes" : "No");
   const salary = profile.desiredSalaryMin ?? profile.desiredSalaryMax;
+  const hispanic = profile.eeoHispanic ?? "Decline to self-identify";
 
   const values: Partial<Record<FieldKey, string>> = {
     firstName: first,
+    preferredName: profile.preferredName || first,
+    pronouns: profile.pronouns ?? "",
+    address: profile.streetAddress ?? "",
+    over18: yesNo(profile.over18 ?? null),
+    howHeard: profile.howHeard ?? "",
+    school: profile.school ?? "",
+    degree: profile.degree ?? "",
+    major: profile.major ?? "",
+    graduationYear: profile.graduationYear ?? "",
+    gpa: profile.gpa ?? "",
     lastName: rest.join(" "),
     fullName: profile.fullName ?? "",
     email: profile.email ?? "",
@@ -25,13 +36,15 @@ export function profileValues(account: Account): Partial<Record<FieldKey, string
     currentTitle: current.title ?? "",
     yearsExperience: profile.yearsExperience === null ? "" : String(profile.yearsExperience),
     salary: salary === null ? "" : String(salary),
-    startDate: profile.earliestStartDate ?? "",
+    startDate: profile.earliestStartDate ?? profile.noticePeriod ?? "",
     // only a clear yes or no is ever given for these
     workAuthorization: /not authorized/i.test(profile.workAuthorization ?? "") ? "No" : profile.workAuthorization ? "Yes" : "",
     sponsorship: yesNo(profile.needsSponsorship),
     relocation: yesNo(profile.willingToRelocate),
     // demographic answers come straight from what the person chose, which starts on decline
     eeoGender: profile.eeoGender,
+    // someone who chose Hispanic or Latino as their race has already answered this one
+    eeoHispanic: /decline/i.test(hispanic) && profile.eeoRace === "Hispanic or Latino" ? "Yes" : hispanic,
     eeoRace: profile.eeoRace,
     eeoVeteran: profile.eeoVeteran,
     eeoDisability: profile.eeoDisability,

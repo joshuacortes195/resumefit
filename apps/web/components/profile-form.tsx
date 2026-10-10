@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { Check, Plus, Trash2 } from "lucide-react";
 import { saveProfileAction } from "@/app/actions/profile";
 import { CARD, INPUT, PRIMARY_BUTTON } from "@/components/ui/buttons";
-import { EEO_OPTIONS, JOB_TYPES, REMOTE_PREFERENCES, WORK_AUTHORIZATIONS, type Profile, type ProfileInput } from "@/lib/profile";
+import { DEGREES, EEO_OPTIONS, JOB_TYPES, PRONOUNS, REMOTE_PREFERENCES, WORK_AUTHORIZATIONS, type Profile, type ProfileInput } from "@/lib/profile";
 
 // turns the saved profile into the plain strings a form works with
 function toForm(profile: Profile): ProfileInput {
@@ -36,11 +36,23 @@ function toForm(profile: Profile): ProfileInput {
     eeoVeteran: profile.eeoVeteran,
     eeoDisability: profile.eeoDisability,
     qaBank: profile.qaBank,
+    preferredName: profile.preferredName ?? "",
+    pronouns: profile.pronouns ?? "",
+    streetAddress: profile.streetAddress ?? "",
+    over18: yesNo(profile.over18),
+    howHeard: profile.howHeard ?? "",
+    noticePeriod: profile.noticePeriod ?? "",
+    school: profile.school ?? "",
+    degree: profile.degree ?? "",
+    major: profile.major ?? "",
+    graduationYear: profile.graduationYear ?? "",
+    gpa: profile.gpa ?? "",
+    eeoHispanic: profile.eeoHispanic,
   };
 }
 
 // labels for the demographic questions
-const EEO_LABELS: Record<keyof typeof EEO_OPTIONS, string> = { eeoGender: "Gender", eeoRace: "Race or ethnicity", eeoVeteran: "Veteran status", eeoDisability: "Disability" };
+const EEO_LABELS: Record<keyof typeof EEO_OPTIONS, string> = { eeoGender: "Gender", eeoHispanic: "Are you Hispanic or Latino?", eeoRace: "Race or ethnicity", eeoVeteran: "Veteran status", eeoDisability: "Disability" };
 
 // the profile and application preferences form, this is what autofill types into applications
 export function ProfileForm({ profile }: { profile: Profile }) {
@@ -90,15 +102,20 @@ export function ProfileForm({ profile }: { profile: Profile }) {
   return (
     <form id="profile" onSubmit={save} className={`${CARD} scroll-mt-20 space-y-8 p-6`}>
       <div>
-        <h2 className="text-xl font-semibold">Profile and application preferences</h2>
-        <p className="mt-1 max-w-prose text-sm text-muted">Autofill uses these to fill in application forms. Anything you leave empty is left for you to fill in on the form.</p>
+        <h2 className="text-xl font-semibold">Your one application</h2>
+        <p className="mt-1 max-w-prose text-sm text-muted">
+          Fill this in once, like a job application, and Auto Apply answers the same questions on every real one. Anything you leave empty is left for you to fill in on the form.
+        </p>
       </div>
 
       <fieldset className="grid gap-4 sm:grid-cols-2">
         <legend className="mb-3 font-semibold">Contact</legend>
         {text("fullName", "Full name")}
+        {text("preferredName", "Preferred first name", { placeholder: "Only if it differs" })}
+        {select("pronouns", "Pronouns", PRONOUNS)}
         {text("email", "Email", { type: "email" })}
         {text("phone", "Phone", { type: "tel" })}
+        {text("streetAddress", "Street address")}
         {text("city", "City")}
         {text("state", "State or region")}
         {text("zip", "ZIP or postal code")}
@@ -118,6 +135,9 @@ export function ProfileForm({ profile }: { profile: Profile }) {
         {select("workAuthorization", "Work authorization", WORK_AUTHORIZATIONS)}
         {select("needsSponsorship", "Will you need visa sponsorship?", YES_NO)}
         {select("willingToRelocate", "Willing to relocate?", YES_NO)}
+        {select("over18", "Are you 18 or older?", YES_NO)}
+        {text("noticePeriod", "Notice period", { placeholder: "2 weeks" })}
+        {text("howHeard", "How you usually hear about jobs", { placeholder: "LinkedIn" })}
         {text("desiredSalaryMin", "Desired salary, lowest", { placeholder: "85000" })}
         {text("desiredSalaryMax", "Desired salary, highest", { placeholder: "105000" })}
         {text("earliestStartDate", "Earliest start date", { type: "date" })}
@@ -153,10 +173,20 @@ export function ProfileForm({ profile }: { profile: Profile }) {
         </label>
       </fieldset>
 
+      {/* school questions come up on most forms */}
+      <fieldset className="grid gap-4 sm:grid-cols-2">
+        <legend className="mb-3 font-semibold">Education</legend>
+        {text("school", "School", { placeholder: "State University" })}
+        {select("degree", "Degree", DEGREES)}
+        {text("major", "Major or field of study", { placeholder: "Computer Science" })}
+        {text("graduationYear", "Graduation year", { placeholder: "2026" })}
+        {text("gpa", "GPA", { placeholder: "Optional" })}
+      </fieldset>
+
       {/* these start on "decline" and are never guessed */}
       <fieldset className="grid gap-4 sm:grid-cols-2">
         <legend className="mb-1 font-semibold">Voluntary self-identification</legend>
-        <p className="mb-2 text-sm text-muted sm:col-span-2">Many applications ask these. We only ever fill in what you choose here, and every one starts on &quot;Decline to self-identify&quot;.</p>
+        <p className="mb-2 text-sm text-muted sm:col-span-2">Many applications ask about gender, race, veteran status and disability. Answer them here once and we use exactly what you chose. Every one starts on &quot;Decline to self-identify&quot;, and declining is a fine answer.</p>
         {(Object.keys(EEO_OPTIONS) as (keyof typeof EEO_OPTIONS)[]).map((key) => (
           <div key={key}>{select(key, EEO_LABELS[key], EEO_OPTIONS[key])}</div>
         ))}

@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "ResumeFit",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Save jobs, scan them against your resume and have applications filled in for you. Nothing is sent without your say so.",
   "action": { "default_title": "Open ResumeFit" },
   "side_panel": { "default_path": "sidepanel.html" },

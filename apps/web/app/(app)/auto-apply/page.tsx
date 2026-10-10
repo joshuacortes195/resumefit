@@ -6,7 +6,8 @@ import { getCurrentUser } from "@/lib/auth";
 import { listApplications } from "@/lib/data/applications";
 import { autoSubmit, extensionId, extensionStatus } from "@/lib/data/extension";
 import { listJobs } from "@/lib/data/jobs";
-import { getProfile, profileReady } from "@/lib/data/profile";
+import { applicationAnswered, getProfile, profileReady } from "@/lib/data/profile";
+import { applicationParts } from "@/lib/profile";
 import { listResumes } from "@/lib/data/resumes";
 import { featureFlags } from "@/lib/data/settings";
 
@@ -53,7 +54,7 @@ export default function AutoApplyPage() {
 // loads the jobs that can be applied to and the applications so far
 async function AutoApplyLoader() {
   const user = await getCurrentUser();
-  const [jobs, applications, profile, extension, resumes, flags, knownExtension, submitForMe] = await Promise.all([
+  const [jobs, applications, profile, extension, resumes, flags, knownExtension, submitForMe, answered] = await Promise.all([
     listJobs(user.id),
     listApplications(user.id),
     getProfile(user.id),
@@ -62,6 +63,7 @@ async function AutoApplyLoader() {
     featureFlags(),
     extensionId(user.id),
     autoSubmit(user.id),
+    applicationAnswered(user.id),
   ]);
   return (
     <AutoApply
@@ -86,6 +88,7 @@ async function AutoApplyLoader() {
       extensionConnected={extension.connected}
       extensionId={knownExtension}
       submitForMe={submitForMe}
+      parts={applicationParts(profile, answered)}
     />
   );
 }

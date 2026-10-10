@@ -44,6 +44,12 @@ test("fill in the profile, connect the extension and follow an application throu
   await page.getByRole("button", { name: "Save profile" }).click();
   await expect(page.getByText("Use a plain number, like 85000.")).toBeVisible();
   await page.getByLabel("Desired salary, lowest").fill("52000");
+  // the rest of the one application: school, and the question forms ask apart from race
+  await page.getByLabel("School", { exact: true }).fill("State University");
+  await page.getByRole("combobox", { name: "Degree" }).selectOption("Bachelor's degree");
+  await page.getByLabel("Are you 18 or older?").selectOption("yes");
+  await expect(page.getByLabel("Are you Hispanic or Latino?")).toHaveValue("Decline to self-identify");
+  await page.getByLabel("Are you Hispanic or Latino?").selectOption("No");
   // demographic answers start on decline
   await expect(page.getByRole("combobox", { name: /^Gender/ })).toHaveValue("Decline to self-identify");
   await page.getByRole("button", { name: "Add an answer" }).click();
@@ -64,6 +70,7 @@ test("fill in the profile, connect the extension and follow an application throu
   const headers = { Authorization: `Bearer ${token}` };
   const me = await (await request.get("/api/ext/me", { headers })).json();
   expect(me.profile).toMatchObject({ fullName: "Riley Chen", needsSponsorship: false, desiredSalaryMin: 52000, eeoRace: "Decline to self-identify" });
+  expect(me.profile).toMatchObject({ school: "State University", degree: "Bachelor's degree", over18: true, eeoHispanic: "No", pronouns: null });
   expect(me.profileReady).toBe(true);
   expect(me.current).toEqual({ title: "Support Specialist", company: "Lakeside Outfitters" });
 
@@ -99,6 +106,12 @@ test("fill in the profile, connect the extension and follow an application throu
   await request.post("/api/ext/applications", { headers, data: { ...report, status: "needs_review" } });
   await page.goto("/auto-apply");
   await expect(page.getByText("The extension is connected.")).toBeVisible();
+  // the checklist for the one application shows what is done and what is left
+  const checklist = page.getByRole("region", { name: "Your one application" });
+  await expect(checklist.getByRole("listitem").filter({ hasText: "Education" })).toContainText("done");
+  await expect(checklist.getByRole("listitem").filter({ hasText: "Self-identification" })).toContainText("done");
+  await expect(checklist.getByRole("listitem").filter({ hasText: "Links" })).toContainText("not filled in yet");
+  await expect(checklist.getByRole("link", { name: "Finish my application" })).toBeVisible();
   await page.getByRole("tab", { name: "All Applications" }).click();
   await expect(page.getByRole("row", { name: /Support Specialist/ })).toContainText("Needs review");
   await expect(page.getByRole("row", { name: /Support Specialist/ })).toContainText("9 filled, 2 to check");

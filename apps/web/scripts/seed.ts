@@ -90,6 +90,18 @@ async function seed() {
 
   // a profile, so autofill has something to work with
   await saveProfile(user.id, {
+    preferredName: null,
+    pronouns: null,
+    streetAddress: null,
+    over18: true,
+    howHeard: "LinkedIn",
+    noticePeriod: "2 weeks",
+    school: "State University",
+    degree: "Bachelor's degree",
+    major: "Computer Science",
+    graduationYear: "2021",
+    gpa: null,
+    eeoHispanic: "Decline to self-identify",
     fullName: "Jordan Lee",
     email: "jordan.lee@example.com",
     phone: "(512) 555-0142",

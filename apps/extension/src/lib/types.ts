@@ -22,6 +22,16 @@ export const FIELD_KEYS = [
   "sponsorship",
   "relocation",
   "howHeard",
+  "preferredName",
+  "pronouns",
+  "address",
+  "over18",
+  "school",
+  "degree",
+  "major",
+  "graduationYear",
+  "gpa",
+  "eeoHispanic",
   "eeoGender",
   "eeoRace",
   "eeoVeteran",
@@ -55,6 +65,19 @@ export type Profile = {
   eeoRace: string;
   eeoVeteran: string;
   eeoDisability: string;
+  // the rest of the one application, missing on accounts that have not filled it in
+  preferredName?: string | null;
+  pronouns?: string | null;
+  streetAddress?: string | null;
+  over18?: boolean | null;
+  howHeard?: string | null;
+  noticePeriod?: string | null;
+  school?: string | null;
+  degree?: string | null;
+  major?: string | null;
+  graduationYear?: string | null;
+  gpa?: string | null;
+  eeoHispanic?: string;
 };
 
 // what the web app tells us about the connected person
