@@ -80,7 +80,7 @@ The migrations switch on row level security for every table with no policies, wh
 
 1. At [vercel.com](https://vercel.com), choose Add New, Project, and import the GitHub repository.
 2. Set **Root Directory** to `apps/web`. Leave the build settings as they are.
-3. Add these environment variables:
+3. Add these environment variables. If you connect the two with the Supabase integration for Vercel (Integrations tab in Supabase), the first four are filled in for you and you only add `ENCRYPTION_KEY` and `INVITE_ONLY`. `NEXT_PUBLIC_APP_URL` can be left out on Vercel, the app uses the project's own address.
 
    | Name | Value |
    | --- | --- |

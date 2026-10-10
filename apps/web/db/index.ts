@@ -24,14 +24,25 @@ export function isLocalDb(): boolean {
   return !serverEnv().DATABASE_URL;
 }
 
+// connection strings from hosting integrations carry extra settings the database itself does not know, which would make it refuse the connection
+export function cleanDatabaseUrl(raw: string): string {
+  try {
+    const url = new URL(raw);
+    for (const name of [...url.searchParams.keys()]) if (!["sslmode", "ssl"].includes(name)) url.searchParams.delete(name);
+    return url.toString();
+  } catch {
+    return raw;
+  }
+}
+
 // opens the hosted database, or a local one on disk so the app runs without any accounts
 async function connect(): Promise<Db> {
   const { DATABASE_URL } = serverEnv();
   if (DATABASE_URL) {
     // prepare is off because the supabase pooler does not support it
-    return drizzle(postgres(DATABASE_URL, { prepare: false }), { schema });
+    return drizzle(postgres(cleanDatabaseUrl(DATABASE_URL), { prepare: false }), { schema });
   }
-  if (process.env.VERCEL) throw new Error("DATABASE_URL is not set. Add it in the project settings.");
+  if (process.env.VERCEL) throw new Error("No database address is set. Connect the Supabase integration, or add DATABASE_URL in the project settings.");
 
   // the local database is real postgres running inside the app, it gets its tables on first start
   const { PGlite } = await import("@electric-sql/pglite");

@@ -33,3 +33,12 @@ describe("checkInviteCode", () => {
     expect(checkInviteCode("FRIENDS-2026", { ...valid, uses: 5 }, now)).toEqual({ ok: false, reason: "used_up" });
   });
 });
+
+describe("database address", async () => {
+  const { cleanDatabaseUrl } = await import("@/db");
+
+  it("drops settings the database does not know and keeps the rest", () => {
+    expect(cleanDatabaseUrl("postgres://user:p%40ss@db.example.com:6543/postgres?sslmode=require&supa=base-pooler.x&pgbouncer=true")).toBe("postgres://user:p%40ss@db.example.com:6543/postgres?sslmode=require");
+    expect(cleanDatabaseUrl("postgresql://user:pass@db.example.com:6543/postgres")).toBe("postgresql://user:pass@db.example.com:6543/postgres");
+  });
+});

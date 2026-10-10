@@ -11,6 +11,8 @@ const flag = (fallback: boolean) =>
 const serverSchema = z.object({
   DATABASE_URL: z.string().min(1).optional(),
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(1).optional(),
+  // the newer name for the same secret
+  SUPABASE_SECRET_KEY: z.string().min(1).optional(),
   INVITE_ONLY: flag(true),
   ENCRYPTION_KEY: z.string().min(32).optional(),
   // free ai providers, all optional so the app runs without them
@@ -45,15 +47,26 @@ function parse<T extends z.ZodType>(schema: T, values: unknown): z.infer<T> {
 
 // public vars have to be read by name so next can inline them
 export const publicEnv = parse(publicSchema, {
-  NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
-  NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+  NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL || undefined,
+  // supabase now calls this the publishable key, either name works
+  NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || undefined,
   NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
   NEXT_PUBLIC_EXTENSION_ID: process.env.NEXT_PUBLIC_EXTENSION_ID || undefined,
 });
 
 // only call this on the server
 export function serverEnv() {
-  return parse(serverSchema, process.env);
+  const env = parse(serverSchema, process.env);
+  // the supabase and vercel integration fills in the database address under its own name, so that one is accepted too
+  return { ...env, DATABASE_URL: env.DATABASE_URL ?? (process.env.POSTGRES_URL || undefined) };
+}
+
+// the address the app is reached at, used in sign in links.
+// set by hand it wins, on vercel the project's own address is used, and otherwise it is your own machine
+export function appUrl(): string {
+  if (process.env.NEXT_PUBLIC_APP_URL) return process.env.NEXT_PUBLIC_APP_URL.replace(/\/$/, "");
+  if (process.env.VERCEL_PROJECT_PRODUCTION_URL) return `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`;
+  return "http://localhost:3000";
 }
 
 // the order we try the ai providers in

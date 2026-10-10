@@ -10,7 +10,8 @@ const BUCKET = "resumes";
 // true when the hosted file storage has its keys
 function hosted(): { url: string; key: string } | null {
   const url = publicEnv.NEXT_PUBLIC_SUPABASE_URL;
-  const key = serverEnv().SUPABASE_SERVICE_ROLE_KEY;
+  const env = serverEnv();
+  const key = env.SUPABASE_SERVICE_ROLE_KEY ?? env.SUPABASE_SECRET_KEY;
   return url && key ? { url, key } : null;
 }
 
@@ -33,7 +34,7 @@ export async function saveFile(filePath: string, bytes: Uint8Array, contentType:
   }
   const response = await fetch(`${remote.url}/storage/v1/object/${BUCKET}/${filePath}`, {
     method: "POST",
-    headers: { Authorization: `Bearer ${remote.key}`, "Content-Type": contentType, "x-upsert": "true" },
+    headers: { Authorization: `Bearer ${remote.key}`, apikey: remote.key, "Content-Type": contentType, "x-upsert": "true" },
     body: Buffer.from(bytes),
   });
   if (!response.ok) throw new Error(`Could not store the file (${response.status}).`);
@@ -48,7 +49,7 @@ export async function loadFile(filePath: string): Promise<Uint8Array | null> {
       () => null,
     );
   }
-  const response = await fetch(`${remote.url}/storage/v1/object/${BUCKET}/${filePath}`, { headers: { Authorization: `Bearer ${remote.key}` } });
+  const response = await fetch(`${remote.url}/storage/v1/object/${BUCKET}/${filePath}`, { headers: { Authorization: `Bearer ${remote.key}`, apikey: remote.key } });
   return response.ok ? new Uint8Array(await response.arrayBuffer()) : null;
 }
 
@@ -59,5 +60,5 @@ export async function deleteFile(filePath: string): Promise<void> {
     await rm(localPath(filePath), { force: true });
     return;
   }
-  await fetch(`${remote.url}/storage/v1/object/${BUCKET}/${filePath}`, { method: "DELETE", headers: { Authorization: `Bearer ${remote.key}` } });
+  await fetch(`${remote.url}/storage/v1/object/${BUCKET}/${filePath}`, { method: "DELETE", headers: { Authorization: `Bearer ${remote.key}`, apikey: remote.key } });
 }

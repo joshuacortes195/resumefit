@@ -10,7 +10,7 @@ const LOCAL_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]"]);
 // runs before every page: keeps the sign in session fresh and sends signed out visitors to the sign in page
 export async function proxy(request: NextRequest) {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
   // on your own machine there is no sign in, so the app must only ever answer this computer.
   // without this, anyone on the same wifi could open it and read everything
   if (!url || !key) {

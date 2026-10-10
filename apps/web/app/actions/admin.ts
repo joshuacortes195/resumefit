@@ -69,7 +69,7 @@ export async function deleteMyAccount(confirmation: string): Promise<ActionResul
 
   if (authMode() === "hosted") {
     // remove the sign in record too, so the email can be used again later
-    const key = serverEnv().SUPABASE_SERVICE_ROLE_KEY;
+    const key = serverEnv().SUPABASE_SERVICE_ROLE_KEY ?? serverEnv().SUPABASE_SECRET_KEY;
     if (key) await fetch(`${publicEnv.NEXT_PUBLIC_SUPABASE_URL}/auth/v1/admin/users/${user.id}`, { method: "DELETE", headers: { Authorization: `Bearer ${key}`, apikey: key } }).catch(() => undefined);
     await (await supabaseServer()).auth.signOut();
   } else forgetLocalUser();

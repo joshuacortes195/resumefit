@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { authMode } from "@/lib/auth";
 import { emailKnown, inviteProblem, noUsersYet } from "@/lib/data/users";
-import { publicEnv, serverEnv } from "@/lib/env";
+import { appUrl, serverEnv } from "@/lib/env";
 import { inviteErrorCode } from "@/lib/invite";
 import { supabaseServer } from "@/lib/supabase/server";
 
@@ -39,7 +39,7 @@ export async function signInWithEmail(_previous: SignInState, form: FormData): P
   if (problem) return { error: problem };
 
   const supabase = await supabaseServer();
-  const { error } = await supabase.auth.signInWithOtp({ email: parsed.data.email, options: { emailRedirectTo: `${publicEnv.NEXT_PUBLIC_APP_URL}/auth/callback` } });
+  const { error } = await supabase.auth.signInWithOtp({ email: parsed.data.email, options: { emailRedirectTo: `${appUrl()}/auth/callback` } });
   if (error) return { error: error.status === 429 ? "Too many tries. Wait a minute and try again." : "We could not send the email. Try again in a moment." };
   return { sent: parsed.data.email };
 }
@@ -50,7 +50,7 @@ export async function signInWithGoogle(form: FormData): Promise<void> {
   const problem = await holdInvite(null, String(form.get("invite") ?? "").trim().slice(0, 60));
   if (problem) redirect(`/sign-in?error=${inviteErrorCode(problem)}`);
   const supabase = await supabaseServer();
-  const { data, error } = await supabase.auth.signInWithOAuth({ provider: "google", options: { redirectTo: `${publicEnv.NEXT_PUBLIC_APP_URL}/auth/callback` } });
+  const { data, error } = await supabase.auth.signInWithOAuth({ provider: "google", options: { redirectTo: `${appUrl()}/auth/callback` } });
   if (error || !data.url) redirect("/sign-in?error=google");
   redirect(data.url);
 }
