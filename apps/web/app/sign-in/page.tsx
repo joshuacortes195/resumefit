@@ -20,6 +20,13 @@ export default function SignInPage({ searchParams }: { searchParams: Promise<{ e
           <SignInBody searchParams={searchParams} />
         </Suspense>
         <p className="mt-6 flex justify-center gap-4 text-xs text-muted">
+          {/* for people who landed here without knowing what the app is */}
+          <Link href="/" className="hover:text-foreground">
+            What is ResumeFit?
+          </Link>
+          <Link href="/scans/sample" className="hover:text-foreground">
+            Sample scan
+          </Link>
           <Link href="/privacy" className="hover:text-foreground">
             Privacy
           </Link>
