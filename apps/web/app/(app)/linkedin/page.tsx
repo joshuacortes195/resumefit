@@ -6,11 +6,11 @@ import { CARD } from "@/components/ui/buttons";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getCurrentUser } from "@/lib/auth";
 import { listJobs, getJob } from "@/lib/data/jobs";
+import { LocalTime } from "@/components/local-time";
 import { listLinkedinReports, pendingLinkedin } from "@/lib/data/practice";
 
 export const metadata = { title: "LinkedIn Optimizer" };
 
-const DATE = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric" });
 
 // score a linkedin profile against the jobs you want
 export default function LinkedinPage() {
@@ -58,7 +58,7 @@ async function History() {
             <Link href={`/linkedin/${report.id}`} className="group flex items-center gap-4 py-3">
               <ScoreRing score={report.score} size="sm" label="LinkedIn score" />
               <span className="min-w-0 flex-1 truncate group-hover:text-primary">{report.headline || "No headline"}</span>
-              <span className="shrink-0 text-sm text-muted">{DATE.format(report.createdAt)}</span>
+              <span className="shrink-0 text-sm text-muted"><LocalTime value={report.createdAt} /></span>
             </Link>
           </li>
         ))}

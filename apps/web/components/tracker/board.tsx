@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useSyncExternalStore, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
@@ -24,6 +24,7 @@ import { Archive, ArchiveRestore, Link2, Plus, Search } from "lucide-react";
 import { JOB_STATUSES, type JobStatus } from "@resumefit/shared";
 import { addJob, importJobFromLink, moveJobCard, setJobArchived } from "@/app/actions/jobs";
 import { RefreshOnFocus } from "@/components/refresh-on-focus";
+import { useInBrowser } from "@/components/local-time";
 import { JobScore } from "@/components/score-ring";
 import { INPUT, PRIMARY_BUTTON, SECONDARY_BUTTON } from "@/components/ui/buttons";
 import { Modal } from "@/components/ui/modal";
@@ -39,12 +40,10 @@ const COLUMNS: Record<JobStatus, { label: string; blurb: string }> = {
   rejected: { label: "Rejected", blurb: "No response or a rejection. Review and adjust your approach." },
 };
 
-// true once the page is running in the browser. dates are worked out there, so "today" follows the person's own calendar and not the server's
-const noChange = () => () => undefined;
-const useInBrowser = () => useSyncExternalStore(noChange, () => true, () => false);
 
 // what a card looks like, used on the board and under the cursor while dragging
 function CardFace({ job, lifted = false }: { job: BoardJob; lifted?: boolean }) {
+  // the date is worked out in the browser, so "today" follows the person's own calendar and not the server's
   const inBrowser = useInBrowser();
   return (
     <div className={`flex items-center gap-3 rounded-xl border border-border bg-surface p-3 text-sm ${lifted ? "rotate-2 shadow-xl" : "shadow-sm"}`}>

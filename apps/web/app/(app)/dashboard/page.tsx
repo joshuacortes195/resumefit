@@ -10,6 +10,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { getCurrentUser } from "@/lib/auth";
 import { getCoverLetter, listJobs, nextInterview } from "@/lib/data/jobs";
 import { listLinkedinReports } from "@/lib/data/practice";
+import { LocalTime } from "@/components/local-time";
 import { latestScan } from "@/lib/data/scans";
 
 export const metadata = { title: "Dashboard" };
@@ -26,8 +27,6 @@ const COLUMNS = {
 // how many cards each column shows before it says "and more"
 const CARDS_PER_COLUMN = 4;
 
-// date and time for the next interview line
-const WHEN = new Intl.DateTimeFormat("en-US", { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
 
 // home page after sign in
 export default function DashboardPage() {
@@ -213,7 +212,7 @@ async function TrackerSummary() {
             Next interview:{" "}
             <Link href={`/tracker/${interview.jobId}/interviews`} className="font-medium text-foreground hover:text-primary">
               {interview.jobTitle}
-              {interview.company ? ` at ${interview.company}` : ""}, {WHEN.format(interview.datetime)}
+              {interview.company ? ` at ${interview.company}` : ""}, <LocalTime value={interview.datetime} style="weekdayTime" />
             </Link>
           </span>
         ) : (

@@ -5,11 +5,11 @@ import { CARD } from "@/components/ui/buttons";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getCurrentUser } from "@/lib/auth";
 import { listJobs } from "@/lib/data/jobs";
+import { LocalTime } from "@/components/local-time";
 import { listPracticeSessions, sessionScore } from "@/lib/data/practice";
 
 export const metadata = { title: "Interview Practice" };
 
-const DATE = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" });
 
 // pick a job, get eight questions and practice answering them
 export default function InterviewPage({ searchParams }: { searchParams: Promise<{ job?: string }> }) {
@@ -57,7 +57,7 @@ async function PastSessions() {
                 <span className="shrink-0 text-muted">
                   {answered} of {session.questions.length} answered{score !== null ? `, average ${score} / 100` : ""}
                 </span>
-                <span className="shrink-0 text-muted">{DATE.format(session.createdAt)}</span>
+                <span className="shrink-0 text-muted"><LocalTime value={session.createdAt} style="day" /></span>
               </Link>
             </li>
           );

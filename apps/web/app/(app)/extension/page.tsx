@@ -9,8 +9,6 @@ import { extensionStatus } from "@/lib/data/extension";
 
 export const metadata = { title: "Chrome Extension" };
 
-const WHEN = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
-
 // install steps, connecting, what it works on and what it does with your data
 export default function ExtensionPage() {
   return (
@@ -111,5 +109,5 @@ export default function ExtensionPage() {
 async function ConnectLoader() {
   const user = await getCurrentUser();
   const status = await extensionStatus(user.id);
-  return <ExtensionConnect connected={status.connected} lastUsed={status.lastUsedAt ? WHEN.format(status.lastUsedAt) : null} />;
+  return <ExtensionConnect connected={status.connected} lastUsed={status.lastUsedAt ? status.lastUsedAt.toISOString() : null} />;
 }

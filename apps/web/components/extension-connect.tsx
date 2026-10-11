@@ -3,12 +3,13 @@
 import { useState, useTransition } from "react";
 import { Check, Copy, Plug, Unplug } from "lucide-react";
 import { connectExtension, disconnectExtension } from "@/app/actions/profile";
+import { LocalTime } from "@/components/local-time";
 import { INPUT, PRIMARY_BUTTON, SECONDARY_BUTTON } from "@/components/ui/buttons";
 import { connectionCode, rememberExtensionId, savedExtensionId, tellExtension } from "@/lib/extension-client";
 
 type ConnectProps = {
   connected: boolean;
-  // when the extension last talked to us, as text
+  // when the extension last talked to us
   lastUsed: string | null;
 };
 
@@ -42,7 +43,19 @@ export function ExtensionConnect({ connected, lastUsed }: ConnectProps) {
     <div className="space-y-4">
       <p className="flex items-center gap-2 text-sm">
         {connected ? <Check className="size-4 text-success" aria-hidden /> : <Unplug className="size-4 text-muted" aria-hidden />}
-        {connected ? `The extension is connected${lastUsed ? `, last used ${lastUsed}` : ""}.` : "The extension is not connected yet."}
+        {connected ? (
+          <span>
+            The extension is connected
+            {lastUsed && (
+              <>
+                , last used <LocalTime value={lastUsed} style="time" />
+              </>
+            )}
+            .
+          </span>
+        ) : (
+          "The extension is not connected yet."
+        )}
       </p>
 
       <label className="block max-w-md text-sm font-medium">

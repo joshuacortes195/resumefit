@@ -11,8 +11,6 @@ export const metadata = { title: "Job" };
 
 type Params = Promise<{ jobId: string; tab: string }>;
 
-const PRACTICE_DATE = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" });
-
 // one job's card, opened on top of the board
 export default async function JobPage({ params }: { params: Params }) {
   // looked up before anything is sent, so a job or tab that is not there answers with a real 404 and the not found page
@@ -63,7 +61,7 @@ async function JobModalLoader({ user, job, tab }: { user: CurrentUser; job: JobR
         resume: resume ? { id: resume.id, name: resume.name, text: resume.rawText ?? "" } : null,
         resumes: resumes.map(({ id, name, isBase }) => ({ id, name, isBase })),
         coverLetter: coverLetter?.content ?? "",
-        practice: practice.map((session) => ({ id: session.id, date: PRACTICE_DATE.format(session.createdAt), answered: session.answers.filter(Boolean).length, score: sessionScore(session) })),
+        practice: practice.map((session) => ({ id: session.id, date: session.createdAt.toISOString(), answered: session.answers.filter(Boolean).length, score: sessionScore(session) })),
         interviews: interviews.map((interview) => ({
           id: interview.id,
           type: interview.type,

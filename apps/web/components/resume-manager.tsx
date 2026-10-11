@@ -9,15 +9,13 @@ import type { ActionResult } from "@/app/actions/scans";
 import { Dropzone } from "@/components/scan/dropzone";
 import { CARD, INPUT, PRIMARY_BUTTON, SECONDARY_BUTTON } from "@/components/ui/buttons";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { LocalTime } from "@/components/local-time";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Modal } from "@/components/ui/modal";
 import type { ManagedResume } from "@/lib/data/resumes";
 
 // rows per page
 const PAGE_SIZE = 10;
-
-// short date like "Oct 8, 2026"
-const DATE = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric" });
 
 // shared look for the small icon buttons in the actions column
 const ICON_BUTTON = "rounded-lg p-2 text-muted transition-colors duration-150 hover:bg-primary-soft hover:text-foreground disabled:opacity-40";
@@ -150,8 +148,8 @@ export function ResumeManager({ resumes }: { resumes: ManagedResume[] }) {
                       <span className="text-muted">None</span>
                     )}
                   </td>
-                  <td className="hidden whitespace-nowrap py-2 pr-4 text-muted 2xl:table-cell">{DATE.format(new Date(resume.createdAt))}</td>
-                  <td className="hidden whitespace-nowrap py-2 pr-4 text-muted xl:table-cell">{DATE.format(new Date(resume.updatedAt))}</td>
+                  <td className="hidden whitespace-nowrap py-2 pr-4 text-muted 2xl:table-cell"><LocalTime value={resume.createdAt} /></td>
+                  <td className="hidden whitespace-nowrap py-2 pr-4 text-muted xl:table-cell"><LocalTime value={resume.updatedAt} /></td>
                   <td className="whitespace-nowrap py-2 pr-3 text-right">
                     <button type="button" aria-label={`Preview ${resume.name}`} onClick={() => openPreview(resume.id)} className={ICON_BUTTON}>
                       <Eye className="size-4" aria-hidden />

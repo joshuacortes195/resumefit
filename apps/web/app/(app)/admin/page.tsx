@@ -7,12 +7,11 @@ import { DAILY_CAPS, type AiFeature } from "@/lib/ai/limits";
 import { readyProviders, savedProviderHealth } from "@/lib/ai/router";
 import { getCurrentUser } from "@/lib/auth";
 import { listInvites, listUsers, usageByDay } from "@/lib/data/admin";
+import { LocalTime } from "@/components/local-time";
 import { dailyCaps, featureFlags, FLAGS, type Flag } from "@/lib/data/settings";
 
 export const metadata = { title: "Admin" };
 
-const DATE = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric" });
-const WHEN = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
 
 // names for the capped features
 const CAP_LABELS: Partial<Record<AiFeature, string>> = { optimize: "Optimize", "cover-letter": "Cover letters", bullets: "Bullet ideas", linkedin: "LinkedIn", interview: "Interview", "thank-you": "Thank-you notes", builder: "Builder" };
@@ -65,7 +64,7 @@ async function AdminContent() {
               <tr key={name} className="border-b border-border last:border-0">
                 <td className="py-2.5 font-medium capitalize">{name}</td>
                 <td className="py-2.5">{readyNames.has(name) ? "Yes" : "No"}</td>
-                <td className="py-2.5 text-muted">{health[name]?.lastOk ? WHEN.format(health[name].lastOk) : "None yet"}</td>
+                <td className="py-2.5 text-muted">{health[name]?.lastOk ? <LocalTime value={health[name].lastOk} style="time" /> : "None yet"}</td>
                 <td className="py-2.5 tabular-nums">{health[name]?.rateLimitHits ?? 0}</td>
                 <td className="max-w-md py-2.5 text-muted">{health[name]?.lastError ?? "None"}</td>
               </tr>
@@ -125,7 +124,7 @@ async function AdminContent() {
                   {row.isAdmin && <span className="ml-2 rounded-full bg-primary-soft px-2 py-0.5 text-xs text-primary">admin</span>}
                 </td>
                 <td className="py-2.5 text-muted">{row.name ?? ""}</td>
-                <td className="py-2.5 text-muted">{DATE.format(row.createdAt)}</td>
+                <td className="py-2.5 text-muted"><LocalTime value={row.createdAt} /></td>
                 <td className="py-2.5 font-mono text-muted">{row.inviteCodeUsed ?? ""}</td>
                 <td className="py-2.5 text-right tabular-nums">{row.scans}</td>
               </tr>

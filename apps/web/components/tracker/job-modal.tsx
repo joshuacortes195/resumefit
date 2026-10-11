@@ -8,6 +8,7 @@ import type { JobStatus } from "@resumefit/shared";
 import { addJobInterview, removeInterview, removeJob, saveJobCoverLetter, saveJobDetails, saveJobNotes, saveThankYouNote, setJobArchived, setJobResume, setJobStatus } from "@/app/actions/jobs";
 import type { ActionResult } from "@/app/actions/scans";
 import { generateCoverLetter, generateThankYou } from "@/app/actions/writing";
+import { LocalTime } from "@/components/local-time";
 import { ScoreRing } from "@/components/score-ring";
 import { INPUT, LINK_BUTTON, PRIMARY_BUTTON, SECONDARY_BUTTON } from "@/components/ui/buttons";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -54,9 +55,6 @@ export type JobModalData = {
     thankYouNote: string | null;
   }[];
 };
-
-// date and time the way people read it
-const WHEN = new Intl.DateTimeFormat("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit" });
 
 // the pop up for one job, with a tab for each part of the application
 export function JobModal({ data, tab }: { data: JobModalData; tab: JobTab }) {
@@ -378,7 +376,7 @@ function InterviewsPanel({ data, pending, run }: PanelProps) {
                 <div className="flex flex-wrap items-start justify-between gap-2">
                   <div>
                     <p className="font-semibold">{interview.type}</p>
-                    <p className="text-muted">{interview.datetime ? WHEN.format(new Date(interview.datetime)) : "No date set"}</p>
+                    <p className="text-muted">{interview.datetime ? <LocalTime value={interview.datetime} style="full" /> : "No date set"}</p>
                   </div>
                   <button type="button" aria-label={`Delete ${interview.type} interview`} disabled={pending} onClick={() => run(() => removeInterview(job.id, interview.id))} className="rounded-lg p-1.5 text-muted hover:bg-danger/10 hover:text-danger">
                     <Trash2 className="size-4" aria-hidden />
@@ -428,7 +426,7 @@ function InterviewsPanel({ data, pending, run }: PanelProps) {
             {data.practice.map((session) => (
               <li key={session.id}>
                 <Link href={`/interview/${session.id}`} className="hover:text-foreground hover:underline">
-                  Practice on {session.date}: {session.answered} answered{session.score !== null ? `, average score ${session.score} / 100` : ""}
+                  Practice on <LocalTime value={session.date} style="day" />: {session.answered} answered{session.score !== null ? `, average score ${session.score} / 100` : ""}
                 </Link>
               </li>
             ))}

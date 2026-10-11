@@ -8,6 +8,7 @@ import { archiveScans, removeScans, setScanStatus, trackScan, type ActionResult 
 import { ScoreRing } from "@/components/score-ring";
 import { CARD, INPUT, LINK_BUTTON, PRIMARY_BUTTON, SECONDARY_BUTTON } from "@/components/ui/buttons";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { LocalTime } from "@/components/local-time";
 import { EmptyState } from "@/components/ui/empty-state";
 import { StatusSelect } from "@/components/ui/status-select";
 import type { ScanListItem } from "@/lib/data/scans";
@@ -22,9 +23,6 @@ type ScanHistoryProps = {
   sort: "date" | "score" | "company";
   archived: boolean;
 };
-
-// short date like "Oct 8, 2026"
-const DATE = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric" });
 
 // the scan history table with search, sort, paging and bulk actions
 export function ScanHistory({ items, total, page, pageSize, search, sort, archived }: ScanHistoryProps) {
@@ -166,7 +164,7 @@ export function ScanHistory({ items, total, page, pageSize, search, sort, archiv
                   <td className="py-3 pr-4">
                     <StatusSelect label={`Status of ${item.jobTitle ?? "this job"}`} value={item.jobStatus} disabled={pending} onChange={(status) => run(() => setScanStatus(item.id, status, localToday()))} />
                   </td>
-                  <td className="whitespace-nowrap py-3 pr-4 text-muted">{DATE.format(new Date(item.createdAt))}</td>
+                  <td className="whitespace-nowrap py-3 pr-4 text-muted"><LocalTime value={item.createdAt} /></td>
                   <td className="py-3 pr-4">
                     {/* tracked means the card is really there, the status comes from the card itself */}
                     {item.jobId && item.jobStatus ? (

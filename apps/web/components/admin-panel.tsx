@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { Check, Copy, Plus, Trash2 } from "lucide-react";
 import { createInviteAction, revokeInviteAction, saveCapsAction, saveFlagsAction } from "@/app/actions/admin";
+import { LocalTime } from "@/components/local-time";
 import { CARD, INPUT, PRIMARY_BUTTON, SECONDARY_BUTTON } from "@/components/ui/buttons";
 
 type AdminPanelProps = {
@@ -10,8 +11,6 @@ type AdminPanelProps = {
   caps: { feature: string; label: string; cap: number }[];
   flags: { key: string; label: string; on: boolean }[];
 };
-
-const DATE = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric" });
 
 // the parts of the admin page that change things: invite codes, daily caps and feature switches
 export function AdminPanel({ invites, caps, flags }: AdminPanelProps) {
@@ -80,7 +79,7 @@ export function AdminPanel({ invites, caps, flags }: AdminPanelProps) {
                   <td className="py-2.5 tabular-nums">
                     {invite.uses} of {invite.maxUses}
                   </td>
-                  <td className="py-2.5 text-muted">{invite.expiresAt ? DATE.format(new Date(invite.expiresAt)) : "Never"}</td>
+                  <td className="py-2.5 text-muted">{invite.expiresAt ? <LocalTime value={invite.expiresAt} /> : "Never"}</td>
                   <td className="py-2.5 text-right">
                     <button type="button" onClick={() => copyLink(invite.code)} className={`${SECONDARY_BUTTON} px-2.5 py-1.5`}>
                       {copied === invite.code ? <Check className="size-4" aria-hidden /> : <Copy className="size-4" aria-hidden />}
