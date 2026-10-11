@@ -4,6 +4,15 @@ import { NextResponse, type NextRequest } from "next/server";
 // pages anyone can open without signing in
 const PUBLIC = /^\/(sign-in|auth\/|privacy|terms|api\/ext\/|api\/health$|api\/cron\/feed$|scans\/sample)/;
 
+// pages that are the same for everyone, so a shared cache may keep them. everything else is one person's own
+const SAME_FOR_EVERYONE = /^\/(sign-in|privacy|terms|scans\/sample)?$/;
+
+// marks an answer as private. nothing that depends on who is signed in may be kept by a cache that other people share
+function keepPrivate(request: NextRequest, response: NextResponse): NextResponse {
+  if (!SAME_FOR_EVERYONE.test(request.nextUrl.pathname)) response.headers.set("Cache-Control", "private, no-store");
+  return response;
+}
+
 // the names this computer goes by
 const LOCAL_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]"]);
 
@@ -16,7 +25,7 @@ export async function proxy(request: NextRequest) {
   if (!url || !key) {
     const host = (request.headers.get("host") ?? "").replace(/:\d+$/, "");
     if (!LOCAL_HOSTS.has(host)) return new NextResponse("ResumeFit is running in local mode and only answers on this computer.", { status: 403 });
-    return NextResponse.next();
+    return keepPrivate(request, NextResponse.next());
   }
 
   let response = NextResponse.next({ request });
@@ -38,13 +47,13 @@ export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   if (!user && !PUBLIC.test(pathname) && pathname !== "/") {
     // api calls get a plain "not signed in", pages get sent to sign in
-    if (pathname.startsWith("/api/")) return NextResponse.json({ error: "Sign in first." }, { status: 401 });
+    if (pathname.startsWith("/api/")) return keepPrivate(request, NextResponse.json({ error: "Sign in first." }, { status: 401 }));
     const signIn = request.nextUrl.clone();
     signIn.pathname = "/sign-in";
     signIn.search = "";
     return NextResponse.redirect(signIn);
   }
-  return response;
+  return keepPrivate(request, response);
 }
 
 // skip files like images and the framework's own assets
