@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Archive, ArchiveRestore, CalendarPlus, Check, Download, ScanSearch, Sparkles, Trash2 } from "lucide-react";
+import { Archive, ArchiveRestore, CalendarPlus, Check, Download, ExternalLink, ScanSearch, Sparkles, Trash2 } from "lucide-react";
 import type { JobStatus } from "@resumefit/shared";
 import { addJobInterview, removeInterview, removeJob, saveJobCoverLetter, saveJobDetails, saveJobNotes, saveThankYouNote, setJobArchived, setJobResume, setJobStatus } from "@/app/actions/jobs";
 import type { ActionResult } from "@/app/actions/scans";
@@ -95,6 +95,13 @@ export function JobModal({ data, tab }: { data: JobModalData; tab: JobTab }) {
             <Sparkles className="size-4" aria-hidden />
             AI Optimize
           </Link>
+        )}
+        {/* straight to the posting or application this card was saved from */}
+        {job.url && /^https?:\/\//.test(job.url) && (
+          <a href={job.url} target="_blank" rel="noreferrer" className={`${SECONDARY_BUTTON} px-3 py-1.5`}>
+            <ExternalLink className="size-4" aria-hidden />
+            Open application
+          </a>
         )}
         <Link href={`/scans/new?job=${job.id}`} className={`${SECONDARY_BUTTON} px-3 py-1.5`}>
           <ScanSearch className="size-4" aria-hidden />
@@ -198,10 +205,19 @@ function JobTabPanel({ data, pending, run }: PanelProps) {
           Location
           <input name="location" defaultValue={job.location ?? ""} className={`${INPUT} mt-1`} />
         </label>
-        <label className="block text-sm">
-          Job listing link
-          <input name="url" type="url" defaultValue={job.url ?? ""} placeholder="https://" className={`${INPUT} mt-1`} />
-        </label>
+        <div>
+          <label className="block text-sm">
+            Job listing link
+            <input name="url" type="url" defaultValue={job.url ?? ""} placeholder="https://" className={`${INPUT} mt-1`} />
+          </label>
+          {/* the saved link, as something you can click */}
+          {job.url && /^https?:\/\//.test(job.url) && (
+            <a href={job.url} target="_blank" rel="noreferrer" className={`mt-1.5 inline-flex max-w-full items-center gap-1 text-sm ${LINK_BUTTON}`}>
+              <ExternalLink className="size-3.5 shrink-0" aria-hidden />
+              <span className="truncate">Open the application</span>
+            </a>
+          )}
+        </div>
         <p className="pt-2 text-sm font-semibold">Application</p>
         <label className="block text-sm">
           Salary
