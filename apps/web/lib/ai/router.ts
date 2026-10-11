@@ -84,6 +84,8 @@ function record(name: string, error?: ProviderError | Error) {
   const entry = (health[name] ??= { lastOk: null, lastError: null, lastErrorAt: null, rateLimitHits: 0 });
   if (!error) {
     entry.lastOk = new Date();
+    // a call that worked clears the old problem, so settings stops showing a fault that is over
+    entry.lastError = null;
     return;
   }
   // the status code says most of what went wrong: 429 is a rate limit, 404 a model that does not exist, 400 a request the provider would not take
@@ -178,8 +180,10 @@ async function attempt<T>(
     for (const model of models) {
       try {
         const { value, tokensIn, tokensOut } = await run(provider, model, AbortSignal.timeout(options.timeoutMs ?? 25_000));
+        // the first good call on this copy of the app is written down, and so is one that follows a problem. that is what lets a saved problem be cleared
+        const worthSaving = !health[provider.name]?.lastOk || Boolean(health[provider.name]?.lastError);
         record(provider.name);
-        if (health[provider.name]?.lastError) await saveHealth(provider.name);
+        if (worthSaving) await saveHealth(provider.name);
         if (!options.untracked) await logUsage({ userId: options.userId, feature, provider: provider.name, model, tokensIn, tokensOut });
         return value;
       } catch (error) {

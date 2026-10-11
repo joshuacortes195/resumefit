@@ -102,8 +102,14 @@ export function geminiCall(apiKey: string): ProviderCall {
 async function postJson(url: string, token: string, body: unknown, signal: AbortSignal): Promise<Record<string, unknown>> {
   const response = await fetch(url, { method: "POST", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" }, body: JSON.stringify(body), signal });
   if (!response.ok) {
+    const answer = await response.text().catch(() => "");
+    // the shape of what was sent and the provider's own answer, in the server log only. the text of the prompt is left out, its size is enough
+    const sent = body as { model?: unknown; messages?: { role?: string; content?: string }[]; response_format?: unknown } & Record<string, unknown>;
+    console.error(
+      `ai request refused: ${response.status} from ${new URL(url).host}, model ${String(sent.model ?? "(in the address)")}, fields [${Object.keys(sent).join(", ")}], messages ${(sent.messages ?? []).map((message) => `${message.role}:${message.content?.length ?? 0} chars`).join(" + ")}, response_format ${JSON.stringify(sent.response_format ?? null)}. answer: ${answer.slice(0, 600)}`,
+    );
     // keep what the provider said about why. a bare "status 400" tells nobody what to fix
-    const detail = errorDetail(await response.text().catch(() => ""));
+    const detail = errorDetail(answer);
     const reason = [detail.code, detail.message].filter(Boolean).join(": ");
     throw new ProviderError(`Request failed with status ${response.status}${reason ? ` (${reason})` : ""}`, response.status, detail.code);
   }

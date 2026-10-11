@@ -41,6 +41,14 @@ export function plainProblem(raw: string | null | undefined): string | null {
   return "It had a problem answering.";
 }
 
+// true when a provider's last problem is still worth showing: it happened in the last day and nothing has worked since.
+// a provider that is only a fallback may not be called for days, and an old fault left on the page reads as "broken right now"
+function stillWrong(entry: { lastOk: Date | null; lastErrorAt: Date | null; lastError: string | null } | undefined, now = Date.now()): boolean {
+  if (!entry?.lastError || !entry.lastErrorAt) return false;
+  const at = new Date(entry.lastErrorAt).getTime();
+  return now - at < 24 * 60 * 60 * 1000 && (!entry.lastOk || new Date(entry.lastOk).getTime() < at);
+}
+
 // gathers which providers are set up and how much of today's allowance is left
 export async function aiStatus(userId: string): Promise<AiStatus> {
   const db = await getDb();
@@ -67,7 +75,7 @@ export async function aiStatus(userId: string): Promise<AiStatus> {
     available: ready.length > 0,
     hasOwnKey: ownKey.length > 0,
     ownKeyEnding: keyEnding(ownKey[0]?.encryptedKey),
-    providers: (["gemini", "groq", "cloudflare"] as const).map((name) => ({ name, ready: names.has(name), lastError: plainProblem(health[name]?.lastError) })),
+    providers: (["gemini", "groq", "cloudflare"] as const).map((name) => ({ name, ready: names.has(name), lastError: stillWrong(health[name]) ? plainProblem(health[name]?.lastError) : null })),
     remaining,
   };
 }
