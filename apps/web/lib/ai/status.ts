@@ -25,6 +25,22 @@ function keyEnding(encryptedKey: string | undefined): string | null {
   return key ? key.slice(-4) : null;
 }
 
+// turns what a provider said into a short plain reason. the raw text can hold the provider's own json and model names,
+// which mean nothing to the person reading the settings page, so it stays in the server log and on the admin page
+export function plainProblem(raw: string | null | undefined): string | null {
+  if (!raw) return null;
+  const status = Number(raw.match(/^(\d{3}):/)?.[1] ?? raw.match(/status (\d{3})/)?.[1]);
+  if (status === 429) return "It had reached its free limit for the moment. It is tried again on the next request.";
+  if (status === 401 || status === 403) return "It did not accept the key it was given.";
+  if (status === 402) return "It asked for billing to be set up.";
+  if (status === 404) return "The model it was asked for was not available.";
+  if (status === 400) return "It would not take the request.";
+  if (status >= 500) return "It was busy or down for a moment.";
+  if (/timeout|timed out|abort/i.test(raw)) return "It took too long to answer.";
+  if (/shape|json|empty reply/i.test(raw)) return "It sent back an answer we could not use.";
+  return "It had a problem answering.";
+}
+
 // gathers which providers are set up and how much of today's allowance is left
 export async function aiStatus(userId: string): Promise<AiStatus> {
   const db = await getDb();
@@ -51,7 +67,7 @@ export async function aiStatus(userId: string): Promise<AiStatus> {
     available: ready.length > 0,
     hasOwnKey: ownKey.length > 0,
     ownKeyEnding: keyEnding(ownKey[0]?.encryptedKey),
-    providers: (["gemini", "groq", "cloudflare"] as const).map((name) => ({ name, ready: names.has(name), lastError: health[name]?.lastError ?? null })),
+    providers: (["gemini", "groq", "cloudflare"] as const).map((name) => ({ name, ready: names.has(name), lastError: plainProblem(health[name]?.lastError) })),
     remaining,
   };
 }

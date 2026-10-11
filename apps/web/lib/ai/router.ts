@@ -5,7 +5,7 @@ import { decrypt } from "@/lib/ai/crypto";
 import { globalCapReached, logUsage, remainingToday, userCapReached, type AiFeature } from "@/lib/ai/limits";
 import { mockCall } from "@/lib/ai/mock";
 import { encryptionSecret } from "@/lib/ai/secret";
-import { cloudflareCall, DEFAULT_MODELS, geminiCall, groqCall, PROVIDERS, ProviderError, type ProviderCall, type ProviderName } from "@/lib/ai/providers";
+import { cloudflareCall, DEFAULT_MODELS, geminiCall, groqCall, isModelProblem, PROVIDERS, ProviderError, type ProviderCall, type ProviderName } from "@/lib/ai/providers";
 import { aiProviderOrder, serverEnv } from "@/lib/env";
 import { withinLimit } from "@/lib/rate-limit";
 
@@ -190,8 +190,8 @@ async function attempt<T>(
         await saveHealth(provider.name);
         // "wants billing", "not allowed" and "no such model" are about that one model, so the smaller one is worth a try.
         // anything else, like a rate limit, is about the whole provider, so move on to the next
-        const status = error instanceof ProviderError ? error.status : undefined;
-        if (status !== 402 && status !== 403 && status !== 404) break;
+        // groq says a retired model with a 400, so the reason it gives counts too, not only the status
+        if (!isModelProblem(error)) break;
       }
     }
   }

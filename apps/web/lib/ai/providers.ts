@@ -18,13 +18,35 @@ export type ProviderRequest = {
 
 export type ProviderReply = { text: string; tokensIn: number; tokensOut: number };
 
-// a failed call, with the http status when there was one
+// a failed call, with the http status when there was one and the provider's own short code for what went wrong
 export class ProviderError extends Error {
   constructor(
     message: string,
     public status?: number,
+    public code?: string,
   ) {
     super(message);
+  }
+}
+
+// true when the fault is with the one model that was asked for, not the provider or the request: retired, renamed, or not on offer for this key
+export function isModelProblem(error: unknown): boolean {
+  if (!(error instanceof ProviderError)) return false;
+  return error.status === 402 || error.status === 403 || error.status === 404 || /model_(decommissioned|not_found|not_active)|model.*(decommission|not found|does not exist|no longer)/i.test(`${error.code ?? ""} ${error.message}`);
+}
+
+// the reason a provider gave for turning a request down, read from the body of its answer.
+// groq and cloudflare each have their own shape. this only ever goes to the server log and the admin page
+export function errorDetail(body: string): { code?: string; message?: string } {
+  try {
+    const data = JSON.parse(body) as { error?: { code?: unknown; type?: unknown; message?: unknown } | string; errors?: { code?: unknown; message?: unknown }[] };
+    const first = typeof data.error === "object" && data.error ? data.error : data.errors?.[0];
+    if (typeof data.error === "string") return { message: data.error.slice(0, 200) };
+    if (!first) return {};
+    const code = first.code ?? (first as { type?: unknown }).type;
+    return { code: code === undefined || code === null ? undefined : String(code).slice(0, 60), message: typeof first.message === "string" ? first.message.slice(0, 200) : undefined };
+  } catch {
+    return {};
   }
 }
 
@@ -79,26 +101,41 @@ export function geminiCall(apiKey: string): ProviderCall {
 // reads a json answer from a plain http call, turning bad statuses into errors
 async function postJson(url: string, token: string, body: unknown, signal: AbortSignal): Promise<Record<string, unknown>> {
   const response = await fetch(url, { method: "POST", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" }, body: JSON.stringify(body), signal });
-  if (!response.ok) throw new ProviderError(`Request failed with status ${response.status}`, response.status);
+  if (!response.ok) {
+    // keep what the provider said about why. a bare "status 400" tells nobody what to fix
+    const detail = errorDetail(await response.text().catch(() => ""));
+    const reason = [detail.code, detail.message].filter(Boolean).join(": ");
+    throw new ProviderError(`Request failed with status ${response.status}${reason ? ` (${reason})` : ""}`, response.status, detail.code);
+  }
   return (await response.json()) as Record<string, unknown>;
 }
 
 // groq, which speaks the same format as openai
 export function groqCall(apiKey: string): ProviderCall {
   return async ({ system, prompt, json, model, signal }) => {
-    const data = await postJson(
-      "https://api.groq.com/openai/v1/chat/completions",
-      apiKey,
-      {
-        model,
-        messages: [
-          { role: "system", content: system },
-          { role: "user", content: prompt },
-        ],
-        ...(json ? { response_format: { type: "json_object" } } : {}),
-      },
-      signal,
-    );
+    const send = (strictJson: boolean) =>
+      postJson(
+        "https://api.groq.com/openai/v1/chat/completions",
+        apiKey,
+        {
+          model,
+          messages: [
+            { role: "system", content: system },
+            { role: "user", content: prompt },
+          ],
+          ...(strictJson ? { response_format: { type: "json_object" } } : {}),
+        },
+        signal,
+      );
+    let data: Record<string, unknown>;
+    try {
+      data = await send(json);
+    } catch (error) {
+      // in json mode groq answers 400 when the model's own output is not valid json, or the model does not do json mode.
+      // the prompt already asks for json and the reply is checked afterwards, so ask once more without the strict mode
+      if (!json || !(error instanceof ProviderError) || error.status !== 400 || isModelProblem(error)) throw error;
+      data = await send(false);
+    }
     const choices = data.choices as { message?: { content?: string } }[] | undefined;
     const usage = data.usage as { prompt_tokens?: number; completion_tokens?: number } | undefined;
     return { text: choices?.[0]?.message?.content ?? "", tokensIn: usage?.prompt_tokens ?? 0, tokensOut: usage?.completion_tokens ?? 0 };

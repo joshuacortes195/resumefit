@@ -5,7 +5,8 @@ import { jdHints } from "@/lib/ai/jd";
 import { DAILY_CAPS, GLOBAL_DAILY_CAP, logUsage, remainingToday, USER_DAILY_CAP, userCapReached } from "@/lib/ai/limits";
 import { jdExtractionSchema, type JdExtraction } from "@/lib/ai/prompts/jd-extraction";
 import { tidy } from "@/lib/ai/prompts/style";
-import { ProviderError, type ProviderRequest } from "@/lib/ai/providers";
+import { errorDetail, groqCall, isModelProblem, ProviderError, type ProviderRequest } from "@/lib/ai/providers";
+import { plainProblem } from "@/lib/ai/status";
 import { redact } from "@/lib/ai/redact";
 import { AiBusyError, AiLimitError, AiUnavailableError, generateJSON, generateText, type ReadyProvider } from "@/lib/ai/router";
 import { getCurrentUser } from "@/lib/auth";
@@ -99,6 +100,62 @@ describe("provider router", () => {
     const gemini = fake("gemini", ["plain text"]);
     await generateText("bullets", { system: "s", prompt: "p" }, { userId: user.id, providers: [gemini], fast: true });
     expect(gemini.requests[0]?.model).toBe("gemini-fast");
+  });
+});
+
+describe("provider errors", () => {
+  it("never shows a provider's own words on the settings page", () => {
+    // the two that were showing up as they came
+    const gemini = '503: {"error":{"code":503,"message":"This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.","status":"UNAVAILABLE"}}';
+    expect(plainProblem(gemini)).toBe("It was busy or down for a moment.");
+    expect(plainProblem("400: Request failed with status 400")).toBe("It would not take the request.");
+    expect(plainProblem("429: Request failed with status 429 (rate_limit_exceeded: Rate limit reached for model)")).toMatch(/free limit/);
+    expect(plainProblem("The operation was aborted due to timeout")).toBe("It took too long to answer.");
+    expect(plainProblem("Reply did not match the expected shape: score: expected number")).toBe("It sent back an answer we could not use.");
+    expect(plainProblem(null)).toBeNull();
+    for (const raw of [gemini, "400: Request failed with status 400 (model_decommissioned: The model `llama-3.3-70b-versatile` has been decommissioned)", "401: API key not valid"]) {
+      expect(plainProblem(raw)).not.toMatch(/[{}"`]|\d{3}|model_|llama|UNAVAILABLE/);
+    }
+  });
+
+  it("reads the reason out of a provider's answer for the server log", () => {
+    expect(errorDetail('{"error":{"message":"Failed to generate JSON. Please adjust your prompt.","type":"invalid_request_error","code":"json_validate_failed"}}')).toEqual({ code: "json_validate_failed", message: "Failed to generate JSON. Please adjust your prompt." });
+    expect(errorDetail('{"success":false,"errors":[{"code":5007,"message":"No such model"}]}')).toEqual({ code: "5007", message: "No such model" });
+    expect(errorDetail("<html>bad gateway</html>")).toEqual({});
+    expect(isModelProblem(new ProviderError("Request failed with status 400 (model_decommissioned: gone)", 400, "model_decommissioned"))).toBe(true);
+    expect(isModelProblem(new ProviderError("Request failed with status 400 (json_validate_failed: bad json)", 400, "json_validate_failed"))).toBe(false);
+    expect(isModelProblem(new ProviderError("Request failed with status 429", 429))).toBe(false);
+  });
+
+  it("asks groq again without strict json when it turns the first try down with a 400", async () => {
+    const bodies: { response_format?: unknown }[] = [];
+    const real = globalThis.fetch;
+    globalThis.fetch = (async (_url: unknown, init?: { body?: string }) => {
+      const body = JSON.parse(init?.body ?? "{}") as { response_format?: unknown };
+      bodies.push(body);
+      if (body.response_format) return new Response('{"error":{"message":"Failed to generate JSON","code":"json_validate_failed"}}', { status: 400 });
+      return new Response(JSON.stringify({ choices: [{ message: { content: '{"answer":"yes","score":3}' } }], usage: { prompt_tokens: 4, completion_tokens: 2 } }), { status: 200 });
+    }) as typeof fetch;
+    try {
+      const reply = await groqCall("key")({ system: "s", prompt: "p", json: true, model: "m", signal: AbortSignal.timeout(5000) });
+      expect(reply.text).toBe('{"answer":"yes","score":3}');
+      expect(bodies.map((body) => Boolean(body.response_format))).toEqual([true, false]);
+
+      // a retired model is not worth a second try on the same model, and the reason travels with the error
+      globalThis.fetch = (async () => new Response('{"error":{"message":"The model has been decommissioned","code":"model_decommissioned"}}', { status: 400 })) as typeof fetch;
+      const failed = await groqCall("key")({ system: "s", prompt: "p", json: true, model: "old", signal: AbortSignal.timeout(5000) }).catch((error: unknown) => error);
+      expect(failed).toMatchObject({ status: 400, code: "model_decommissioned" });
+      expect((failed as Error).message).toContain("decommissioned");
+    } finally {
+      globalThis.fetch = real;
+    }
+  });
+
+  it("moves to the smaller model when a provider says the main one is retired, even with a 400", async () => {
+    const groq = fake("groq", [new ProviderError("Request failed with status 400 (model_decommissioned: gone)", 400, "model_decommissioned"), "from the smaller model"]);
+    // untracked, so this one does not count against anyone's limits
+    expect(await generateText("bullets", { system: "s", prompt: "p" }, { userId: "nobody", untracked: true, providers: [groq] })).toBe("from the smaller model");
+    expect(groq.requests.map((request) => request.model)).toEqual(["groq-main", "groq-fast"]);
   });
 });
 
