@@ -3,7 +3,7 @@ import { and, asc, count, desc, eq, gte, ilike, inArray, lt, or } from "drizzle-
 import { scanResume, type DegreeLevel, type JdHints, type LayoutMeta, type ScanResult } from "@resumefit/scoring";
 import { HARD_SKILLS, SOFT_SKILLS } from "@resumefit/skills-data";
 import { getDb, schema } from "@/db";
-import { createJob, findCard } from "@/lib/data/jobs";
+import { createJob, findCard, tidyCompany } from "@/lib/data/jobs";
 
 export type ScanRow = typeof schema.scans.$inferSelect;
 
@@ -161,7 +161,7 @@ export async function createScan(userId: string, input: NewScan): Promise<SavedS
       jobId: input.jobId ?? null,
       // fall back to what we could read from the posting
       jobTitle: input.jobTitle?.trim() || report.jobTitle,
-      company: input.company?.trim() || report.jd.company,
+      company: tidyCompany(input.company, input.jobUrl) || report.jd.company,
       jobUrl: input.jobUrl ?? null,
       jdText: input.jdText,
       jdHash: hashJd(input.jdText),

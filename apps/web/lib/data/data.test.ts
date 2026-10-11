@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { getCurrentUser } from "@/lib/auth";
-import { createJob, findCard, latestScores, listJobs, samePosting } from "./jobs";
+import { createJob, findCard, latestScores, listJobs, samePosting, tidyCompany } from "./jobs";
 import { addedOn } from "@/lib/job-tabs";
 import { duplicateResume, getResume, listManagedResumes, listResumes, saveResume, setBaseResume } from "./resumes";
 import { addToDictionary, createScan, deleteScans, ensureCard, getScan, hashJd, listScans, previewOf, previousScan, scansToday, setScansArchived, updateScan } from "./scans";
@@ -275,5 +275,24 @@ describe("every way a scan and a card get linked", () => {
     const shown = (await latestScores(user.id, [first.jobId ?? ""])).get(first.jobId ?? "");
     expect(shown).toMatchObject({ scanId: again.id, scans: 2 });
     expect((await getScan(user.id, shown?.scanId ?? ""))?.company).toBe("Loop Labs");
+  });
+});
+
+describe("company names from career sites", () => {
+  it("drops the entity number a workday page puts in front, and nothing else", async () => {
+    expect(tidyCompany("100 Intel Corporation", "https://intel.wd1.myworkdayjobs.com/External/job/Santa-Clara/Intern_JR1")).toBe("Intel Corporation");
+    expect(tidyCompany("  0042 Acme Health ", "https://acme.wd5.myworkdayjobs.com/x")).toBe("Acme Health");
+    // real names that start with a number, and the same shape on any other site
+    expect(tidyCompany("100 Thieves", "https://boards.greenhouse.io/100thieves/jobs/1")).toBe("100 Thieves");
+    expect(tidyCompany("84 Lumber", null)).toBe("84 Lumber");
+    expect(tidyCompany("3M", "https://3m.wd1.myworkdayjobs.com/x")).toBe("3M");
+    expect(tidyCompany("  ", "https://x.wd1.myworkdayjobs.com/x")).toBeNull();
+
+    // it is applied where jobs and scans are saved, so the extension, the link importer and the form are all covered
+    const user = await getCurrentUser();
+    const url = "https://intel.wd1.myworkdayjobs.com/External/job/123";
+    const job = await createJob(user.id, { title: "Validation Intern", company: "100 Intel Corporation", url });
+    const scan = await createScan(user.id, { resumeId: null, resumeText: RESUME, layout: null, jdText: `${JD}\nintel validation`, jobTitle: "Validation Intern", company: "100 Intel Corporation", jobUrl: url, jobId: job.id });
+    expect([job.company, scan.company]).toEqual(["Intel Corporation", "Intel Corporation"]);
   });
 });

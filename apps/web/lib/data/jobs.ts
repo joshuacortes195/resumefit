@@ -17,6 +17,24 @@ export type NewJob = {
   resumeId?: string | null;
 };
 
+// career pages run on workday put the employer's internal entity number in front of its name, like "100 Intel Corporation".
+// that number is dropped, but only for workday links, since "100 Thieves" and "84 Lumber" are real names
+export function tidyCompany(company: string | null | undefined, url: string | null | undefined): string | null {
+  const name = company?.trim();
+  if (!name) return null;
+  const workday = /(^|\.)(myworkdayjobs|myworkdaysite|workday)\.com$/i.test(hostOf(url));
+  return workday ? name.replace(/^\d{1,5}\s+(?=[A-Za-z])/, "") : name;
+}
+
+// the site a link points at, empty when it is not a link
+function hostOf(url: string | null | undefined): string {
+  try {
+    return new URL(url ?? "").hostname;
+  } catch {
+    return "";
+  }
+}
+
 // adds a job to the bottom of its column on the tracker
 export async function createJob(userId: string, job: NewJob): Promise<JobRow> {
   const db = await getDb();
@@ -30,7 +48,7 @@ export async function createJob(userId: string, job: NewJob): Promise<JobRow> {
     .values({
       userId,
       title: job.title,
-      company: job.company ?? null,
+      company: tidyCompany(job.company, job.url),
       location: job.location ?? null,
       url: job.url ?? null,
       salary: job.salary ?? null,
