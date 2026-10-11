@@ -175,7 +175,7 @@ export function CoverLetterStudio({ resumes: savedResumes, scans, jobs, ai }: St
                   </optgroup>
                 )}
                 {jobs.length > 0 && (
-                  <optgroup label="Job tracker">
+                  <optgroup label="Application tracker">
                     {jobs.map((job) => (
                       <option key={job.id} value={`job:${job.id}`}>
                         {job.label}

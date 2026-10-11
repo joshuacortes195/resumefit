@@ -71,6 +71,11 @@ test("connect the extension, then save and scan a job the way it does", async ({
   const again = await (await request.post("/api/ext/scan", { headers, data: { jdText: JD, title: "support specialist", company: "Harbor Freight Co", url: "https://apply.example.com/harbor/77/form" } })).json();
   expect(again).toMatchObject({ jobId: saved.jobId, addedToTracker: false });
 
+  // a panel still holding the last job's card must not put another company's scan on it
+  const other = await (await request.post("/api/ext/scan", { headers, data: { jdText: JD, title: "Process Engineer", company: "Silicon Ridge", url: "https://jobs.example.com/ridge/9", jobId: saved.jobId } })).json();
+  expect(other.addedToTracker).toBe(true);
+  expect(other.jobId).not.toBe(saved.jobId);
+
   // a job that was never saved gets a card of its own when it is scanned, with the score on it
   const fresh = await (await request.post("/api/ext/scan", { headers, data: { jdText: JD, title: "Help Desk Agent", company: "Pier Nine", url: "https://jobs.example.com/pier/3" } })).json();
   expect(fresh.addedToTracker).toBe(true);

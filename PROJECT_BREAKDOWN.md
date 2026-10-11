@@ -16,11 +16,11 @@ Last updated: 2026-10-10
 
 ## One-line version
 
-I built a resume to job description scanner with a deterministic scoring engine, a Chrome extension that scans the posting you are looking at, and a job tracker that shows every score in one place.
+I built a resume to job description scanner with a deterministic scoring engine, a Chrome extension that scans the posting you are looking at, and an application tracker that shows every score in one place.
 
 ## Short version
 
-ResumeFit reads a PDF or DOCX resume, scores how well it matches a job posting, and shows exactly which skills and formatting problems are costing points. The score comes from plain code with no language model behind it, so the same input always gives the same answer. Around that scan I built a Chrome extension that scans the posting on the page you are on, a Kanban job tracker, a resume builder with eight templates, writing help for resumes and cover letters, a LinkedIn profile scorer, interview practice and a daily job feed. I built it for me and my friends, so nothing is behind a paywall.
+ResumeFit reads a PDF or DOCX resume, scores how well it matches a job posting, and shows exactly which skills and formatting problems are costing points. The score comes from plain code with no language model behind it, so the same input always gives the same answer. Around that scan I built a Chrome extension that scans the posting on the page you are on, a Kanban application tracker, a resume builder with eight templates, writing help for resumes and cover letters, a LinkedIn profile scorer, interview practice and a daily job feed. I built it for me and my friends, so nothing is behind a paywall.
 
 ## What I built
 
@@ -55,7 +55,7 @@ ResumeFit reads a PDF or DOCX resume, scores how well it matches a job posting, 
 - Reads my own LinkedIn profile page into the LinkedIn scorer
 - It only reads pages. Site access is asked for once through an optional permission, and the connection key is stored on the server as a SHA-256 hash that expires after 90 days
 
-### Job tracker, resume manager and builder
+### Application tracker, resume manager and builder
 - Kanban board with five columns, drag and drop by mouse and keyboard, optimistic updates, search and an archived view
 - Columns sit side by side as far as they fit at a readable width and wrap onto the next row after that, so the board still reads in a narrow window
 - Job card with a URL per tab: details, the resume used, cover letter, interviews with calendar export, autosaved notes
@@ -102,6 +102,7 @@ ResumeFit reads a PDF or DOCX resume, scores how well it matches a job posting, 
 - **Auto Apply did not hold up on real sites.** I built a feature that opened applications, filled them in and could submit them. It passed every test I wrote against saved copies of forms, then failed on the first two real company sites I tried. Every company's form is built differently, dropdowns are custom widgets, big employers want an account first, and most forms have a captcha. Doing it properly would need a paid agent per application. I removed about 4,800 lines and made the scan the center of the product
 - **The extension said "open a job first" on a real job page.** Chrome hides a tab's address from an extension until the extension is allowed on that site, and my code read "no address" as "not a job page". I changed it to ask once for access through an optional permission and to treat a missing address as "not allowed yet"
 - **Scans from the extension never showed on the tracker.** A scan was only tied to a job if that job had been saved from the same panel. Now every scan finds its tracker card by link, then by title and company, and makes one if there is none
+- **A scan landed on the wrong card.** After scanning one job, the extension kept that job's card in memory, so scanning a second company overwrote the first one's score. Each job in the panel now starts with a clean state, and the server ignores a card that does not match the job being scanned
 - **The tracker was unreadable in a narrow window.** Five columns squeezed into the space left beside the extension's panel. The board now wraps columns instead of squeezing them, and pop ups scroll inside the screen
 
 ## Design decisions I can explain
@@ -119,10 +120,10 @@ ResumeFit reads a PDF or DOCX resume, scores how well it matches a job posting, 
 - Built ResumeFit, a resume to job description scanner, as a 22,800 line TypeScript monorepo with a Next.js 16 web app, a Manifest V3 Chrome extension and three shared packages
 - Implemented a deterministic weighted scoring engine that runs on the server and in the browser, matching resumes against 6,750 skills in under half a second
 - Wrote PDF and DOCX parsers that rebuild reading order from raw text positions and document XML to power 30+ formatting and searchability checks
-- Built a Chrome extension that reads the job posting on any page, scans it against a chosen resume and writes the match rate to a Kanban job tracker
+- Built a Chrome extension that reads the job posting on any page, scans it against a chosen resume and writes the match rate to a Kanban application tracker
 - Built a provider router with fallback across three free services, zod validated output with a repair retry, per user caps and PII redaction before every request
 - Built a resume editor with word level diffs, accept and reject controls and live rescoring, with a required confirmation before any unverified skill is added
-- Built a Kanban job tracker with accessible drag and drop, optimistic updates, deep linked card tabs and calendar export
+- Built a Kanban application tracker with accessible drag and drop, optimistic updates, deep linked card tabs and calendar export
 - Built a resume builder with 8 templates, a 7 step editor with undo, redo and autosave, and PDF and Word export
 - Modeled a 17 table PostgreSQL schema in Drizzle ORM with row level security, running on embedded Postgres locally and Supabase in production
 - Built a job feed that caches about 10,000 openings from 159 public company job boards and ranks them against a chosen resume

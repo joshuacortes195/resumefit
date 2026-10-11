@@ -281,7 +281,7 @@ export function Workspace({ scan, saved, ai }: WorkspaceProps) {
               className={`${SECONDARY_BUTTON} px-3 py-2`}
             >
               {tracked ? <Check className="size-4 text-success" aria-hidden /> : <Briefcase className="size-4" aria-hidden />}
-              {tracked ? "On your tracker" : "Add to Job Tracker"}
+              {tracked ? "On your tracker" : "Add to Application Tracker"}
             </button>
           </div>
           <p aria-live="polite" className={`mt-2 min-h-5 text-sm ${message?.ok ? "text-success" : "text-danger"}`}>

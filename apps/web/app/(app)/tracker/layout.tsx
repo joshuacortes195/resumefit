@@ -6,7 +6,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 export default function TrackerLayout({ children }: { children: React.ReactNode }) {
   return (
     <div>
-      <h1 className="text-3xl font-semibold">Job Tracker</h1>
+      <h1 className="text-3xl font-semibold">Application Tracker</h1>
       <p className="mt-1 mb-6 text-muted">Drag jobs from Saved to Offer and keep notes on each one.</p>
       <Suspense
         fallback={

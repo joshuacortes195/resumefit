@@ -25,11 +25,14 @@ type ScanInput = z.infer<typeof scanSchema>;
 // finds the tracker card a scan belongs to, or makes one, so the score always shows up on the tracker.
 // the card the panel named comes first, then one saved from the same page, then one with the same title at the same company
 async function cardFor(userId: string, input: ScanInput): Promise<{ jobId: string | null; added: boolean }> {
-  if (input.jobId && (await getJob(userId, input.jobId))) return { jobId: input.jobId, added: false };
-  const db = await getDb();
-  const mine = eq(schema.jobs.userId, userId);
   const title = input.title?.trim();
   const company = input.company?.trim();
+  // the panel can still be holding the card of the last job it looked at, so its card only counts when it is this same job
+  const named = input.jobId ? await getJob(userId, input.jobId) : null;
+  const sameJob = named && ((input.url && named.url === input.url) || (title && named.title.trim().toLowerCase() === title.toLowerCase()));
+  if (named && sameJob) return { jobId: named.id, added: false };
+  const db = await getDb();
+  const mine = eq(schema.jobs.userId, userId);
   if (input.url) {
     const [byLink] = await db.select({ id: schema.jobs.id }).from(schema.jobs).where(and(mine, eq(schema.jobs.url, input.url))).limit(1);
     if (byLink) return { jobId: byLink.id, added: false };

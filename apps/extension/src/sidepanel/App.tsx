@@ -135,7 +135,6 @@ function Connect({ error, onConnected }: { error: string | null; onConnected: ()
 function Workspace({ connection, account, onDisconnect }: { connection: Connection; account: Account; onDisconnect: () => void }) {
   const [page, setPage] = useState<PageInfo | null>(null);
   const [pasted, setPasted] = useState<{ text: string; url: string; title: string } | null>(null);
-  const [jobId, setJobId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [allowed, setAllowed] = useState(true);
@@ -214,10 +213,11 @@ function Workspace({ connection, account, onDisconnect }: { connection: Connecti
       )}
 
       {/* highlighted text sent from the right click menu */}
-      {pasted && <JobCard job={{ title: pasted.title, company: "", location: "", description: pasted.text, url: pasted.url }} account={account} jobId={jobId} onJob={setJobId} open={open} heading="Selected text" />}
+      {pasted && <JobCard key={`pasted ${pasted.url} ${pasted.text.length}`} job={{ title: pasted.title, company: "", location: "", description: pasted.text, url: pasted.url }} account={account} open={open} heading="Selected text" />}
 
       {page?.linkedinProfile && <LinkedinCard open={open} />}
-      {page?.job && !page.linkedinProfile && <JobCard job={page.job} account={account} jobId={jobId} onJob={setJobId} open={open} heading="Job on this page" />}
+      {/* the key starts the card afresh for every job, so a scan never lands on the card of the job looked at before */}
+      {page?.job && !page.linkedinProfile && <JobCard key={`${page.job.url} ${page.job.title}`} job={page.job} account={account} open={open} heading="Job on this page" />}
       {page && !page.job && !pasted && !page.linkedinProfile && (
         <div className="card">
           <p>We did not find a job posting on this page.</p>
@@ -282,14 +282,14 @@ function LinkedinCard({ open }: { open: (path: string) => void }) {
 type JobCardProps = {
   job: NonNullable<PageInfo["job"]>;
   account: Account;
-  jobId: string | null;
-  onJob: (id: string) => void;
   open: (path: string) => void;
   heading: string;
 };
 
 // a job we read off the page: save it, scan it, or go and optimize for it
-function JobCard({ job, account, jobId, onJob, open, heading }: JobCardProps) {
+function JobCard({ job, account, open, heading }: JobCardProps) {
+  // the tracker card this job was saved to, once it has been saved or scanned
+  const [jobId, setJobId] = useState<string | null>(null);
   const [busy, setBusy] = useState<"save" | "scan" | null>(null);
   const [saved, setSaved] = useState(false);
   const [scan, setScan] = useState<{ scanId: string; matchRate: number; missing: string[]; resumeName: string; jobId: string | null } | null>(null);
@@ -312,7 +312,7 @@ function JobCard({ job, account, jobId, onJob, open, heading }: JobCardProps) {
   const save = () =>
     run("save", async () => {
       const result = await api.saveJob({ title: job.title, company: job.company || undefined, location: job.location || undefined, url: job.url || undefined, description: job.description });
-      onJob(result.jobId);
+      setJobId(result.jobId);
       setSaved(true);
     });
 
@@ -322,7 +322,7 @@ function JobCard({ job, account, jobId, onJob, open, heading }: JobCardProps) {
       setScan(result);
       // the scan lands on a tracker card, so the score shows up there too
       if (result.jobId) {
-        onJob(result.jobId);
+        setJobId(result.jobId);
         setSaved(true);
       }
     });

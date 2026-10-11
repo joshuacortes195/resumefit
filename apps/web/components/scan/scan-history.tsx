@@ -135,7 +135,7 @@ export function ScanHistory({ items, total, page, pageSize, search, sort, archiv
                 <th className="py-3 font-medium">Job description</th>
                 <th className="py-3 font-medium">Status</th>
                 <th className="py-3 font-medium">Scan date</th>
-                <th className="py-3 font-medium">Job tracker</th>
+                <th className="py-3 font-medium">Application tracker</th>
                 <th className="py-3 pr-4 text-right font-medium">Archive</th>
               </tr>
             </thead>

@@ -31,7 +31,7 @@ export const NAV_ITEMS: NavItem[] = [
   { label: "AI Optimize", href: "/optimize", icon: Sparkles, section: "optimize", blurb: "Get rewrite suggestions and watch your match rate move as you accept them." },
   { label: "AI Cover Letter", href: "/cover-letter", icon: Mail, section: "letter", blurb: "Draft a cover letter from your resume and the job description." },
   { label: "LinkedIn Optimizer", href: "/linkedin", icon: UserSearch, section: "linkedin", blurb: "Score your LinkedIn profile against the jobs you want." },
-  { label: "Job Tracker", href: "/tracker", icon: Briefcase, section: "tracker", blurb: "Drag jobs from Saved to Offer and keep notes on each one." },
+  { label: "Application Tracker", href: "/tracker", icon: Briefcase, section: "tracker", blurb: "Drag jobs from Saved to Offer and keep notes on each one." },
   { label: "Find Jobs", href: "/jobs", icon: Search, section: "jobs", blurb: "Search open roles and rank them against your resume." },
   { label: "Resume Builder", href: "/builder", icon: PenLine, section: "builder", blurb: "Build a clean resume step by step with templates that parse well." },
   { label: "Resume Manager", href: "/resumes", icon: Files, section: "resumes", blurb: "Every resume version you've saved, with one marked as your base." },

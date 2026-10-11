@@ -52,7 +52,7 @@ export default function DashboardPage() {
         <div className="flex items-center justify-between">
           <h2 className="flex items-center gap-2 font-semibold">
             <Briefcase className="size-4 text-muted" aria-hidden />
-            Job tracker
+            Application tracker
           </h2>
           {/* the arrow nudges over on hover */}
           <Link href="/tracker" className={`group inline-flex items-center gap-1 text-sm ${LINK_BUTTON}`}>
