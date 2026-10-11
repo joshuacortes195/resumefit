@@ -6,7 +6,7 @@ export function Logo({ showName = true }: { showName?: boolean }) {
     <Link href="/dashboard" className="flex items-center gap-2 font-semibold tracking-tight">
       <svg viewBox="0 0 32 32" className="size-7 shrink-0" aria-hidden>
         {/* the page */}
-        <rect x="5" y="2" width="22" height="28" rx="5" fill="var(--primary)" />
+        <rect x="5" y="2" width="22" height="28" rx="5" fill="var(--c-dashboard)" />
         {/* plain lines of the resume */}
         <rect x="10" y="8" width="8" height="2.5" rx="1.25" fill="#fff" opacity="0.85" />
         <rect x="10" y="21.5" width="10" height="2.5" rx="1.25" fill="#fff" opacity="0.85" />

@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense } from "react";
+import { Suspense, type CSSProperties } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Plus } from "lucide-react";
@@ -32,12 +32,12 @@ function CurrentSidebar(props: SidebarProps) {
 function SidebarLinks({ collapsed = false, onNavigate, pathname }: SidebarProps & { pathname: string }) {
   return (
     <nav aria-label="Main" className="flex h-full flex-col gap-0.5 overflow-y-auto p-3">
-      {/* new scan button at the top, in the logo's green and yellow. the plus turns a little on hover */}
+      {/* new scan button at the top, always in the logo's green and yellow whatever section is open. the plus turns a little on hover */}
       <Link
         href="/scans/new"
         onClick={onNavigate}
         title="New Scan"
-        className="group mb-3 flex items-center justify-center gap-2 rounded-lg bg-primary px-3 py-2.5 text-sm font-semibold text-on-primary transition duration-150 hover:bg-primary-hover active:scale-[0.98]"
+        className="group mb-3 flex items-center justify-center gap-2 rounded-lg bg-(--c-dashboard) px-3 py-2.5 text-sm font-semibold text-white transition duration-150 hover:bg-[color-mix(in_srgb,var(--c-dashboard)_85%,black)] active:scale-[0.98]"
       >
         {/* the plus sits on a yellow dot, the same yellow as the logo's ring */}
         <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-marker text-on-marker">
@@ -57,14 +57,16 @@ function SidebarLinks({ collapsed = false, onNavigate, pathname }: SidebarProps 
             onClick={onNavigate}
             title={collapsed ? item.label : undefined}
             aria-current={active ? "page" : undefined}
+            // each link carries its own color for its highlight and bar, the words and icons stay black
+            style={item.section ? ({ "--link": `var(--c-${item.section})`, "--link-soft": `var(--s-${item.section})` } as CSSProperties) : undefined}
             className={`relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-foreground transition-colors duration-150 ${
-              active ? "bg-primary-soft font-semibold" : "hover:bg-primary-soft"
+              active ? "bg-(--link-soft,var(--primary-soft)) font-semibold" : "hover:bg-(--link-soft,var(--primary-soft))"
             } ${collapsed ? "justify-center" : ""}`}
           >
-            {/* a bar in the accent color marks the current page */}
+            {/* a bar in the link's own color marks the current page */}
             <span
               aria-hidden
-              className={`absolute left-0 top-1/2 w-1 -translate-y-1/2 rounded-full bg-primary transition-[height,opacity] duration-200 ${
+              className={`absolute left-0 top-1/2 w-1 -translate-y-1/2 rounded-full bg-(--link,var(--primary)) transition-[height,opacity] duration-200 ${
                 active ? "h-5 opacity-100" : "h-0 opacity-0"
               }`}
             />

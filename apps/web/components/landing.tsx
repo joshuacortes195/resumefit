@@ -42,7 +42,7 @@ const ALSO = [
 // the page signed out visitors land on: what the app is, what it looks like, a sample to try and the way in
 export function Landing({ inviteOnly }: { inviteOnly: boolean }) {
   return (
-    <div className="min-h-screen bg-background">
+    <div className="brand min-h-screen bg-background">
       {/* top bar: the logo and the way in */}
       <header className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4 sm:px-6">
         <Logo />

@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import { Bricolage_Grotesque, Instrument_Sans } from "next/font/google";
-import { connection } from "next/server";
+import { headers } from "next/headers";
+import { Suspense } from "react";
+import { SectionTheme } from "@/components/section-theme";
+import { SECTION_SCRIPT } from "@/lib/sections";
 import "./globals.css";
 
 // main font for body text
@@ -21,14 +24,20 @@ export const metadata: Metadata = {
   description: "Match your resume to any job description, track applications and apply faster. Free.",
 };
 
-// wraps every page with the fonts
+// wraps every page with fonts and the color of the part of the app it belongs to
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  // every page is made fresh for its request. that is what lets the framework stamp this request's code on its scripts,
-  // which the content policy in the proxy asks for. a page built ahead of time would have no code and its scripts would be refused
-  await connection();
+  // this request's code from the proxy. our one inline script needs it to be allowed to run
+  const nonce = (await headers()).get("x-nonce") ?? undefined;
   return (
     <html lang="en" suppressHydrationWarning className={`${bodyFont.variable} ${headingFont.variable} h-full antialiased`}>
-      <body className="min-h-full font-sans">{children}</body>
+      <body className="min-h-full font-sans">
+        {/* sets the page color before anything is drawn, the text is fixed and written by us */}
+        <script nonce={nonce} dangerouslySetInnerHTML={{ __html: SECTION_SCRIPT }} />
+        <Suspense fallback={null}>
+          <SectionTheme />
+        </Suspense>
+        {children}
+      </body>
     </html>
   );
 }
