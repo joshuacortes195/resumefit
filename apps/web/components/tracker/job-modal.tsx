@@ -428,7 +428,7 @@ function InterviewsPanel({ data, pending, run }: PanelProps) {
             {data.practice.map((session) => (
               <li key={session.id}>
                 <Link href={`/interview/${session.id}`} className="hover:text-foreground hover:underline">
-                  Practice on {session.date}: {session.answered} answered{session.score !== null ? `, average score ${session.score}` : ""}
+                  Practice on {session.date}: {session.answered} answered{session.score !== null ? `, average score ${session.score} / 100` : ""}
                 </Link>
               </li>
             ))}

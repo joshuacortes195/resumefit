@@ -157,6 +157,16 @@ test("manage saved resumes", async ({ page }) => {
   await page.getByRole("dialog").getByRole("button", { name: "Delete" }).click();
   await expect(page.getByRole("row", { name: /Analyst resume \(copy\)/ })).toHaveCount(0);
 
+  // in a narrower window every action is still in view, nothing is pushed off the side of the table
+  await page.setViewportSize({ width: 1050, height: 800 });
+  const remove = page.getByRole("button", { name: "Delete Analyst resume", exact: true });
+  await expect(remove).toBeInViewport({ ratio: 1 });
+  const table = await page.getByRole("table").boundingBox();
+  const button = await remove.boundingBox();
+  expect((button?.x ?? 0) + (button?.width ?? 0)).toBeLessThanOrEqual((table?.x ?? 0) + (table?.width ?? 0));
+  expect(await page.getByRole("table").evaluate((element) => (element.parentElement?.scrollWidth ?? 0) <= (element.parentElement?.clientWidth ?? 0))).toBe(true);
+  await page.setViewportSize({ width: 1280, height: 720 });
+
   // search with no match says so
   await page.getByPlaceholder("Search resumes").fill("zzz nothing");
   await expect(page.getByText("No resumes match that search")).toBeVisible();

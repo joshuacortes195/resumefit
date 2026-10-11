@@ -197,8 +197,8 @@ export function BuilderEditor({ id, initialData, initialSettings, isNew, fresh, 
       </div>
       <p className="mt-1 text-sm text-muted">Your work is saved as you type. Leave whenever you like and it will be here when you come back.</p>
 
-      {/* the seven steps */}
-      <ol className="mt-4 flex gap-1 overflow-x-auto pb-1">
+      {/* the seven steps. they wrap onto a second row when the window is narrow, so the last one is never cut off */}
+      <ol className="mt-4 flex flex-wrap gap-1 pb-1">
         {STEPS.map((label, index) => (
           <li key={label} className="shrink-0">
             <button

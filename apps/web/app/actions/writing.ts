@@ -14,7 +14,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { getJob, listInterviews, saveCoverLetter, updateInterview } from "@/lib/data/jobs";
 import { finishOptimization, saveSuggestions } from "@/lib/data/optimizations";
 import { getResume, saveResume } from "@/lib/data/resumes";
-import { getScan } from "@/lib/data/scans";
+import { ensureCard, getScan } from "@/lib/data/scans";
 
 // what the writing actions hand back: the result plus how many uses are left today
 type Written<T> = ({ ok: true; remaining: number | null } & T) | { ok: false; error: string };
@@ -73,11 +73,15 @@ export async function saveOptimizedResume(input: { scanId: string; text: string;
   if (!scan) return { ok: false, error: "We could not find that scan." };
 
   const label = [scan.company, scan.jobTitle].filter(Boolean).join(", ") || "this job";
-  const resume = await saveResume(user.id, { name: `Resume for ${label}`.slice(0, 120), text: parsed.data.text, source: "optimized", linkedJobId: scan.jobId });
+  // a resume written for a job belongs with that job, so the job goes on the tracker if it is not there yet
+  const jobId = await ensureCard(user.id, scan);
+  const resume = await saveResume(user.id, { name: `Resume for ${label}`.slice(0, 120), text: parsed.data.text, source: "optimized", linkedJobId: jobId });
   if (parsed.data.optimizationId) {
     await finishOptimization(user.id, parsed.data.optimizationId, { acceptedIds: parsed.data.acceptedIds, finalText: parsed.data.text, afterScore: Math.round(parsed.data.afterScore) });
   }
   revalidatePath("/resumes");
+  revalidatePath("/tracker", "layout");
+  revalidatePath("/scans");
   return { ok: true, resumeId: resume.id };
 }
 

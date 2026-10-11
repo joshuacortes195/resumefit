@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { getCurrentUser } from "@/lib/auth";
 import { createJob, findCard, listJobs, samePosting } from "./jobs";
-import { duplicateResume, getResume, listResumes, saveResume, setBaseResume } from "./resumes";
-import { addToDictionary, createScan, deleteScans, getScan, hashJd, listScans, previousScan, scansToday, setScansArchived, updateScan } from "./scans";
+import { addedOn } from "@/lib/job-tabs";
+import { duplicateResume, getResume, listManagedResumes, listResumes, saveResume, setBaseResume } from "./resumes";
+import { addToDictionary, createScan, deleteScans, ensureCard, getScan, hashJd, listScans, previewOf, previousScan, scansToday, setScansArchived, updateScan } from "./scans";
 
 const RESUME = `Jordan Lee
 Austin, TX | jordan.lee@example.com | (512) 555-0142
@@ -174,5 +175,46 @@ describe("tracker cards", () => {
     // the history table agrees with the board about what is tracked
     const { items } = await listScans(user.id, { search: "northrop" });
     expect(items[0]).toMatchObject({ jobId: northrop.id, jobStatus: "saved", jobArchived: false, matchRate: scan.matchRate });
+  });
+});
+
+describe("small things the pages show", () => {
+  it("starts a job description preview at its first letter and ends it on a whole word", () => {
+    const jd = "The Opportunity\nAdobe is looking for a Software Engineer who will design, build and ship features used by millions of people every single day across the world.";
+    const preview = previewOf(jd);
+    expect(preview.startsWith("The Opportunity Adobe")).toBe(true);
+    expect(preview.endsWith("…")).toBe(true);
+    expect(preview.length).toBeLessThanOrEqual(141);
+    // the part before the dots is made of whole words from the posting
+    const flat = jd.replace(/\s+/g, " ");
+    expect(flat.startsWith(preview.slice(0, -1))).toBe(true);
+    expect(flat.charAt(preview.length - 1)).toMatch(/[\s,.;:]/);
+    // short ones are left as they are, and one endless word is still cut
+    expect(previewOf("  Data Analyst \n SQL  ")).toBe("Data Analyst SQL");
+    expect(previewOf("x".repeat(400))).toBe(`${"x".repeat(140)}…`);
+  });
+
+  it("says when a job was added by the calendar, then with the real date", () => {
+    const now = new Date(2026, 9, 10, 9, 0);
+    expect(addedOn(new Date(2026, 9, 10, 0, 5), now)).toBe("today");
+    // late last night is yesterday, even though it is less than a day ago
+    expect(addedOn(new Date(2026, 9, 9, 23, 30), now)).toBe("yesterday");
+    expect(addedOn(new Date(2026, 9, 3, 12, 0), now)).toBe("Oct 3");
+    expect(addedOn(new Date(2025, 11, 24, 12, 0), now)).toBe("Dec 24, 2025");
+  });
+
+  it("links a resume written for a scan to that scan's job, putting the job on the tracker when needed", async () => {
+    const user = await getCurrentUser();
+    const scan = await createScan(user.id, { resumeId: null, resumeText: RESUME, layout: null, jdText: `${JD}\ntailored for this one`, jobTitle: "Platform Engineer", company: "Tailwind Freight" });
+    expect(scan.jobId).toBeNull();
+    const jobId = await ensureCard(user.id, scan);
+    const resume = await saveResume(user.id, { name: "Resume for Tailwind Freight, Platform Engineer", text: `${RESUME}\ntailored`, source: "optimized", linkedJobId: jobId });
+
+    const listed = (await listManagedResumes(user.id)).find((entry) => entry.id === resume.id);
+    expect(listed).toMatchObject({ linkedJobId: jobId, jobTitle: "Platform Engineer", jobCompany: "Tailwind Freight" });
+    // the scan is on that card too, and asking again gives the same card, not a second one
+    expect((await getScan(user.id, scan.id))?.jobId).toBe(jobId);
+    expect(await ensureCard(user.id, { ...scan, jobId: null })).toBe(jobId);
+    expect((await listJobs(user.id)).filter((job) => job.company === "Tailwind Freight")).toHaveLength(1);
   });
 });

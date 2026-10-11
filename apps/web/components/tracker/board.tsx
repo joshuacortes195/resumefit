@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useState, useSyncExternalStore, useTransition } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
@@ -28,7 +28,7 @@ import { JobScore } from "@/components/score-ring";
 import { INPUT, PRIMARY_BUTTON, SECONDARY_BUTTON } from "@/components/ui/buttons";
 import { Modal } from "@/components/ui/modal";
 import type { BoardJob } from "@/lib/data/jobs";
-import { localToday } from "@/lib/job-tabs";
+import { addedOn, localToday } from "@/lib/job-tabs";
 
 // the columns, each with a line that says what belongs there
 const COLUMNS: Record<JobStatus, { label: string; blurb: string }> = {
@@ -39,26 +39,22 @@ const COLUMNS: Record<JobStatus, { label: string; blurb: string }> = {
   rejected: { label: "Rejected", blurb: "No response or a rejection. Review and adjust your approach." },
 };
 
-// how long ago a job was added, like "3d" or "2mo"
-function age(createdAt: Date | string): string {
-  const days = Math.floor((Date.now() - new Date(createdAt).getTime()) / 86_400_000);
-  if (days < 1) return "today";
-  if (days < 30) return `${days}d`;
-  if (days < 365) return `${Math.floor(days / 30)}mo`;
-  return `${Math.floor(days / 365)}y`;
-}
+// true once the page is running in the browser. dates are worked out there, so "today" follows the person's own calendar and not the server's
+const noChange = () => () => undefined;
+const useInBrowser = () => useSyncExternalStore(noChange, () => true, () => false);
 
 // what a card looks like, used on the board and under the cursor while dragging
 function CardFace({ job, lifted = false }: { job: BoardJob; lifted?: boolean }) {
+  const inBrowser = useInBrowser();
   return (
     <div className={`flex items-center gap-3 rounded-xl border border-border bg-surface p-3 text-sm ${lifted ? "rotate-2 shadow-xl" : "shadow-sm"}`}>
       <JobScore matchRate={job.matchRate} />
       <div className="min-w-0 flex-1">
         <p className="line-clamp-3 font-semibold leading-snug">{job.title}</p>
-        {/* company on the left, how long ago it was added on the right */}
+        {/* company on the left, when it was added on the right */}
         <p className="mt-0.5 flex justify-between gap-2 text-xs text-muted">
           <span className="truncate">{job.company ?? "Company not set"}</span>
-          <span className="shrink-0">{age(job.createdAt)}</span>
+          <span className="shrink-0">{inBrowser ? addedOn(job.createdAt) : ""}</span>
         </p>
       </div>
     </div>

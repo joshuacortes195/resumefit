@@ -95,14 +95,15 @@ export function ResumeManager({ resumes }: { resumes: ManagedResume[] }) {
         <EmptyState icon={Search} title="No resumes match that search" text="Try part of the resume name or the job it was made for." />
       ) : (
         <div className={`${CARD} overflow-x-auto`}>
-          <table className="w-full min-w-[48rem] text-sm">
+          {/* the two date columns give way first as the window narrows, so the actions never slide out of view */}
+          <table className="w-full min-w-[34rem] text-sm">
             <thead>
               <tr className="border-b border-border text-left text-muted">
                 <th className="w-14 py-3 pl-4 font-medium">Base</th>
                 <th className="py-3 font-medium">Resume</th>
                 <th className="py-3 font-medium">Job opportunity</th>
-                <th className="py-3 font-medium">Created</th>
-                <th className="py-3 font-medium">Last modified</th>
+                <th className="hidden py-3 font-medium 2xl:table-cell">Created</th>
+                <th className="hidden py-3 font-medium xl:table-cell">Last modified</th>
                 <th className="py-3 pr-4 text-right font-medium">Actions</th>
               </tr>
             </thead>
@@ -122,7 +123,7 @@ export function ResumeManager({ resumes }: { resumes: ManagedResume[] }) {
                       <Star className={`size-4 ${resume.isBase ? "fill-current text-warning" : "text-muted"}`} aria-hidden />
                     </button>
                   </td>
-                  <td className="max-w-64 py-2 pr-4">
+                  <td className="max-w-48 py-2 pr-4 lg:max-w-64">
                     {renaming === resume.id ? (
                       // rename in place, enter saves and escape cancels
                       <form
@@ -140,7 +141,7 @@ export function ResumeManager({ resumes }: { resumes: ManagedResume[] }) {
                       {resume.fileType ? resume.fileType.toUpperCase() : "Text"}, {resume.words} words
                     </span>
                   </td>
-                  <td className="max-w-56 py-2 pr-4">
+                  <td className="max-w-40 py-2 pr-4 lg:max-w-56">
                     {resume.linkedJobId && resume.jobTitle ? (
                       <Link href={`/tracker/${resume.linkedJobId}/resume`} className="block truncate italic hover:text-primary">
                         {[resume.jobCompany, resume.jobTitle].filter(Boolean).join(", ")}
@@ -149,8 +150,8 @@ export function ResumeManager({ resumes }: { resumes: ManagedResume[] }) {
                       <span className="text-muted">None</span>
                     )}
                   </td>
-                  <td className="whitespace-nowrap py-2 pr-4 text-muted">{DATE.format(new Date(resume.createdAt))}</td>
-                  <td className="whitespace-nowrap py-2 pr-4 text-muted">{DATE.format(new Date(resume.updatedAt))}</td>
+                  <td className="hidden whitespace-nowrap py-2 pr-4 text-muted 2xl:table-cell">{DATE.format(new Date(resume.createdAt))}</td>
+                  <td className="hidden whitespace-nowrap py-2 pr-4 text-muted xl:table-cell">{DATE.format(new Date(resume.updatedAt))}</td>
                   <td className="whitespace-nowrap py-2 pr-3 text-right">
                     <button type="button" aria-label={`Preview ${resume.name}`} onClick={() => openPreview(resume.id)} className={ICON_BUTTON}>
                       <Eye className="size-4" aria-hidden />

@@ -3,6 +3,7 @@ import { and, asc, count, desc, eq, gte, ilike, inArray, lt, or } from "drizzle-
 import { scanResume, type DegreeLevel, type JdHints, type LayoutMeta, type ScanResult } from "@resumefit/scoring";
 import { HARD_SKILLS, SOFT_SKILLS } from "@resumefit/skills-data";
 import { getDb, schema } from "@/db";
+import { createJob, findCard } from "@/lib/data/jobs";
 
 export type ScanRow = typeof schema.scans.$inferSelect;
 
@@ -252,6 +253,16 @@ export async function updateScan(userId: string, id: string, changes: ScanChange
   return row ? toSaved(row) : null;
 }
 
+// the start of a job description for the history table. it begins at the first character and stops at the end of a word, never halfway through one
+export function previewOf(jdText: string, length = 140): string {
+  const flat = jdText.replace(/\s+/g, " ").trim();
+  if (flat.length <= length) return flat;
+  const cut = flat.slice(0, length + 1);
+  // back up to the last space, unless that would leave almost nothing, like one very long word or a link
+  const end = cut.lastIndexOf(" ");
+  return `${(end > length * 0.6 ? cut.slice(0, end) : flat.slice(0, length)).replace(/[\s,;:.\-–—]+$/, "")}…`;
+}
+
 // one line in the scan history table
 export type ScanListItem = Pick<ScanRow, "id" | "matchRate" | "jobTitle" | "company" | "jobId" | "resumeId" | "archived" | "createdAt"> & {
   snippet: string;
@@ -304,7 +315,7 @@ export async function listScans(userId: string, options: ScanListOptions = {}): 
   const [totals] = await db.select({ total: count() }).from(schema.scans).where(where);
 
   return {
-    items: rows.map(({ jdText, ...row }) => ({ ...row, snippet: jdText.replace(/\s+/g, " ").slice(0, 140) })),
+    items: rows.map(({ jdText, ...row }) => ({ ...row, snippet: previewOf(jdText) })),
     total: totals?.total ?? 0,
   };
 }
@@ -319,6 +330,32 @@ export async function latestScan(userId: string): Promise<SavedScan | null> {
     .orderBy(desc(schema.scans.createdAt))
     .limit(1);
   return row ? toSaved(row) : null;
+}
+
+// the tracker card for a scan's job: the one it is on, the one that job already has, or a new one.
+// every scan of the same posting ends up on that card
+export async function ensureCard(userId: string, scan: SavedScan): Promise<string> {
+  if (scan.jobId) return scan.jobId;
+  // a job that is already on the board keeps its card, a scan never makes a second one
+  const existing = await findCard(userId, { title: scan.jobTitle, company: scan.company, url: scan.jobUrl });
+  const jobId =
+    existing ??
+    (
+      await createJob(userId, {
+        title: scan.jobTitle ?? "Untitled job",
+        company: scan.company,
+        url: scan.jobUrl,
+        description: scan.jdText,
+        detectedAts: scan.report.jd.ats?.name ?? null,
+        resumeId: scan.resumeId,
+      })
+    ).id;
+  const db = await getDb();
+  await db
+    .update(schema.scans)
+    .set({ jobId })
+    .where(and(eq(schema.scans.userId, userId), eq(schema.scans.jdHash, scan.jdHash)));
+  return jobId;
 }
 
 // archives or restores scans

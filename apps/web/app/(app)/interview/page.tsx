@@ -55,7 +55,7 @@ async function PastSessions() {
               <Link href={`/interview/${session.id}`} className="group flex items-center gap-4 py-3 text-sm">
                 <span className="min-w-0 flex-1 truncate font-medium group-hover:text-primary">{[session.jobTitle ?? "Practice session", session.company].filter(Boolean).join(", ")}</span>
                 <span className="shrink-0 text-muted">
-                  {answered} of {session.questions.length} answered{score !== null ? `, average ${score}` : ""}
+                  {answered} of {session.questions.length} answered{score !== null ? `, average ${score} / 100` : ""}
                 </span>
                 <span className="shrink-0 text-muted">{DATE.format(session.createdAt)}</span>
               </Link>

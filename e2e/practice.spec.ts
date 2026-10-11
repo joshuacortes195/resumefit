@@ -78,7 +78,7 @@ test("practice an interview and see the summary", async ({ page }) => {
 
   // it is saved, and reopens at the first question still waiting for an answer
   await page.goto("/interview");
-  await page.getByRole("link", { name: /Senior Data Analyst.*1 of 8 answered, average 72/ }).click();
+  await page.getByRole("link", { name: /Senior Data Analyst.*1 of 8 answered, average 72 \/ 100/ }).click();
   await expect(page.getByText("Question 2 of 8")).toBeVisible();
   await page.getByRole("button", { name: "Back", exact: true }).filter({ visible: true }).click();
   await expect(page.getByText("I rebuilt 14 dashboards").filter({ visible: true })).toBeVisible();
