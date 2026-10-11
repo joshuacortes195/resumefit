@@ -6,17 +6,22 @@ import { Workspace } from "@/components/optimize/workspace";
 import { ReportSkeleton } from "@/components/ui/skeleton";
 import { remainingToday } from "@/lib/ai/limits";
 import { aiAvailable } from "@/lib/ai/router";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUser, type CurrentUser } from "@/lib/auth";
 import { latestOptimization } from "@/lib/data/optimizations";
-import { cachedHints, getDictionary, getScan } from "@/lib/data/scans";
+import { cachedHints, getDictionary, getScan, type SavedScan } from "@/lib/data/scans";
 
 export const metadata = { title: "AI Optimize" };
 
 // the optimize workspace for one scan
-export default function OptimizePage({ params }: { params: Promise<{ scanId: string }> }) {
+export default async function OptimizePage({ params }: { params: Promise<{ scanId: string }> }) {
+  // looked up before anything is sent, so a scan that is not there answers with a real 404 and the not found page
+  const { scanId } = await params;
+  const user = await getCurrentUser();
+  const scan = await getScan(user.id, scanId);
+  if (!scan) notFound();
   return (
     <Suspense fallback={<ReportSkeleton />}>
-      <WorkspaceLoader params={params} />
+      <WorkspaceLoader user={user} scan={scan} />
     </Suspense>
   );
 }
@@ -32,12 +37,7 @@ function jobSkills(jdText: string, dictionary: { name: string; category: "hard" 
 }
 
 // loads the scan and everything needed to rescore it in the browser
-async function WorkspaceLoader({ params }: { params: Promise<{ scanId: string }> }) {
-  const { scanId } = await params;
-  const user = await getCurrentUser();
-  const scan = await getScan(user.id, scanId);
-  if (!scan) notFound();
-
+async function WorkspaceLoader({ user, scan }: { user: CurrentUser; scan: SavedScan }) {
   const [saved, dictionary, hints, available, remaining, bulletsRemaining] = await Promise.all([
     latestOptimization(user.id, scan.id),
     getDictionary(user.id),

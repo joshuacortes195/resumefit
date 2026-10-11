@@ -1,8 +1,8 @@
 import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import { JobModal } from "@/components/tracker/job-modal";
-import { getCurrentUser } from "@/lib/auth";
-import { getCoverLetter, getJob, latestScores, listInterviews } from "@/lib/data/jobs";
+import { getCurrentUser, type CurrentUser } from "@/lib/auth";
+import { getCoverLetter, getJob, latestScores, listInterviews, type JobRow } from "@/lib/data/jobs";
 import { listPracticeSessions, sessionScore } from "@/lib/data/practice";
 import { getResume, listResumes } from "@/lib/data/resumes";
 import { JOB_TABS, type JobTab } from "@/lib/job-tabs";
@@ -14,21 +14,22 @@ type Params = Promise<{ jobId: string; tab: string }>;
 const PRACTICE_DATE = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" });
 
 // one job's card, opened on top of the board
-export default function JobPage({ params }: { params: Params }) {
-  return (
-    <Suspense fallback={null}>
-      <JobModalLoader params={params} />
-    </Suspense>
-  );
-}
-
-// loads everything the card's tabs show
-async function JobModalLoader({ params }: { params: Params }) {
+export default async function JobPage({ params }: { params: Params }) {
+  // looked up before anything is sent, so a job or tab that is not there answers with a real 404 and the not found page
   const { jobId, tab } = await params;
   if (!(JOB_TABS as readonly string[]).includes(tab)) notFound();
   const user = await getCurrentUser();
   const job = await getJob(user.id, jobId);
   if (!job) notFound();
+  return (
+    <Suspense fallback={null}>
+      <JobModalLoader user={user} job={job} tab={tab as JobTab} />
+    </Suspense>
+  );
+}
+
+// loads everything the card's tabs show
+async function JobModalLoader({ user, job, tab }: { user: CurrentUser; job: JobRow; tab: JobTab }) {
 
   const [scores, resumes, resume, coverLetter, interviews, practice] = await Promise.all([
     latestScores(user.id, [job.id]),
@@ -43,7 +44,7 @@ async function JobModalLoader({ params }: { params: Params }) {
     <JobModal
       // a new key per job so one card's half typed text never shows up in another
       key={job.id}
-      tab={tab as JobTab}
+      tab={tab}
       data={{
         job: {
           id: job.id,

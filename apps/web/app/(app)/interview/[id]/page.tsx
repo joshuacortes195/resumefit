@@ -5,27 +5,28 @@ import { InterviewSession } from "@/components/interview-session";
 import { LINK_BUTTON } from "@/components/ui/buttons";
 import { ReportSkeleton } from "@/components/ui/skeleton";
 import { getCurrentUser } from "@/lib/auth";
-import { getPracticeSession } from "@/lib/data/practice";
+import { getPracticeSession, type PracticeSession } from "@/lib/data/practice";
 import { featureFlags } from "@/lib/data/settings";
 
 export const metadata = { title: "Interview Practice" };
 
 // one practice interview
-export default function InterviewSessionPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function InterviewSessionPage({ params }: { params: Promise<{ id: string }> }) {
+  // looked up before anything is sent, so a session that is not there answers with a real 404 and the not found page
+  const { id } = await params;
+  const user = await getCurrentUser();
+  const session = await getPracticeSession(user.id, id);
+  if (!session) notFound();
   return (
     <div className="mx-auto max-w-3xl">
       <Suspense fallback={<ReportSkeleton />}>
-        <SessionLoader params={params} />
+        <SessionLoader session={session} />
       </Suspense>
     </div>
   );
 }
 
-async function SessionLoader({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
-  const user = await getCurrentUser();
-  const session = await getPracticeSession(user.id, id);
-  if (!session) notFound();
+async function SessionLoader({ session }: { session: PracticeSession }) {
   const title = [session.jobTitle ?? "this job", session.company].filter(Boolean).join(" at ");
   return (
     <>
