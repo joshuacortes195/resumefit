@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { getCurrentUser } from "@/lib/auth";
-import { createJob, findCard, listJobs, samePosting } from "./jobs";
+import { createJob, findCard, latestScores, listJobs, samePosting } from "./jobs";
 import { addedOn } from "@/lib/job-tabs";
 import { duplicateResume, getResume, listManagedResumes, listResumes, saveResume, setBaseResume } from "./resumes";
 import { addToDictionary, createScan, deleteScans, ensureCard, getScan, hashJd, listScans, previewOf, previousScan, scansToday, setScansArchived, updateScan } from "./scans";
@@ -216,5 +216,64 @@ describe("small things the pages show", () => {
     expect((await getScan(user.id, scan.id))?.jobId).toBe(jobId);
     expect(await ensureCard(user.id, { ...scan, jobId: null })).toBe(jobId);
     expect((await listJobs(user.id)).filter((job) => job.company === "Tailwind Freight")).toHaveLength(1);
+  });
+});
+
+describe("every way a scan and a card get linked", () => {
+  // three jobs scanned one after another, the way the mix up happened: each scan must end up on its own job and nobody else's
+  const POSTINGS = [
+    { title: "[Summer 2027] Software Engineer Intern", company: "Roblox", url: "https://careers.example.com/roblox/1" },
+    { title: "Software Engineer (3/4) Mission Planning & Scheduling", company: "Northrop Grumman", url: "https://careers.example.com/northrop/2" },
+    { title: "Software Engineering - Intern, Bachelor's", company: "Intel Corporation", url: "https://careers.example.com/intel/3" },
+  ];
+  const scanOf = (userId: string, posting: (typeof POSTINGS)[number], jobId: string | null) =>
+    createScan(userId, { resumeId: null, resumeText: RESUME, layout: null, jdText: `${JD}\n${posting.company} ${posting.title}`, jobTitle: posting.title, company: posting.company, jobUrl: posting.url, jobId });
+
+  it("from the extension: each scan lands on its own job, even when the panel still names the last one", async () => {
+    const user = await getCurrentUser();
+    let lastCard: string | null = null;
+    const made: { scanId: string; jobId: string; matchRate: number }[] = [];
+    for (const posting of POSTINGS) {
+      // the same steps the extension's scan endpoint takes
+      const found = await findCard(user.id, posting, lastCard);
+      const jobId = found ?? (await createJob(user.id, posting)).id;
+      const scan = await scanOf(user.id, posting, jobId);
+      made.push({ scanId: scan.id, jobId, matchRate: scan.matchRate });
+      lastCard = jobId;
+    }
+    expect(new Set(made.map((entry) => entry.jobId)).size).toBe(3);
+    const scores = await latestScores(user.id, made.map((entry) => entry.jobId));
+    for (const [index, posting] of POSTINGS.entries()) {
+      // the scan a card points at, which is where its AI Optimize link goes, is that job's own
+      const linked = await getScan(user.id, scores.get(made[index]?.jobId ?? "")?.scanId ?? "");
+      expect(linked).toMatchObject({ id: made[index]?.scanId, company: posting.company, jobTitle: posting.title });
+    }
+  });
+
+  it("from Find Jobs or Add Job: a job saved first gets its own scan later, and tracking a scan reuses that card", async () => {
+    const user = await getCurrentUser();
+    const posting = { title: "Staff Software Engineer, Frontend", company: "Harvey Demo", url: "https://jobs.example.com/harvey/9" };
+    const other = { title: "Staff Software Engineer, Frontend", company: "Some Other Co", url: "https://jobs.example.com/other/4" };
+    const saved = await createJob(user.id, posting);
+    // a scan of the same title at another company must not touch it
+    const stranger = await scanOf(user.id, other, await findCard(user.id, other));
+    expect(stranger.jobId).toBeNull();
+    expect((await latestScores(user.id, [saved.id])).has(saved.id)).toBe(false);
+
+    // scanned from the web form with nothing linking it yet, then tracked from Scan History
+    const mine = await scanOf(user.id, posting, null);
+    expect(await ensureCard(user.id, mine)).toBe(saved.id);
+    expect((await latestScores(user.id, [saved.id])).get(saved.id)).toMatchObject({ scanId: mine.id, matchRate: mine.matchRate });
+  });
+
+  it("on a rescan: the new scan stays on the same job and becomes the one the card shows", async () => {
+    const user = await getCurrentUser();
+    const posting = { title: "Rescan Engineer", company: "Loop Labs", url: "https://jobs.example.com/loop/1" };
+    const first = await scanOf(user.id, posting, (await createJob(user.id, posting)).id);
+    const again = await createScan(user.id, { resumeId: null, resumeText: `${RESUME}\nSkills\nTypeScript, Storybook`, layout: null, jdText: first.jdText, jobTitle: first.jobTitle, company: first.company, jobUrl: first.jobUrl, jobId: first.jobId });
+    expect(again.jobId).toBe(first.jobId);
+    const shown = (await latestScores(user.id, [first.jobId ?? ""])).get(first.jobId ?? "");
+    expect(shown).toMatchObject({ scanId: again.id, scans: 2 });
+    expect((await getScan(user.id, shown?.scanId ?? ""))?.company).toBe("Loop Labs");
   });
 });
