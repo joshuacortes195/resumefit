@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { getCurrentUser } from "@/lib/auth";
+import { createJob, findCard, listJobs, samePosting } from "./jobs";
 import { duplicateResume, getResume, listResumes, saveResume, setBaseResume } from "./resumes";
 import { addToDictionary, createScan, deleteScans, getScan, hashJd, listScans, previousScan, scansToday, setScansArchived, updateScan } from "./scans";
 
@@ -139,5 +140,39 @@ describe("keeping people's data apart", () => {
     expect(scan.jobId).toBeNull();
     const listed = (await listScans(user.id, { search: "Unique line for this test only" })).items[0];
     expect(listed).toMatchObject({ jobId: null, jobStatus: null });
+  });
+});
+
+describe("tracker cards", () => {
+  it("only calls two postings the same job when the title and the company or link agree", () => {
+    const card = { title: "Software Engineer", company: "Northrop Grumman", url: "https://jobs.example.com/1" };
+    // same title somewhere else is a different job, this is what used to put one company's score on another's card
+    expect(samePosting(card, { title: "Software Engineer", company: "Intel Corporation", url: "https://jobs.example.com/2" })).toBe(false);
+    // a page that lists many jobs under one address must not match on the link alone
+    expect(samePosting(card, { title: "Hardware Engineer", company: "Northrop Grumman", url: "https://jobs.example.com/1" })).toBe(false);
+    expect(samePosting(card, { title: "software engineer", company: "Northrop Grumman.", url: null })).toBe(true);
+    expect(samePosting(card, { title: "Software Engineer", company: null, url: "https://jobs.example.com/1" })).toBe(true);
+    expect(samePosting(card, { title: "Software Engineer", company: null, url: null })).toBe(false);
+    // nothing to read a title from, so the link is all there is
+    expect(samePosting(card, { title: null, company: null, url: "https://jobs.example.com/1" })).toBe(true);
+  });
+
+  it("shows a card the score of its own scan, and no score until it has one", async () => {
+    const user = await getCurrentUser();
+    const intel = await createJob(user.id, { title: "Software Engineer", company: "Intel Corporation" });
+    const northrop = await createJob(user.id, { title: "Software Engineer", company: "Northrop Grumman" });
+
+    // the panel still names the last job's card, the scan has to land on its own
+    const found = await findCard(user.id, { title: "Software Engineer", company: "Northrop Grumman" }, intel.id);
+    expect(found).toBe(northrop.id);
+    const scan = await createScan(user.id, { resumeId: null, resumeText: RESUME, layout: null, jdText: `${JD}\nnorthrop`, jobTitle: "Software Engineer", company: "Northrop Grumman", jobId: found });
+
+    const board = await listJobs(user.id);
+    expect(board.find((job) => job.id === northrop.id)?.matchRate).toBe(scan.matchRate);
+    expect(board.find((job) => job.id === intel.id)?.matchRate).toBeNull();
+
+    // the history table agrees with the board about what is tracked
+    const { items } = await listScans(user.id, { search: "northrop" });
+    expect(items[0]).toMatchObject({ jobId: northrop.id, jobStatus: "saved", jobArchived: false, matchRate: scan.matchRate });
   });
 });

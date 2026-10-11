@@ -1,9 +1,7 @@
-import { and, eq, sql } from "drizzle-orm";
 import { z } from "zod";
 import { detectAts } from "@resumefit/scoring";
-import { getDb, schema } from "@/db";
 import { webUrl } from "@/lib/scan-request";
-import { createJob, getJob } from "@/lib/data/jobs";
+import { createJob, findCard } from "@/lib/data/jobs";
 import { getResume, listResumes } from "@/lib/data/resumes";
 import { createScan, DAILY_SCAN_LIMIT, scansToday } from "@/lib/data/scans";
 import type { LayoutMeta } from "@resumefit/scoring";
@@ -23,29 +21,12 @@ const scanSchema = z.object({
 type ScanInput = z.infer<typeof scanSchema>;
 
 // finds the tracker card a scan belongs to, or makes one, so the score always shows up on the tracker.
-// the card the panel named comes first, then one saved from the same page, then one with the same title at the same company
+// the card the panel named only counts when it really is this job, since the panel can still be holding the last job's card
 async function cardFor(userId: string, input: ScanInput): Promise<{ jobId: string | null; added: boolean }> {
   const title = input.title?.trim();
   const company = input.company?.trim();
-  // the panel can still be holding the card of the last job it looked at, so its card only counts when it is this same job
-  const named = input.jobId ? await getJob(userId, input.jobId) : null;
-  const sameJob = named && ((input.url && named.url === input.url) || (title && named.title.trim().toLowerCase() === title.toLowerCase()));
-  if (named && sameJob) return { jobId: named.id, added: false };
-  const db = await getDb();
-  const mine = eq(schema.jobs.userId, userId);
-  if (input.url) {
-    const [byLink] = await db.select({ id: schema.jobs.id }).from(schema.jobs).where(and(mine, eq(schema.jobs.url, input.url))).limit(1);
-    if (byLink) return { jobId: byLink.id, added: false };
-  }
-  if (title && company) {
-    // the posting and its application form often sit at different addresses, so the name of the job is the next best thing
-    const [byName] = await db
-      .select({ id: schema.jobs.id })
-      .from(schema.jobs)
-      .where(and(mine, sql`lower(${schema.jobs.title}) = ${title.toLowerCase()}`, sql`lower(${schema.jobs.company}) = ${company.toLowerCase()}`))
-      .limit(1);
-    if (byName) return { jobId: byName.id, added: false };
-  }
+  const found = await findCard(userId, { title, company, url: input.url }, input.jobId);
+  if (found) return { jobId: found, added: false };
   // a page we could not read a title from has nothing to put on a card
   if (!title) return { jobId: null, added: false };
   const job = await createJob(userId, { title, company, url: input.url, description: input.jdText, detectedAts: detectAts(input.url, input.jdText)?.name ?? null });

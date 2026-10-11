@@ -1,9 +1,7 @@
-import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { webUrl } from "@/lib/scan-request";
 import { detectAts } from "@resumefit/scoring";
-import { getDb, schema } from "@/db";
-import { createJob } from "@/lib/data/jobs";
+import { createJob, findCard } from "@/lib/data/jobs";
 import { ExtError, extRoute, preflight } from "@/lib/ext-auth";
 
 export const OPTIONS = preflight;
@@ -22,16 +20,9 @@ export const POST = extRoute(async (request, user) => {
   if (!parsed.success) throw new ExtError("We could not read a job title on this page.");
   const { title, company, location, url, description } = parsed.data;
 
-  // the same link is only ever saved once
-  if (url) {
-    const db = await getDb();
-    const [existing] = await db
-      .select({ id: schema.jobs.id })
-      .from(schema.jobs)
-      .where(and(eq(schema.jobs.userId, user.id), eq(schema.jobs.url, url)))
-      .limit(1);
-    if (existing) return { jobId: existing.id, alreadySaved: true };
-  }
+  // the same job is only ever saved once
+  const existing = await findCard(user.id, { title, company, url });
+  if (existing) return { jobId: existing, alreadySaved: true };
   const job = await createJob(user.id, { title, company, location, url, description, detectedAts: detectAts(url, description ?? "")?.name ?? null });
   return { jobId: job.id, alreadySaved: false };
 });

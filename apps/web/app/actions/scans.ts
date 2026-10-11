@@ -7,7 +7,7 @@ import { JOB_STATUSES } from "@resumefit/shared";
 import { and, eq } from "drizzle-orm";
 import { getDb, schema } from "@/db";
 import { getCurrentUser } from "@/lib/auth";
-import { createJob } from "@/lib/data/jobs";
+import { createJob, findCard } from "@/lib/data/jobs";
 import { addToDictionary, deleteScans, getScan, setScansArchived, updateScan } from "@/lib/data/scans";
 
 // what every action hands back, so the page can show a message when something is off
@@ -109,23 +109,29 @@ export async function trackScan(scanId: string): Promise<ActionResult & { jobId?
   if (!scan) return fail("We could not find that scan.");
   if (scan.jobId) return { ok: true, jobId: scan.jobId };
 
-  const job = await createJob(user.id, {
-    title: scan.jobTitle ?? "Untitled job",
-    company: scan.company,
-    url: scan.jobUrl,
-    description: scan.jdText,
-    detectedAts: scan.report.jd.ats?.name ?? null,
-    resumeId: scan.resumeId,
-  });
+  // a job that is already on the board keeps its card, a scan never makes a second one
+  const existing = await findCard(user.id, { title: scan.jobTitle, company: scan.company, url: scan.jobUrl });
+  const jobId =
+    existing ??
+    (
+      await createJob(user.id, {
+        title: scan.jobTitle ?? "Untitled job",
+        company: scan.company,
+        url: scan.jobUrl,
+        description: scan.jdText,
+        detectedAts: scan.report.jd.ats?.name ?? null,
+        resumeId: scan.resumeId,
+      })
+    ).id;
   // every scan of the same posting points at the same card
   const db = await getDb();
   await db
     .update(schema.scans)
-    .set({ jobId: job.id })
+    .set({ jobId })
     .where(and(eq(schema.scans.userId, user.id), eq(schema.scans.jdHash, scan.jdHash)));
   refresh(scanId);
   revalidatePath("/tracker");
-  return { ok: true, jobId: job.id };
+  return { ok: true, jobId };
 }
 
 // moves a tracked scan's job to another stage, tracking it first if needed

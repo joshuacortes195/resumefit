@@ -57,6 +57,38 @@ export async function getJob(userId: string, id: string): Promise<JobRow | null>
   return row ?? null;
 }
 
+// what we know about a posting when deciding which tracker card it belongs to
+export type Posting = { title?: string | null; company?: string | null; url?: string | null };
+
+// lowercases a name and drops punctuation, so "Acme, Inc." and "acme inc" compare equal
+const plain = (text: string | null | undefined) => (text ?? "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+
+// true when a tracker card and a posting are the same job. this is the one rule every link between a scan and a card goes through.
+// the titles have to agree, and then either the company or the link has to agree too. a link alone only counts when there is no title to go on
+export function samePosting(card: Posting, posting: Posting): boolean {
+  const sameLink = Boolean(card.url && posting.url && card.url === posting.url);
+  const [cardTitle, title] = [plain(card.title), plain(posting.title)];
+  if (!cardTitle || !title) return sameLink;
+  if (cardTitle !== title) return false;
+  const [cardCompany, company] = [plain(card.company), plain(posting.company)];
+  // two different companies can post a job with the same title
+  if (cardCompany && company) return cardCompany === company;
+  return sameLink;
+}
+
+// finds the tracker card for a posting, null when it has none yet. the card the caller names is checked like any other
+export async function findCard(userId: string, posting: Posting, namedId?: string | null): Promise<string | null> {
+  const db = await getDb();
+  const cards = await db
+    .select({ id: schema.jobs.id, title: schema.jobs.title, company: schema.jobs.company, url: schema.jobs.url, archived: schema.jobs.archived })
+    .from(schema.jobs)
+    .where(eq(schema.jobs.userId, userId))
+    .orderBy(desc(schema.jobs.createdAt));
+  const matches = cards.filter((card) => samePosting(card, posting));
+  // the named card first, then one still on the board, then the newest
+  return (matches.find((card) => card.id === namedId) ?? matches.find((card) => !card.archived) ?? matches[0])?.id ?? null;
+}
+
 // how many jobs sit in each tracker column, archived ones left out
 export async function jobCounts(userId: string): Promise<Record<JobStatus, number>> {
   const db = await getDb();

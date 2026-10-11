@@ -1,13 +1,11 @@
 "use server";
 
-import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { after } from "next/server";
 import { z } from "zod";
 import { detectAts } from "@resumefit/scoring";
-import { getDb, schema } from "@/db";
 import { getCurrentUser } from "@/lib/auth";
-import { createJob } from "@/lib/data/jobs";
+import { createJob, findCard } from "@/lib/data/jobs";
 import { getResume, listResumes } from "@/lib/data/resumes";
 import { featureFlags } from "@/lib/data/settings";
 import { BOARDS, fieldJobs, jobDescription, profileResume, refreshFeed, savedJobs, searchJobs, type FeedJob, type JobResult } from "@/lib/jobs-feed";
@@ -87,13 +85,8 @@ export async function saveFoundJob(input: z.input<typeof foundJobSchema>): Promi
   const found = parsed.data;
 
   // saving the same opening twice gives the same card
-  const db = await getDb();
-  const [existing] = await db
-    .select({ id: schema.jobs.id })
-    .from(schema.jobs)
-    .where(and(eq(schema.jobs.userId, user.id), eq(schema.jobs.url, found.url)))
-    .limit(1);
-  if (existing) return { ok: true, jobId: existing.id };
+  const existing = await findCard(user.id, { title: found.title, company: found.company, url: found.url });
+  if (existing) return { ok: true, jobId: existing };
 
   // only a resume that is really theirs gets attached
   const resume = found.resumeId ? await getResume(user.id, found.resumeId) : null;

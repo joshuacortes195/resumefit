@@ -256,6 +256,8 @@ export async function updateScan(userId: string, id: string, changes: ScanChange
 export type ScanListItem = Pick<ScanRow, "id" | "matchRate" | "jobTitle" | "company" | "jobId" | "resumeId" | "archived" | "createdAt"> & {
   snippet: string;
   jobStatus: (typeof schema.jobs.$inferSelect)["status"] | null;
+  // true when the card this scan sits on has been archived, so it is no longer on the board
+  jobArchived: boolean | null;
 };
 
 export type ScanListOptions = {
@@ -290,6 +292,7 @@ export async function listScans(userId: string, options: ScanListOptions = {}): 
       createdAt: schema.scans.createdAt,
       jdText: schema.scans.jdText,
       jobStatus: schema.jobs.status,
+      jobArchived: schema.jobs.archived,
     })
     .from(schema.scans)
     // the job has to be this person's too, belt and braces
