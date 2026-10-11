@@ -1,6 +1,7 @@
 import { parseResume, scanResume } from "@resumefit/scoring";
 import { describe, expect, it } from "vitest";
 import { builderFromParsed, builderLayoutMeta, builderToText, layOut } from "@/lib/builder/layout";
+import { mendBuilder } from "@/lib/builder/mend";
 import { TEMPLATES } from "@/lib/builder/templates";
 import { builderDataSchema, defaultSettings, emptyBuilder, templateSettingsSchema, type BuilderData } from "@/lib/builder/types";
 
@@ -158,4 +159,33 @@ describe("builder exports", async () => {
       }
     });
   }
+});
+
+describe("mending a builder resume the old reader filled in", () => {
+  it("puts a split job back together, drops label leftovers and rejoins a skill cut at a comma", () => {
+    const data = sample();
+    data.experience = [
+      { id: "a", title: "Software Engineering Intern", company: "", location: "", start: "Dec 2025", end: "", current: true, bullets: ["Built tools"] },
+      // the company line, which had become a job of its own and lost its closing bracket
+      { id: "b", title: "Ormond (Envira", company: "", location: "Pomona, CA", start: "", end: "", current: false, bullets: [] },
+      { id: "c", title: "IT Technician", company: "Alta Business", location: "Riverside, CA", start: "May 2025", end: "Dec 2025", current: false, bullets: ["Supported 200 users"] },
+    ];
+    data.skills = ["Python", "Swing/AWT", "Cloud", "Data & Tools: AWS (S3", "Lambda)", "Docker"];
+    const mended = mendBuilder(data);
+    expect(mended.experience.map((job) => [job.title, job.company, job.location])).toEqual([
+      ["Software Engineering Intern", "Ormond (Envira)", "Pomona, CA"],
+      ["IT Technician", "Alta Business", "Riverside, CA"],
+    ]);
+    expect(mended.skills).toEqual(["Python", "Swing/AWT", "AWS (S3, Lambda)", "Docker"]);
+  });
+
+  it("leaves a healthy resume exactly as it is", () => {
+    const data = sample();
+    // a job with no company and no dates that really is its own job, because the one before it has a company
+    data.experience.push({ id: "z", title: "Volunteer Tutor", company: "", location: "", start: "", end: "", current: false, bullets: [] });
+    data.skills = ["TypeScript", "React", "AWS (S3, Lambda)", "CI/CD"];
+    const mended = mendBuilder(data);
+    expect(mended.experience.map((job) => job.title)).toEqual(data.experience.map((job) => job.title));
+    expect(mended.skills).toEqual(data.skills);
+  });
 });

@@ -11,7 +11,7 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "seed": "tsx scripts/seed.ts",
-    "check:links": "tsx scripts/check-links.ts"
+    "repair": "tsx scripts/repair.ts"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

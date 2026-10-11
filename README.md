@@ -55,7 +55,7 @@ To try the writing features locally, get a free Gemini key from [Google AI Studi
 | `pnpm test` | run unit tests |
 | `pnpm test:e2e` | build the app and the extension and click through them in a real browser (run `pnpm exec playwright install chromium` once first) |
 | `pnpm seed` | add demo data to the local database |
-| `pnpm --filter web check:links` | list scans that sit on the wrong tracker card. It only reads. Put `DATABASE_URL="..."` in front to check a hosted database |
+| `pnpm --filter web repair` | list stored data that older versions got wrong: scans on the wrong tracker card, unlinked tailored resumes, resumes and reports read by the old parser. It only reads unless you add `--apply`. Put `DATABASE_URL="..."` in front to check a hosted database |
 | `pnpm db:generate` | create a migration from the schema |
 | `pnpm db:migrate` | apply migrations to the database in `DATABASE_URL` |
 | `pnpm build:skills` | rebuild the skills list from O*NET |
