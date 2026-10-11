@@ -123,37 +123,3 @@ export function readJob(doc: Document, url: string): PageJob | null {
     url,
   };
 }
-
-// true when the page is showing a captcha, which only the person can do
-export function hasCaptcha(doc: Document): boolean {
-  return doc.querySelector('iframe[src*="recaptcha"], iframe[src*="hcaptcha"], iframe[src*="turnstile"], .g-recaptcha, .h-captcha, [data-sitekey], #px-captcha') !== null;
-}
-
-// the words a person can actually see inside an element. scripts, styles and hidden parts are left out,
-// because job sites keep their "thank you" message tucked away in the page long before it is shown
-function visibleText(element: Element, limit: number): string {
-  const parts: string[] = [];
-  let length = 0;
-  const walk = (node: Node) => {
-    if (length > limit) return;
-    if (node.nodeType === 3) {
-      parts.push(node.textContent ?? "");
-      length += node.textContent?.length ?? 0;
-    } else if (node.nodeType === 1) {
-      const child = node as HTMLElement;
-      if (/^(SCRIPT|STYLE|NOSCRIPT|TEMPLATE|SVG)$/i.test(child.tagName) || child.hidden || child.getAttribute("aria-hidden") === "true") return;
-      // the browser knows best whether something is on screen
-      if (typeof child.checkVisibility === "function" && !child.checkVisibility()) return;
-      child.childNodes.forEach(walk);
-    }
-  };
-  walk(element);
-  return parts.join(" ").replace(/\s+/g, " ");
-}
-
-// true when the page reads like the application went through
-export function looksConfirmed(doc: Document): boolean {
-  const main = doc.querySelector("main, [role='main'], body");
-  const text = main ? visibleText(main, 6000).slice(0, 6000) : "";
-  return /thank you for applying|thanks for applying|application (has been |was )?(submitted|received|sent)|we('ve| have) received your application|your application is complete|successfully applied/i.test(text);
-}

@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Briefcase, ExternalLink, ScanSearch, Search, Zap } from "lucide-react";
+import { Briefcase, ExternalLink, ScanSearch, Search } from "lucide-react";
 import { findJobs, readJob, saveFoundJob } from "@/app/actions/find-jobs";
 import { CompanyLogo } from "@/components/company-logo";
 import { FitBadge } from "@/components/fit-badge";
@@ -83,7 +83,7 @@ export function FindJobs({ resumes }: { resumes: ResumeOption[] }) {
   }
 
   // saves the job to the tracker, then goes on to wherever the button was pointing
-  async function save(job: JobResult, then?: "scan" | "apply") {
+  async function save(job: JobResult, then?: "scan") {
     setBusy(then ?? "save");
     setError(null);
     const known = saved[job.id];
@@ -95,7 +95,6 @@ export function FindJobs({ resumes }: { resumes: ResumeOption[] }) {
     }
     setSaved((all) => ({ ...all, [job.id]: result.jobId }));
     if (then === "scan") router.push(`/scans/new?job=${result.jobId}`);
-    if (then === "apply") router.push("/auto-apply");
   }
 
   return (
@@ -267,13 +266,6 @@ export function FindJobs({ resumes }: { resumes: ResumeOption[] }) {
                     <Briefcase className="size-4" aria-hidden />
                     {saved[selected.id] ? "Saved to tracker" : busy === "save" ? "Saving..." : "Save job"}
                   </button>
-                  {/* autofill only knows the company job boards, not the wider job site */}
-                  {!selected.id.startsWith("muse:") && (
-                    <button type="button" disabled={busy !== null} onClick={() => save(selected, "apply")} className={SECONDARY_BUTTON}>
-                      <Zap className="size-4" aria-hidden />
-                      Auto Apply
-                    </button>
-                  )}
                   <a href={selected.url} target="_blank" rel="noreferrer" className={SECONDARY_BUTTON}>
                     <ExternalLink className="size-4" aria-hidden />
                     View job site

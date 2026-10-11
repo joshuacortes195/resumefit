@@ -2,7 +2,6 @@ import { Suspense } from "react";
 import Link from "next/link";
 import { ArrowRight, Briefcase, CalendarClock, Check, Minus, UserSearch, X } from "lucide-react";
 import { JOB_STATUSES } from "@resumefit/shared";
-import { PromoBanner } from "@/components/promo-banner";
 import { ScanFormLoader } from "@/components/scan/scan-form-loader";
 import { ScoreRing } from "@/components/score-ring";
 import { CARD, LINK_BUTTON } from "@/components/ui/buttons";
@@ -34,8 +33,6 @@ const WHEN = new Intl.DateTimeFormat("en-US", { weekday: "short", month: "short"
 export default function DashboardPage() {
   return (
     <div className="mx-auto max-w-5xl space-y-6">
-      <PromoBanner />
-
       <div>
         <h1 className="text-3xl font-semibold sm:text-4xl">Welcome to ResumeFit</h1>
         <p className="mt-2 max-w-xl text-muted">See how well your resume fits a job, fix what is missing and keep every application in one place.</p>

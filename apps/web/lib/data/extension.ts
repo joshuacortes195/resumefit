@@ -36,39 +36,6 @@ export async function userForToken(token: string): Promise<CurrentUser | null> {
   return { id: row.id, email: row.email, name: row.name, isAdmin: row.isAdmin };
 }
 
-// where we keep the id of the extension a person connected, so the web app can talk to it without them typing the id in
-const idKey = (userId: string) => `extension-id:${userId}`;
-
-// notes which extension just called in. chrome puts the extension's id in the address the call comes from
-export async function rememberExtension(userId: string, origin: string): Promise<void> {
-  const id = /^chrome-extension:\/\/([a-p]{32})$/.exec(origin)?.[1];
-  if (!id) return;
-  const db = await getDb();
-  await db.insert(schema.appSettings).values({ key: idKey(userId), value: id }).onConflictDoUpdate({ target: schema.appSettings.key, set: { value: id } });
-}
-
-// the id of the extension that last called in for this person, empty when none has
-export async function extensionId(userId: string): Promise<string> {
-  const db = await getDb();
-  const [row] = await db.select({ value: schema.appSettings.value }).from(schema.appSettings).where(eq(schema.appSettings.key, idKey(userId))).limit(1);
-  return typeof row?.value === "string" ? row.value : "";
-}
-
-// where we keep whether a person switched on "Submit for me"
-const submitKey = (userId: string) => `auto-submit:${userId}`;
-
-// true when the person asked for finished applications to be sent for them. off unless they turned it on
-export async function autoSubmit(userId: string): Promise<boolean> {
-  const db = await getDb();
-  const [row] = await db.select({ value: schema.appSettings.value }).from(schema.appSettings).where(eq(schema.appSettings.key, submitKey(userId))).limit(1);
-  return row?.value === true;
-}
-
-export async function saveAutoSubmit(userId: string, on: boolean): Promise<void> {
-  const db = await getDb();
-  await db.insert(schema.appSettings).values({ key: submitKey(userId), value: on }).onConflictDoUpdate({ target: schema.appSettings.key, set: { value: on } });
-}
-
 // when the extension last checked in, null when it is not connected
 export async function extensionStatus(userId: string): Promise<{ connected: boolean; lastUsedAt: Date | null }> {
   const db = await getDb();
@@ -84,5 +51,4 @@ export async function extensionStatus(userId: string): Promise<{ connected: bool
 export async function revokeExtensionTokens(userId: string): Promise<void> {
   const db = await getDb();
   await db.delete(schema.extensionTokens).where(eq(schema.extensionTokens.userId, userId));
-  await db.delete(schema.appSettings).where(eq(schema.appSettings.key, idKey(userId)));
 }

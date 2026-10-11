@@ -14,8 +14,7 @@ A free tool for matching a resume to a job description, tracking applications an
 - **Resume builder and manager**: eight single column templates, a step by step editor with a live preview, PDF and Word export, and every version kept in one place. The builder reopens the resume you were working on, and suggests skills from a job title.
 - **LinkedIn Optimizer**: scores your profile against the jobs you want and lists the keywords it is missing. The extension can read your own profile page into it, or you can upload LinkedIn's PDF of your profile.
 - **Find Jobs**: open roles from the public job boards of about 160 companies plus a wider job site that covers fields like healthcare, logistics and finance. Pick a resume and every job gets a fit label. An admin can switch it off.
-- **Auto Apply**: pick a resume, get open roles that suit it, and start up to five applications in one click. Each job goes onto the tracker, the extension opens the form, fills it in, attaches the resume and drafts the written answers. You review and press submit, and the job moves to Applied when the site says thanks. Everything is answered from one application you fill in once in Settings: contact details, work eligibility, school, and the gender, race, veteran and disability questions. Questions worded in an unusual way are matched to those saved answers and marked for you to check. An opt in "Submit for me" switch sends the applications that are completely filled from your profile and have no captcha.
-- **Chrome extension**: save or scan a job from the page you are on, and autofill application forms. Nothing is sent unless you press submit or switch on Submit for me.
+- **Chrome extension**: scan the job posting you are on against your resume and see the match rate and missing skills without leaving the page, or save it to your tracker.
 
 The match score is plain code with no language model behind it, so it works with nothing set up and always gives the same answer for the same input. The writing features run on free tiers only (Google Gemini, then Groq, then Cloudflare Workers AI) and the app keeps working when they are off or busy.
 
@@ -119,11 +118,11 @@ It is not in the Chrome Web Store, so it is loaded by hand. The Chrome Extension
 
 If you change the extension, run `pnpm build:extension` and commit `apps/web/public/resumefit-extension.zip`, which is the file that button downloads. If your app does not live on a `vercel.app` address, add its address to `externally_connectable` in `apps/extension/public/manifest.json` and rebuild. The paste a code way of connecting works on any address.
 
-What it will and will not do is spelled out on the Chrome Extension page in the app. The short version: it fills forms, and only submits them if you switch on Submit for me.
+What it will and will not do is spelled out on the Chrome Extension page in the app. The short version: it reads job postings so you can scan and save them, and never fills in or sends anything.
 
 ## Where the jobs come from
 
-Find Jobs and Auto Apply read the public job boards companies host on Greenhouse, Lever and Ashby (the list is in `apps/web/lib/job-boards.ts`), and The Muse's public job listings for other fields. Nothing is scraped and no key is needed. Openings are saved once a day, so a search never waits on another site. LinkedIn and Indeed are left out on purpose: they do not allow it.
+Find Jobs reads the public job boards companies host on Greenhouse, Lever and Ashby (the list is in `apps/web/lib/job-boards.ts`), and The Muse's public job listings for other fields. Nothing is scraped and no key is needed. Openings are saved once a day, so a search never waits on another site. LinkedIn and Indeed are left out on purpose: they do not allow it.
 
 ## Scoring
 

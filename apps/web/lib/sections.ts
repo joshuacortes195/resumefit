@@ -5,7 +5,6 @@ export const SECTIONS = [
   { key: "optimize", prefix: "/optimize" },
   { key: "letter", prefix: "/cover-letter" },
   { key: "linkedin", prefix: "/linkedin" },
-  { key: "apply", prefix: "/auto-apply" },
   { key: "tracker", prefix: "/tracker" },
   { key: "jobs", prefix: "/jobs" },
   { key: "builder", prefix: "/builder" },

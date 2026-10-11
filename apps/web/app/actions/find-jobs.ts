@@ -25,8 +25,6 @@ const searchSchema = z.object({
   sort: z.enum(["relevance", "date"]),
   // the resume to rank against, the base resume when left out
   resumeId: z.uuid().nullable(),
-  // only openings on systems the extension can fill in
-  autofillOnly: z.boolean().default(false),
 });
 
 // searches the saved openings, ranked by how well each one suits the chosen resume
@@ -51,9 +49,9 @@ export async function findJobs(input: z.input<typeof searchSchema>): Promise<Res
   // and keep topping it up after the answer has gone out, without making anyone wait
   if (pool.boards < BOARDS.length) after(() => refreshFeed(25_000).catch(() => undefined));
 
-  // openings from the wider job site, in the fields the resume points at. these cannot be autofilled
+  // openings from the wider job site, in the fields the resume points at
   let wider: FeedJob[] = [];
-  if (profile && profile.fields.length > 0 && !parsed.data.autofillOnly) {
+  if (profile && profile.fields.length > 0) {
     const level = parsed.data.internOnly ? "Internship" : profile.earlyCareer ? "Entry Level" : null;
     wider = await fieldJobs(profile.fields.slice(0, 2), level, 2);
   }
@@ -103,6 +101,5 @@ export async function saveFoundJob(input: z.input<typeof foundJobSchema>): Promi
   const job = await createJob(user.id, { title: found.title, company: found.company, location: found.location, url: found.url, description, detectedAts: detectAts(found.url, "")?.name ?? null, resumeId: resume?.id ?? null });
   revalidatePath("/tracker", "layout");
   revalidatePath("/dashboard");
-  revalidatePath("/auto-apply");
   return { ok: true, jobId: job.id };
 }

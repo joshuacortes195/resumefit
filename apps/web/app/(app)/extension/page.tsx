@@ -9,10 +9,6 @@ import { extensionStatus } from "@/lib/data/extension";
 
 export const metadata = { title: "Chrome Extension" };
 
-// sites with their own fine tuned form reading, the rest are matched by label
-const SUPPORTED = ["Greenhouse", "Lever", "Ashby", "Workable", "Workday", "SmartRecruiters"];
-const BEST_EFFORT = ["iCIMS", "Jobvite", "BambooHR", "Taleo", "and most other application forms"];
-
 const WHEN = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
 
 // install steps, connecting, what it works on and what it does with your data
@@ -21,7 +17,7 @@ export default function ExtensionPage() {
     <div className="mx-auto max-w-3xl space-y-6">
       <div>
         <h1 className="text-3xl font-semibold">Chrome Extension</h1>
-        <p className="mt-1 text-muted">Auto Apply only works with this extension. It saves jobs, scans them and fills applications in for you. Nothing is sent unless you press Submit or switch on Submit for me.</p>
+        <p className="mt-1 text-muted">Scan any job posting against your resume without leaving the page, and save it to your tracker in one click.</p>
       </div>
 
       <section className={`${CARD} p-6`}>
@@ -69,38 +65,24 @@ export default function ExtensionPage() {
         <ul className="mt-3 list-disc space-y-1.5 pl-5 text-sm">
           <li><strong>On a job posting:</strong> save the job to your tracker, or scan it against your resume and see your match rate and the top missing skills without leaving the page.</li>
           <li><strong>On any page:</strong> highlight a job description, right click and choose &quot;Scan this job description with ResumeFit&quot;.</li>
-          <li><strong>From Auto Apply:</strong> press Auto Apply on a job and the extension opens the application, fills it in and puts a small bar on the page that says what still needs you. Up to five can be started together.</li>
-          <li><strong>On an application form you opened yourself:</strong> press Autofill. It fills in your details, attaches your resume and colors each field: green is filled from your profile, amber is a draft to review, red needs you.</li>
           <li><strong>On your LinkedIn profile:</strong> press Import my profile and the LinkedIn Optimizer opens with your headline, About, experience and skills filled in.</li>
-          <li><strong>Written questions:</strong> it drafts an answer from your resume and the job description and marks it amber for you to read and edit. An answer you saved from the panel is reused when a form asks something similar.</li>
-          <li><strong>After you submit:</strong> when the site shows its thank you page, the job moves to Applied on your tracker by itself.</li>
         </ul>
-        <h3 className="mt-5 font-semibold">Where autofill works</h3>
-        <p className="mt-1 text-sm">
-          <strong>Tuned for:</strong> {SUPPORTED.join(", ")}.
-        </p>
-        <p className="mt-1 text-sm">
-          <strong>Best effort:</strong> {BEST_EFFORT.join(", ")}. Workday and Taleo spread a form over several steps, and usually want you to sign in first: press the site&apos;s Next button and each step is filled in as it opens.
-        </p>
       </section>
 
       <section className={`${CARD} p-6`}>
         <h2 className="text-xl font-semibold">What it never does</h2>
         <ul className="mt-3 list-disc space-y-1.5 pl-5 text-sm">
-          <li>It never presses Submit for you, unless you switched on Submit for me on the Auto Apply page. Even then it only sends a form that is completely filled from your profile, after a countdown you can cancel.</li>
-          <li>It never presses Next, and never ticks an &quot;I agree&quot; box for you.</li>
-          <li>It never solves or skips a captcha.</li>
-          <li>It never starts by itself. It only opens or fills an application when you press Auto Apply here or Autofill in the panel.</li>
-          <li>It never guesses demographic answers. Those come only from what you chose in your profile, which starts on &quot;Decline to self-identify&quot;.</li>
+          <li>It never fills in or sends an application. It only reads job postings, and your own LinkedIn profile when you ask.</li>
+          <li>It never looks at a page by itself. It reads the page you are on only while its panel is open there.</li>
+          <li>It never changes anything on the page.</li>
         </ul>
       </section>
 
       <section className={`${CARD} p-6`}>
         <h2 className="text-xl font-semibold">Privacy</h2>
         <p className="mt-2 text-sm">
-          When you connect it, Chrome asks once whether it may work on websites, because every company keeps its applications on a different site. Press Allow, or nothing can be read or filled. It only reads a page when you open its panel
-          there or when Auto Apply opened that page for you. On your computer it stores your connection key and nothing else. Everything it sends goes to
-          your own ResumeFit account.
+          When you connect it, Chrome asks once whether it may read websites, because job postings live on all kinds of sites. Press Allow, or it cannot see the posting. It only reads the page you have its panel open on. On your
+          computer it stores your connection key and nothing else. Everything it sends goes to your own ResumeFit account.
         </p>
       </section>
 
@@ -116,18 +98,8 @@ export default function ExtensionPage() {
             <dd className="text-muted">Press Allow in the panel, then Allow again in the box Chrome shows. You only do this once.</dd>
           </div>
           <div>
-            <dt className="font-semibold">Auto Apply opened the page but did not fill it</dt>
-            <dd className="text-muted">
-              Download the extension again and reload it on chrome://extensions so you have the newest one, then click the ResumeFit icon and press Allow in its panel. Without that, Chrome does not let it see the page.
-            </dd>
-          </div>
-          <div>
-            <dt className="font-semibold">A field was not filled</dt>
-            <dd className="text-muted">Red fields are ones we had no answer for. Add the detail to your profile in Settings, or type it in on the page. Custom dropdowns on some sites have to be picked by hand.</dd>
-          </div>
-          <div>
-            <dt className="font-semibold">The resume did not attach</dt>
-            <dd className="text-muted">Some sites only accept a file you choose yourself. Download your resume from the Resume Manager and attach it on the page.</dd>
+            <dt className="font-semibold">It says there is no job posting on the page</dt>
+            <dd className="text-muted">Highlight the job description, right click it and choose &quot;Scan this job description with ResumeFit&quot;. That works on any page.</dd>
           </div>
         </dl>
       </section>

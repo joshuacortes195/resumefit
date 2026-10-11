@@ -9,7 +9,6 @@ import { Sidebar } from "@/components/sidebar";
 
 // links inside the avatar menu
 const ACCOUNT_LINKS = [
-  { label: "My application", href: "/auto-apply/application" },
   { label: "Settings", href: "/settings" },
   { label: "AI settings", href: "/settings#ai" },
 ];

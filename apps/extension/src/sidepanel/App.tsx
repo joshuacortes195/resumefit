@@ -1,19 +1,13 @@
 import { useCallback, useEffect, useState } from "react";
-import { HANDS_FREE_ORIGINS } from "../lib/adapters";
 import { api, ApiError, getConnection, parseConnectionCode, saveConnection, type Connection } from "../lib/api";
-import { fillEverything, tally } from "../lib/pipeline";
-import { getRun, runKey } from "../lib/runs";
-import type { Account, FieldReport, LinkedinImport, PageInfo, Run, WorkerRequest } from "../lib/types";
-import { activeTab, askPage, localToday, NeedsAccess, readPage } from "./page";
+import type { Account, LinkedinImport, PageInfo } from "../lib/types";
+import { askPage, NeedsAccess, readPage, SITE_ACCESS } from "./page";
 
-// asks chrome, once, to let us fill the big job sites without being opened by hand. it has to be asked from a click
-const askHandsFree = () => chrome.permissions.request({ origins: HANDS_FREE_ORIGINS }).catch(() => false);
+// asks chrome, once, to let us read job pages. it has to be asked from a click
+const askAccess = () => chrome.permissions.request({ origins: SITE_ACCESS }).catch(() => false);
 
 // a message from anything that can go wrong, ready to show
 const messageOf = (error: unknown) => (error instanceof Error ? error.message : "Something went wrong. Try again.");
-
-// what each color in the field list means
-const STATUS_TEXT: Record<FieldReport["status"], string> = { filled: "Filled from your profile", review: "Best guess, please check", missing: "Needs you", skipped: "Left empty" };
 
 // the whole side panel
 export function App() {
@@ -69,8 +63,8 @@ export function App() {
             <button
               className="primary"
               onClick={async () => {
-                // chrome asks about the job sites in the same click
-                await askHandsFree();
+                // chrome asks about reading job pages in the same click
+                await askAccess();
                 await saveConnection(offer);
                 await chrome.storage.session.remove("connectionOffer");
                 setOffer(null);
@@ -124,8 +118,8 @@ function Connect({ error, onConnected }: { error: string | null; onConnected: ()
               setProblem("That does not look like a connection code. Copy it again from the Chrome Extension page.");
               return;
             }
-            // chrome asks about the job sites in the same click
-            await askHandsFree();
+            // chrome asks about reading job pages in the same click
+            await askAccess();
             await saveConnection(parsed);
             onConnected();
           }}
@@ -144,7 +138,7 @@ function Workspace({ connection, account, onDisconnect }: { connection: Connecti
   const [jobId, setJobId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [handsFree, setHandsFree] = useState(true);
+  const [allowed, setAllowed] = useState(true);
 
   // reads the tab again, used on open and whenever the person moves on
   const check = useCallback(async () => {
@@ -152,15 +146,10 @@ function Workspace({ connection, account, onDisconnect }: { connection: Connecti
     setError(null);
     try {
       setPage(await readPage());
-      // an application Auto Apply opened here that we could not get into until now: fill it, no button needed
-      const tab = await activeTab();
-      const run = tab?.id ? await getRun(tab.id) : null;
-      if (run?.jobId) setJobId(run.jobId);
-      if (tab?.id && run?.stage === "blocked") void chrome.runtime.sendMessage({ type: "rf-advance", tabId: tab.id } satisfies WorkerRequest);
     } catch (problem) {
       setPage(null);
       // not being allowed on the page gets its own card with a button, not a red error
-      if (problem instanceof NeedsAccess) setHandsFree(false);
+      if (problem instanceof NeedsAccess) setAllowed(false);
       else setError(messageOf(problem));
     } finally {
       setBusy(false);
@@ -168,29 +157,20 @@ function Workspace({ connection, account, onDisconnect }: { connection: Connecti
   }, []);
 
   useEffect(() => {
-    // text sent from the right click menu, and a job the web app asked us to fill
-    void chrome.storage.session.get(["pendingScan", "pendingJobId"]).then((stored) => {
+    // text sent from the right click menu
+    void chrome.storage.session.get("pendingScan").then((stored) => {
       if (stored.pendingScan) setPasted(stored.pendingScan as { text: string; url: string; title: string });
-      if (stored.pendingJobId) setJobId(stored.pendingJobId as string);
-      void chrome.storage.session.remove(["pendingScan", "pendingJobId"]);
+      void chrome.storage.session.remove("pendingScan");
     });
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void check();
-    void chrome.permissions.contains({ origins: HANDS_FREE_ORIGINS }).then(setHandsFree);
-    // when the background worker finishes filling this tab, show how it went
-    const onRun = (changes: Record<string, chrome.storage.StorageChange>) =>
-      void activeTab().then((tab) => {
-        const next = tab?.id ? (changes[runKey(tab.id)]?.newValue as Run | undefined) : undefined;
-        if (next?.stage === "review" || next?.stage === "applied") void check();
-      });
-    chrome.storage.session.onChanged.addListener(onRun);
+    void chrome.permissions.contains({ origins: SITE_ACCESS }).then(setAllowed);
     // moving to another tab, or the tab going to another page, means looking again
     const onTab = () => void check();
     const onLoad = (_tabId: number, change: { status?: string }, tab: chrome.tabs.Tab) => change.status === "complete" && tab.active && void check();
     chrome.tabs.onActivated.addListener(onTab);
     chrome.tabs.onUpdated.addListener(onLoad);
     return () => {
-      chrome.storage.session.onChanged.removeListener(onRun);
       chrome.tabs.onActivated.removeListener(onTab);
       chrome.tabs.onUpdated.removeListener(onLoad);
     };
@@ -207,28 +187,19 @@ function Workspace({ connection, account, onDisconnect }: { connection: Connecti
         </button>
       </div>
 
-      {!account.profileReady && (
-        <p className="notice warn small">
-          Your profile is missing your name, email or phone, so autofill has little to work with.{" "}
-          <button className="link" onClick={() => open("/auto-apply/application")}>
-            Fill in your profile
-          </button>
-        </p>
-      )}
-      {/* chrome has to be told once that we may work on job sites. nothing works until then */}
-      {!handsFree && (
+      {/* chrome has to be told once that we may read job pages. nothing works until then */}
+      {!allowed && (
         <div className="card">
-          <h2>Allow ResumeFit on job sites</h2>
+          <h2>Allow ResumeFit to read job pages</h2>
           <p className="muted small" style={{ marginTop: 6 }}>
-            Every company keeps its applications on a different site, so Chrome needs your OK once. After that the panel reads the page you are on, and Auto Apply can open and fill applications by itself. It only acts on a page when you
-            open this panel there or start it from Auto Apply.
+            Job postings live on all kinds of sites, so Chrome needs your OK once. After that the panel reads the posting on the page you are on, so you can scan or save it. It only looks at a page while this panel is open on it.
           </p>
           <button
             className="primary"
             style={{ marginTop: 10 }}
             onClick={async () => {
-              const granted = await askHandsFree();
-              setHandsFree(granted);
+              const granted = await askAccess();
+              setAllowed(granted);
               if (granted) void check();
             }}
           >
@@ -246,13 +217,10 @@ function Workspace({ connection, account, onDisconnect }: { connection: Connecti
       {pasted && <JobCard job={{ title: pasted.title, company: "", location: "", description: pasted.text, url: pasted.url }} account={account} jobId={jobId} onJob={setJobId} open={open} heading="Selected text" />}
 
       {page?.linkedinProfile && <LinkedinCard open={open} />}
-      {page?.confirmed && <p className="notice">This page looks like your application went through. Nice work.</p>}
-      {/* the key starts the card afresh when the page was read again and its fields changed */}
-      {page?.hasForm && <Autofill key={page.fields.map((field) => field.id + field.status).join()} page={page} account={account} jobId={jobId} onPage={setPage} />}
-      {page?.job && !page.hasForm && !page.linkedinProfile && <JobCard job={page.job} account={account} jobId={jobId} onJob={setJobId} open={open} heading="Job on this page" />}
-      {page && !page.job && !page.hasForm && !pasted && !page.linkedinProfile && (
+      {page?.job && !page.linkedinProfile && <JobCard job={page.job} account={account} jobId={jobId} onJob={setJobId} open={open} heading="Job on this page" />}
+      {page && !page.job && !pasted && !page.linkedinProfile && (
         <div className="card">
-          <p>We did not find a job posting or an application form on this page.</p>
+          <p>We did not find a job posting on this page.</p>
           <p className="muted small" style={{ marginTop: 6 }}>
             You can also highlight a job description, right click it and choose &quot;Scan this job description with ResumeFit&quot;.
           </p>
@@ -417,206 +385,5 @@ function JobCard({ job, account, jobId, onJob, open, heading }: JobCardProps) {
         </div>
       )}
     </div>
-  );
-}
-
-// an application form: fill it, review each field, then the person submits on the site
-function Autofill({ page, account, jobId, onPage }: { page: PageInfo; account: Account; jobId: string | null; onPage: (page: PageInfo) => void }) {
-  // the resume made for this job when there is one, otherwise the base resume
-  const linked = jobId ? account.resumes.find((resume) => resume.linkedJobId === jobId) : undefined;
-  const [resumeId, setResumeId] = useState(linked?.id ?? account.resumes.find((resume) => resume.isBase)?.id ?? account.resumes[0]?.id ?? "");
-  const [fields, setFields] = useState<FieldReport[]>(page.fields);
-  // a form the background worker already filled comes in with its fields marked
-  const [filled, setFilled] = useState(page.fields.some((field) => field.status !== "skipped"));
-  const [busy, setBusy] = useState(false);
-  const [applied, setApplied] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  // tells the web app how this application is going
-  const reportStatus = (status: "needs_review" | "applied", list: FieldReport[]) =>
-    api.reportApplication({ jobId, ats: page.ats?.name ?? null, applyUrl: page.url, status, fieldsFilled: tally(list).filled, fieldsNeedingAttention: tally(list).needs, today: localToday() }).catch(() => undefined);
-
-  // fills the form from the profile and drafts the written answers. it stops there, nothing is submitted
-  async function autofill() {
-    setBusy(true);
-    setError(null);
-    try {
-      const results = await fillEverything(askPage, account, { resumeId: resumeId || null, jobId, jdText: page.job?.description ?? "" });
-      setFields(results);
-      setFilled(true);
-      void reportStatus("needs_review", results);
-      // the same summary on the page itself, for when the panel is closed
-      void askPage({ type: "show-bar", bar: { state: "done", ...tally(results), captcha: page.captcha, multiPage: page.ats?.id === "workday" || page.ats?.id === "taleo" } }).catch(() => undefined);
-    } catch (problem) {
-      setError(messageOf(problem));
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  // swaps in the new state of one field after it was changed from the panel
-  const replace = (next: FieldReport | null) => next && setFields((all) => all.map((field) => (field.id === next.id ? next : field)));
-
-  const needs = fields.filter((field) => field.status === "missing" || field.status === "review").length;
-
-  return (
-    <div className="card">
-      <p className="muted small">{page.ats ? `${page.ats.name} application` : "Application form"}</p>
-      <h2 style={{ marginTop: 2 }}>Autofill</h2>
-
-      {page.captcha && <p className="notice warn small" style={{ marginTop: 8 }}>This page has a captcha. That part is yours to do, we never touch it.</p>}
-
-      {account.resumes.length > 0 && (
-        <label className="small" style={{ display: "block", marginTop: 10 }}>
-          Resume to attach
-          <select value={resumeId} onChange={(event) => setResumeId(event.target.value)} style={{ marginTop: 4 }}>
-            {account.resumes.map((resume) => (
-              <option key={resume.id} value={resume.id}>
-                {resume.name}
-                {resume.isBase ? " (base)" : ""}
-              </option>
-            ))}
-          </select>
-        </label>
-      )}
-
-      <div className="row" style={{ marginTop: 10 }}>
-        <button className="primary" onClick={autofill} disabled={busy}>
-          {busy ? "Filling and drafting answers..." : filled ? "Fill again" : "Autofill"}
-        </button>
-        {filled && (
-          <button
-            disabled={applied}
-            onClick={async () => {
-              await reportStatus("applied", fields);
-              setApplied(true);
-              void chrome.notifications?.create({ type: "basic", iconUrl: "icon-128.png", title: "Marked as applied", message: "The job moved to Applied on your tracker." });
-            }}
-          >
-            {applied ? "Marked as applied" : "Mark as applied"}
-          </button>
-        )}
-      </div>
-      {error && (
-        <p role="alert" className="error small" style={{ marginTop: 8 }}>
-          {error}
-        </p>
-      )}
-
-      {filled && (
-        <p className="notice" style={{ marginTop: 10 }}>
-          <strong>Review everything, then click the site&apos;s Submit button.</strong>{" "}
-          {needs === 0 ? "Every field we found is filled in." : `${needs} ${needs === 1 ? "field needs" : "fields need"} your attention.`}
-          {page.ats?.id === "workday" || page.ats?.id === "taleo" ? " This form has several steps. Press its Next button and we fill in each step as it opens." : ""}
-        </p>
-      )}
-
-      <ul className="fields">
-        {fields.map((field) => (
-          <FieldRow key={field.id} field={field} jdText={page.job?.description ?? ""} resumeId={resumeId} onChange={replace} />
-        ))}
-      </ul>
-      {fields.length > 0 && (
-        <button className="link small" style={{ marginTop: 10 }} onClick={async () => onPage(await readPage())}>
-          Refresh this list
-        </button>
-      )}
-    </div>
-  );
-}
-
-// one field: its status, what is in it, and ways to change it
-function FieldRow({ field, jdText, resumeId, onChange }: { field: FieldReport; jdText: string; resumeId: string; onChange: (next: FieldReport | null) => void }) {
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(field.value);
-  const [busy, setBusy] = useState(false);
-  const [note, setNote] = useState<string | null>(null);
-  const editable = field.kind === "text" || field.kind === "textarea";
-
-  // writes a value into the page and marks how sure we are about it
-  const apply = async (value: string, status: FieldReport["status"]) => onChange(await askPage<FieldReport | null>({ type: "set-field", id: field.id, value, status }));
-
-  // answers a free text question, from the saved answers when one fits, otherwise a draft
-  async function answer() {
-    setBusy(true);
-    setNote(null);
-    try {
-      const result = await api.answer({ question: field.label, jdText, resumeId: resumeId || undefined });
-      setDraft(result.answer);
-      // a saved answer is the person's own words, a draft has to be read first
-      await apply(result.answer, result.source === "saved" ? "filled" : "review");
-      setNote(result.source === "saved" ? "Used your saved answer." : "Drafted from your resume. Read it before you send it.");
-      setEditing(true);
-    } catch (problem) {
-      setNote(messageOf(problem));
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  return (
-    <li className="field">
-      <div className="row" style={{ flexWrap: "nowrap" }}>
-        <span className={`dot ${field.status}`} title={STATUS_TEXT[field.status]} />
-        <button className="link field-label" style={{ textAlign: "left", color: "inherit" }} title="Show this field on the page" onClick={() => askPage({ type: "focus-field", id: field.id })}>
-          {field.label}
-          {field.required ? " *" : ""}
-        </button>
-        <span className="muted small" style={{ whiteSpace: "nowrap" }}>
-          {STATUS_TEXT[field.status]}
-        </span>
-      </div>
-
-      {editing && editable ? (
-        <div style={{ marginTop: 6 }}>
-          {field.kind === "textarea" || field.key === "question" ? <textarea aria-label={field.label} rows={5} value={draft} onChange={(event) => setDraft(event.target.value)} /> : <input aria-label={field.label} value={draft} onChange={(event) => setDraft(event.target.value)} />}
-          <div className="row" style={{ marginTop: 6 }}>
-            <button
-              onClick={async () => {
-                await apply(draft, "filled");
-                setEditing(false);
-              }}
-            >
-              Use this
-            </button>
-            {field.key === "question" && draft.trim() !== "" && (
-              <button
-                className="link small"
-                onClick={async () => {
-                  await api.saveAnswer({ question: field.label, answer: draft }).then(
-                    () => setNote("Saved. We will reuse it when a form asks something similar."),
-                    (problem) => setNote(messageOf(problem)),
-                  );
-                }}
-              >
-                Save this answer to my Q&amp;A bank
-              </button>
-            )}
-          </div>
-        </div>
-      ) : (
-        <p className="field-value">{field.value ? (field.value.length > 160 ? `${field.value.slice(0, 160)}...` : field.value) : "Empty"}</p>
-      )}
-
-      <div className="row small" style={{ marginTop: 4 }}>
-        {editable && !editing && (
-          <button
-            className="link"
-            onClick={() => {
-              setDraft(field.value);
-              setEditing(true);
-            }}
-          >
-            Edit
-          </button>
-        )}
-        {field.key === "question" && (
-          <button className="link" disabled={busy} onClick={answer}>
-            {busy ? "Writing..." : "Draft an answer"}
-          </button>
-        )}
-        {note && <span className="muted">{note}</span>}
-      </div>
-    </li>
   );
 }

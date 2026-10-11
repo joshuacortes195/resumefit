@@ -38,11 +38,11 @@ const TOPICS: { title: string; questions: { q: string; a: React.ReactNode }[] }[
     ],
   },
   {
-    title: "Extension and Auto Apply",
+    title: "Chrome extension",
     questions: [
-      { q: "Does it submit applications for me?", a: "Only if you ask it to. Normally Auto Apply opens the application, fills in the form and colors each field so you can see what needs checking, and you press the site's Submit button. If you switch on Submit for me on the Auto Apply page, a form that is completely filled from your profile, with no captcha, is sent after a short countdown you can cancel. Either way the job moves to Applied by itself." },
-      { q: "A field was filled in wrong or left empty.", a: "Fix it on the page, it is your application. If it is something we should have known, add it to your profile in Settings. Red fields are ones we had no answer for." },
-      { q: "Why does Auto Apply not do anything?", a: <>Auto Apply only works after you download the Chrome extension and connect it. The steps are on the <Link href="/extension" className={LINK_BUTTON}>Chrome Extension</Link> page.</> },
+      { q: "What does the extension do?", a: "It scans the job posting you are looking at against your resume and shows your match rate and the top missing skills, right on the page. It can also save the job to your tracker and read your own LinkedIn profile into the LinkedIn Optimizer." },
+      { q: "Does it fill in applications for me?", a: "No. It reads job postings, it does not fill in or send anything." },
+      { q: "It says there is no job posting on the page.", a: "Highlight the job description, right click it and choose Scan this job description with ResumeFit. That works on any page." },
       { q: "How do I connect it?", a: <>Follow the steps on the <Link href="/extension" className={LINK_BUTTON}>Chrome Extension</Link> page. A connection lasts 90 days.</> },
     ],
   },

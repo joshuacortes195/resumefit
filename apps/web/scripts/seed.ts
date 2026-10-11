@@ -5,10 +5,8 @@
 import { isLocalDb } from "@/db";
 import { getCurrentUser } from "@/lib/auth";
 import { addInterview, createJob, saveCoverLetter, updateJob } from "@/lib/data/jobs";
-import { saveProfile } from "@/lib/data/profile";
 import { saveResume } from "@/lib/data/resumes";
 import { createScan, listScans } from "@/lib/data/scans";
-import { DECLINE } from "@/lib/profile";
 import { SAMPLE_JD, SAMPLE_RESUME } from "@/lib/sample-scan";
 
 if (!isLocalDb()) {
@@ -88,49 +86,7 @@ async function seed() {
   await addInterview(user.id, frontend.id, { type: "Technical", datetime: nextWeek, interviewerName: "Priya Shah", phone: null, email: null, meetingLink: "https://meet.example.com/brightside", description: "Pairing exercise on a React component, then questions about testing." });
   await saveCoverLetter(user.id, frontend.id, "Dear Hiring Manager,\n\nI rebuilt the checkout flow at my current job in React and TypeScript, which cut drop off by 18%. I would like to bring that same care to Brightside Labs.\n\nSincerely,\nJordan Lee", "Professional");
 
-  // a profile, so autofill has something to work with
-  await saveProfile(user.id, {
-    preferredName: null,
-    pronouns: null,
-    streetAddress: null,
-    over18: true,
-    howHeard: "LinkedIn",
-    noticePeriod: "2 weeks",
-    school: "State University",
-    degree: "Bachelor's degree",
-    major: "Computer Science",
-    graduationYear: "2021",
-    gpa: null,
-    eeoHispanic: "Decline to self-identify",
-    fullName: "Jordan Lee",
-    email: "jordan.lee@example.com",
-    phone: "(512) 555-0142",
-    city: "Austin",
-    state: "Texas",
-    country: "United States",
-    zip: "78701",
-    linkedinUrl: "https://linkedin.com/in/jordanlee",
-    githubUrl: "https://github.com/jordanlee",
-    portfolioUrl: null,
-    otherLinks: [],
-    yearsExperience: 4,
-    workAuthorization: "US citizen",
-    needsSponsorship: false,
-    willingToRelocate: null,
-    desiredSalaryMin: 95000,
-    desiredSalaryMax: 115000,
-    earliestStartDate: null,
-    jobTypes: ["Full-time"],
-    preferredIndustries: ["Software"],
-    remotePreference: "Hybrid",
-    eeoGender: DECLINE,
-    eeoRace: DECLINE,
-    eeoVeteran: DECLINE,
-    eeoDisability: DECLINE,
-    qaBank: [{ question: "Why do you want to work here?", answer: "I like building things people use every day, and your product is one I already rely on." }],
-  });
-
-  console.log("Added 2 resumes, 4 tracked jobs, 3 scans, an interview, a cover letter and a profile. Run pnpm dev and open the dashboard.");
+  console.log("Added 2 resumes, 4 tracked jobs, 3 scans, an interview and a cover letter. Run pnpm dev and open the dashboard.");
 }
 
 seed().then(

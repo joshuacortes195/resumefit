@@ -29,8 +29,6 @@
   --s-letter: #fbdfe8;
   --c-linkedin: #155ea6;
   --s-linkedin: #dbeafb;
-  --c-apply: #a34707;
-  --s-apply: #fde5d0;
   --c-tracker: #1c7439;
   --s-tracker: #daf2e0;
   --c-jobs: #0a677e;
@@ -77,11 +75,6 @@ html[data-section="letter"] {
 html[data-section="linkedin"] {
   --primary: var(--c-linkedin);
   --primary-soft: var(--s-linkedin);
-}
-
-html[data-section="apply"] {
-  --primary: var(--c-apply);
-  --primary-soft: var(--s-apply);
 }
 
 html[data-section="tracker"] {
@@ -148,30 +141,12 @@ html[data-section="interview"] {
   --animate-ring: ring-fill 1.1s var(--ease-settle) 0.15s both;
   --animate-bar: bar-grow 0.8s var(--ease-settle) 0.2s both;
   --animate-swap: swap 0.22s var(--ease-settle) both;
-  --animate-dock: dock 0.26s var(--ease-settle) both;
-  --animate-beat: beat 1.4s ease-in-out infinite;
 
   /* what a tab shows fades in and settles when you switch to it */
   @keyframes swap {
     from {
       opacity: 0;
       transform: translateY(4px);
-    }
-  }
-
-  /* action bars slide up from the bottom of the screen */
-  @keyframes dock {
-    from {
-      opacity: 0;
-      transform: translateY(12px);
-    }
-  }
-
-  /* the dot next to something that is still working breathes in and out */
-  @keyframes beat {
-    50% {
-      opacity: 0.35;
-      transform: scale(0.8);
     }
   }
 
