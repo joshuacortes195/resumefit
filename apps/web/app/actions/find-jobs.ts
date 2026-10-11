@@ -8,11 +8,13 @@ import { getCurrentUser } from "@/lib/auth";
 import { createJob, findCard } from "@/lib/data/jobs";
 import { getResume, listResumes } from "@/lib/data/resumes";
 import { featureFlags } from "@/lib/data/settings";
+import { withinLimit } from "@/lib/rate-limit";
 import { BOARDS, fieldJobs, jobDescription, profileResume, refreshFeed, savedJobs, searchJobs, type FeedJob, type JobResult } from "@/lib/jobs-feed";
 
 type Result<T = object> = ({ ok: true } & T) | { ok: false; error: string };
 
 const OFF = { ok: false as const, error: "Find Jobs is switched off." };
+const SLOW_DOWN = { ok: false as const, error: "That is a lot of requests in a short time. Wait a minute and try again." };
 
 const searchSchema = z.object({
   query: z.string().trim().max(100),
@@ -31,6 +33,8 @@ export async function findJobs(input: z.input<typeof searchSchema>): Promise<Res
   if (!parsed.success) return { ok: false, error: "Check the search and try again." };
   const user = await getCurrentUser();
   if (!(await featureFlags()).findJobs) return OFF;
+  // a search reads the whole pool and may reach out to job sites, so it is limited per person
+  if (!(await withinLimit(user.id, "find-jobs"))) return SLOW_DOWN;
 
   // the resume decides the ranking, and which fields to look in
   const resumes = await listResumes(user.id);
@@ -60,8 +64,9 @@ export async function findJobs(input: z.input<typeof searchSchema>): Promise<Res
 
 // the full text of one opening
 export async function readJob(id: string): Promise<Result<{ description: string }>> {
-  await getCurrentUser();
+  const user = await getCurrentUser();
   if (!(await featureFlags()).findJobs) return OFF;
+  if (!(await withinLimit(user.id, "find-jobs"))) return SLOW_DOWN;
   const description = await jobDescription(id.slice(0, 200));
   return description ? { ok: true, description } : { ok: false, error: "We could not load this job's description. Open it on the job site instead." };
 }
@@ -82,6 +87,7 @@ export async function saveFoundJob(input: z.input<typeof foundJobSchema>): Promi
   if (!parsed.success) return { ok: false, error: "That job could not be saved." };
   const user = await getCurrentUser();
   if (!(await featureFlags()).findJobs) return OFF;
+  if (!(await withinLimit(user.id, "save-job"))) return SLOW_DOWN;
   const found = parsed.data;
 
   // saving the same opening twice gives the same card

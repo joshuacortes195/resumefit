@@ -3,6 +3,7 @@ import { jdHints } from "@/lib/ai/jd";
 import { getCurrentUser } from "@/lib/auth";
 import { getJob, updateJob } from "@/lib/data/jobs";
 import { createScan, DAILY_SCAN_LIMIT, getScan, scansToday } from "@/lib/data/scans";
+import { rateLimit } from "@/lib/rate-limit";
 import { errorResponse, field, RequestError, resolveResume, webUrl } from "@/lib/scan-request";
 
 // the job side of a new scan
@@ -21,6 +22,7 @@ export async function POST(request: Request): Promise<Response> {
 
     const job = jobSchema.safeParse({ jdText: field(form, "jdText"), jobTitle: field(form, "jobTitle"), company: field(form, "company"), jobUrl: field(form, "jobUrl") });
     if (!job.success) throw new RequestError(job.error.issues[0]?.message ?? "Check the job description.");
+    await rateLimit(user.id, "scan");
     if ((await scansToday(user.id)) >= DAILY_SCAN_LIMIT) throw new RequestError(`You have run ${DAILY_SCAN_LIMIT} scans in the last day. Give it a rest and try again tomorrow.`, 429);
 
     // a rescan carries over the title, company and tracker job of the scan it came from

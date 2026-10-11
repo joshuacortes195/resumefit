@@ -2,11 +2,12 @@ import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { getDb, schema } from "@/db";
 import { decrypt } from "@/lib/ai/crypto";
-import { globalCapReached, logUsage, remainingToday, type AiFeature } from "@/lib/ai/limits";
+import { globalCapReached, logUsage, remainingToday, userCapReached, type AiFeature } from "@/lib/ai/limits";
 import { mockCall } from "@/lib/ai/mock";
 import { encryptionSecret } from "@/lib/ai/secret";
 import { cloudflareCall, DEFAULT_MODELS, geminiCall, groqCall, PROVIDERS, ProviderError, type ProviderCall, type ProviderName } from "@/lib/ai/providers";
 import { aiProviderOrder, serverEnv } from "@/lib/env";
+import { withinLimit } from "@/lib/rate-limit";
 
 // shown when every provider is rate limited or down
 export class AiBusyError extends Error {
@@ -155,6 +156,9 @@ async function prepare(feature: AiFeature, options: GenerateOptions): Promise<Re
   if (providers.length === 0) throw new AiUnavailableError();
   if (!options.untracked) {
     if ((await remainingToday(options.userId, feature)) === 0) throw new AiLimitError();
+    // one person's share of the day, then how fast they are going, then the allowance everyone shares
+    if (await userCapReached(options.userId)) throw new AiLimitError("You have used all of your AI actions for today. They reset at midnight.");
+    if (!(await withinLimit(options.userId, "ai"))) throw new AiLimitError("That is a lot of AI requests in a short time. Wait a minute and try again.");
     if (await globalCapReached()) throw new AiLimitError("The shared AI allowance for today is used up. It resets at midnight.");
   }
   return providers;

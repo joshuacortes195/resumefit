@@ -11,11 +11,14 @@ import { generateText } from "@/lib/ai/router";
 import { encryptionSecret } from "@/lib/ai/secret";
 import { getCurrentUser } from "@/lib/auth";
 import { serverEnv } from "@/lib/env";
+import { withinLimit } from "@/lib/rate-limit";
 
 const keySchema = z.string().trim().min(20, "That key looks too short. Copy the whole thing from Google AI Studio.").max(200, "That key looks too long.");
 
 // asks gemini for one word with the given key, to see if the key works
 async function tryKey(userId: string, key: string): Promise<string | null> {
+  // testing a key calls google, so it cannot be used to try keys in bulk
+  if (!(await withinLimit(userId, "ai"))) return "That is a lot of tries in a short time. Wait a minute and try again.";
   const env = serverEnv();
   const model = env.GEMINI_MODEL_FAST ?? DEFAULT_MODELS.gemini.fast;
   try {

@@ -4,6 +4,7 @@ import { builderFromParsed } from "@/lib/builder/layout";
 import { createBuilderResume } from "@/lib/data/builder";
 import { DAILY_RESUME_LIMIT, resumesToday } from "@/lib/data/resumes";
 import { FileError, readResumeFile } from "@/lib/files";
+import { rateLimit } from "@/lib/rate-limit";
 import { errorResponse, field, RequestError } from "@/lib/scan-request";
 
 // reads an uploaded resume or a linkedin profile pdf and opens it in the builder
@@ -13,6 +14,7 @@ export async function POST(request: Request): Promise<Response> {
     const form = await request.formData();
     const file = form.get("file");
     if (!(file instanceof File) || file.size === 0) throw new RequestError("Pick a file first.");
+    await rateLimit(user.id, "upload");
     if ((await resumesToday(user.id)) >= DAILY_RESUME_LIMIT) throw new RequestError(`You have added ${DAILY_RESUME_LIMIT} resumes in the last day. Try again tomorrow.`, 429);
 
     let text: string;

@@ -2,6 +2,7 @@ import { z } from "zod";
 import type { LayoutMeta } from "@resumefit/scoring";
 import { DAILY_RESUME_LIMIT, getResume, resumesToday, saveResume } from "@/lib/data/resumes";
 import { FileError, readResumeFile } from "@/lib/files";
+import { rateLimit, RateLimitError } from "@/lib/rate-limit";
 
 // a problem with what was sent that we can explain to the user
 export class RequestError extends Error {
@@ -35,6 +36,8 @@ export async function resolveResume(userId: string, form: FormData, linkedJobId?
 
   // a file that was just uploaded
   if (file instanceof File && file.size > 0) {
+    // reading a file is the heavy part, so it has its own per minute limit
+    await rateLimit(userId, "upload");
     const bytes = new Uint8Array(await file.arrayBuffer());
     try {
       const { text, layout } = await readResumeFile(bytes, file.name);
@@ -64,7 +67,7 @@ export async function resolveResume(userId: string, form: FormData, linkedJobId?
 
 // turns anything thrown in a route into a json answer the form can show
 export function errorResponse(error: unknown): Response {
-  if (error instanceof RequestError) return Response.json({ error: error.message }, { status: error.status });
+  if (error instanceof RequestError || error instanceof RateLimitError) return Response.json({ error: error.message }, { status: error.status });
   console.error(error instanceof Error ? error.message : "request failed");
   return Response.json({ error: "Something went wrong on our side. Try again in a moment." }, { status: 500 });
 }

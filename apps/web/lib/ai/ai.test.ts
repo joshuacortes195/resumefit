@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { z } from "zod";
 import { decrypt, encrypt } from "@/lib/ai/crypto";
 import { jdHints } from "@/lib/ai/jd";
-import { DAILY_CAPS, logUsage, remainingToday } from "@/lib/ai/limits";
+import { DAILY_CAPS, GLOBAL_DAILY_CAP, logUsage, remainingToday, USER_DAILY_CAP, userCapReached } from "@/lib/ai/limits";
 import { jdExtractionSchema, type JdExtraction } from "@/lib/ai/prompts/jd-extraction";
 import { tidy } from "@/lib/ai/prompts/style";
 import { ProviderError, type ProviderRequest } from "@/lib/ai/providers";
@@ -117,6 +117,40 @@ describe("daily limits", () => {
     const asked = gemini.requests.length;
     await expect(generateText("linkedin", { system: "s", prompt: "p" }, { userId: user.id, providers: [gemini] })).rejects.toThrow(AiLimitError);
     expect(gemini.requests).toHaveLength(asked);
+  });
+
+  it("stops one person at their share of the day, whatever they spend it on", async () => {
+    const { randomUUID } = await import("node:crypto");
+    const { getDb, schema } = await import("@/db");
+    const db = await getDb();
+    const [heavy, other] = [randomUUID(), randomUUID()];
+    await db.insert(schema.users).values([
+      { id: heavy, email: `heavy-${heavy}@example.com` },
+      { id: other, email: `other-${other}@example.com` },
+    ]);
+    // spread over features so no single feature's cap is reached, job description reads included
+    const spread = ["jd-extraction", "bullets", "builder", "interview", "optimize"] as const;
+    await db.insert(schema.aiUsage).values(Array.from({ length: USER_DAILY_CAP }, (_, index) => ({ userId: heavy, feature: index < 120 ? "jd-extraction" : (spread[index % spread.length] ?? "bullets"), provider: "gemini", model: "m" })));
+    expect(await userCapReached(heavy)).toBe(true);
+
+    const gemini = fake("gemini", ["ok", "ok"]);
+    await expect(generateText("cover-letter", { system: "s", prompt: "p" }, { userId: heavy, providers: [gemini] })).rejects.toThrow("all of your AI actions for today");
+    expect(gemini.requests).toHaveLength(0);
+    // everyone else carries on, the shared allowance is nowhere near used
+    expect(USER_DAILY_CAP * 8).toBeLessThanOrEqual(GLOBAL_DAILY_CAP);
+    expect(await generateText("cover-letter", { system: "s", prompt: "p" }, { userId: other, providers: [gemini] })).toBe("ok");
+  });
+
+  it("turns away a burst of requests from one person", async () => {
+    const { randomUUID } = await import("node:crypto");
+    const { getDb, schema } = await import("@/db");
+    const { RATE_LIMITS } = await import("@/lib/rate-limit");
+    const id = randomUUID();
+    await (await getDb()).insert(schema.users).values({ id, email: `burst-${id}@example.com` });
+    const gemini = fake("gemini", Array.from({ length: 40 }, () => "ok"));
+    const results = await Promise.allSettled(Array.from({ length: RATE_LIMITS.ai + 5 }, () => generateText("interview", { system: "s", prompt: "p" }, { userId: id, providers: [gemini] })));
+    expect(results.filter((result) => result.status === "fulfilled")).toHaveLength(RATE_LIMITS.ai);
+    expect(results.filter((result) => result.status === "rejected")).toHaveLength(5);
   });
 
   it("never caps reading a job description", async () => {

@@ -6,6 +6,7 @@ import { getResume, listResumes } from "@/lib/data/resumes";
 import { createScan, DAILY_SCAN_LIMIT, scansToday } from "@/lib/data/scans";
 import type { LayoutMeta } from "@resumefit/scoring";
 import { ExtError, extRoute, preflight } from "@/lib/ext-auth";
+import { rateLimit } from "@/lib/rate-limit";
 
 export const OPTIONS = preflight;
 
@@ -37,6 +38,7 @@ async function cardFor(userId: string, input: ScanInput): Promise<{ jobId: strin
 export const POST = extRoute(async (request, user) => {
   const parsed = scanSchema.safeParse(await request.json());
   if (!parsed.success) throw new ExtError("We could not find enough of a job description on this page to scan.");
+  await rateLimit(user.id, "scan");
   if ((await scansToday(user.id)) >= DAILY_SCAN_LIMIT) throw new ExtError(`You have run ${DAILY_SCAN_LIMIT} scans in the last day. Try again tomorrow.`, 429);
 
   const resumes = await listResumes(user.id);

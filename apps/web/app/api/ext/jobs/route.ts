@@ -3,6 +3,7 @@ import { webUrl } from "@/lib/scan-request";
 import { detectAts } from "@resumefit/scoring";
 import { createJob, findCard } from "@/lib/data/jobs";
 import { ExtError, extRoute, preflight } from "@/lib/ext-auth";
+import { rateLimit } from "@/lib/rate-limit";
 
 export const OPTIONS = preflight;
 
@@ -18,6 +19,7 @@ const jobSchema = z.object({
 export const POST = extRoute(async (request, user) => {
   const parsed = jobSchema.safeParse(await request.json());
   if (!parsed.success) throw new ExtError("We could not read a job title on this page.");
+  await rateLimit(user.id, "save-job");
   const { title, company, location, url, description } = parsed.data;
 
   // the same job is only ever saved once

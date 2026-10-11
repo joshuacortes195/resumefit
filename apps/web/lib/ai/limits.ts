@@ -21,6 +21,10 @@ export const DAILY_CAPS: Record<AiFeature, number | null> = {
 // across everyone, so one busy day cannot burn the whole free allowance
 export const GLOBAL_DAILY_CAP = 1200;
 
+// across every feature for one person, reading job descriptions included. it is an eighth of the shared allowance,
+// so no single account can use it all up however it spreads its requests
+export const USER_DAILY_CAP = 150;
+
 // midnight today, the caps reset then
 function startOfDay(): Date {
   const now = new Date();
@@ -44,6 +48,11 @@ export async function remainingToday(userId: string, feature: AiFeature): Promis
   const cap = (await dailyCaps())[feature];
   if (cap === null) return null;
   return Math.max(0, cap - (await usedToday(feature, userId)));
+}
+
+// true when one person has used their whole share for today
+export async function userCapReached(userId: string): Promise<boolean> {
+  return (await usedToday(undefined, userId)) >= USER_DAILY_CAP;
 }
 
 // true when the shared daily allowance is used up

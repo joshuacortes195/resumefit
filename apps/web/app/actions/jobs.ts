@@ -8,6 +8,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { addInterview, createJob, deleteInterview, deleteJob, getJob, moveJob, saveCoverLetter, updateInterview, updateJob } from "@/lib/data/jobs";
 import { getResume } from "@/lib/data/resumes";
 import { ImportError, importJob, type ImportedJob } from "@/lib/job-import";
+import { withinLimit } from "@/lib/rate-limit";
 
 const id = z.uuid();
 // the user's own date, sent from the browser so "date applied" matches their calendar
@@ -59,9 +60,11 @@ export async function addJob(input: z.input<typeof newJobSchema>): Promise<Actio
 
 // reads the title, company and description off a job posting's link, so nobody has to type them out
 export async function importJobFromLink(url: string): Promise<({ ok: true } & ImportedJob) | { ok: false; error: string }> {
-  await getCurrentUser();
+  const user = await getCurrentUser();
   const parsed = z.string().trim().min(1).max(2000).safeParse(url);
   if (!parsed.success) return { ok: false, error: "Paste the link to the job posting first." };
+  // each import makes our server fetch a page, so it is limited per person
+  if (!(await withinLimit(user.id, "job-import"))) return { ok: false, error: "That is a lot of links in a short time. Wait a minute and try again." };
   try {
     return { ok: true, ...(await importJob(parsed.data)) };
   } catch (error) {

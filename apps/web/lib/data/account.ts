@@ -1,6 +1,7 @@
 import { eq, inArray } from "drizzle-orm";
 import JSZip from "jszip";
 import { getDb, schema } from "@/db";
+import { clearRateLimits } from "@/lib/rate-limit";
 import { deleteFile, loadFile } from "@/lib/storage";
 
 // gathers every row that belongs to one person
@@ -53,5 +54,6 @@ export async function deleteAccount(userId: string): Promise<void> {
   await db.delete(schema.appSettings).where(eq(schema.appSettings.key, `extension-id:${userId}`));
   await db.delete(schema.appSettings).where(eq(schema.appSettings.key, `auto-submit:${userId}`));
   await db.delete(schema.appSettings).where(eq(schema.appSettings.key, `application:${userId}`));
+  await clearRateLimits(userId);
   await db.delete(schema.users).where(eq(schema.users.id, userId));
 }
