@@ -55,7 +55,7 @@ export const inviteCodes = pgTable("invite_codes", {
   createdAt,
 });
 
-// contact info and answers we reuse when filling applications
+// contact info and the user's own skill list. the application answers are left over from when the extension filled in forms, nothing reads them now
 export const profiles = pgTable("profiles", {
   userId: uuid("user_id")
     .primaryKey()
@@ -251,7 +251,7 @@ export const interviewSessions = pgTable("interview_sessions", {
   createdAt,
 });
 
-// autofill runs from the extension
+// left over from when the extension filled in applications. nothing writes here any more, it is only kept so old rows can still be exported and deleted
 export const applications = pgTable("applications", {
   id: uuid("id").primaryKey().defaultRandom(),
   userId: ownerId(),

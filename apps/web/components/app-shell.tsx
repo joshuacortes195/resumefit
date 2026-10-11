@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Menu, PanelLeft, UserRound, X } from "lucide-react";
 import { signOut } from "@/app/actions/auth";
@@ -19,6 +19,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [collapsed, setCollapsed] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+
+  // browsers that used the app while it could fill in applications still hold that old consent flag. nothing reads it any more, so clear it out
+  useEffect(() => {
+    try {
+      localStorage.removeItem("resumefit-auto-apply-consent");
+    } catch {
+      // storage can be switched off, in which case there is nothing to clear
+    }
+  }, []);
 
   return (
     <div className="flex min-h-screen flex-col">
