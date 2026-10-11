@@ -131,6 +131,28 @@ describe("parseExperience", () => {
     ]);
   });
 
+  it("keeps both brackets of a company name and only drops a stray one", () => {
+    const [job] = parseExperience(["Software Engineering Intern | Ormond (Envira) | Jun 2025 - Aug 2025"], TODAY);
+    expect(job).toMatchObject({ title: "Software Engineering Intern", company: "Ormond (Envira)" });
+    const [stray] = parseExperience(["Data Analyst, Northwind (Remote", "2022 - 2023"], TODAY);
+    expect(stray?.company).toBe("Northwind (Remote");
+    const [wrapped] = parseExperience(["Data Analyst, Northwind, (Remote)", "2022 - 2023"], TODAY);
+    expect(wrapped).toMatchObject({ company: "Northwind", location: "Remote" });
+  });
+
+  it("reads the company from its own line under the title and dates, as one job", () => {
+    const jobs = parseExperience(
+      ["Software Engineering Intern\tDec 2025 - Present", "Ormond (Envira)\tPomona, CA", "• Built tools used on the line", "IT Technician\tMay 2025 - Dec 2025", "Alta Business\tRiverside, CA", "• Supported 200 users"],
+      TODAY,
+    );
+    // the company line used to become a job of its own, with the company as its title
+    expect(jobs.map((job) => [job.title, job.company, job.location])).toEqual([
+      ["Software Engineering Intern", "Ormond (Envira)", "Pomona, CA"],
+      ["IT Technician", "Alta Business", "Riverside, CA"],
+    ]);
+    expect(jobs.map((job) => job.bullets.length)).toEqual([1, 1]);
+  });
+
   it("keeps a job even when it has no dates", () => {
     const [job] = parseExperience(["Frontend Engineer, Acme Corp", "• Shipped things"], TODAY);
     expect(job).toMatchObject({ title: "Frontend Engineer", dates: null });
@@ -138,9 +160,19 @@ describe("parseExperience", () => {
 });
 
 describe("parseEducation", () => {
+  it("does not mistake a specialization for the major", () => {
+    const [same] = parseEducation(["State University | Riverside, CA | Expected 2027", "B.S. Computer Science, Specialization in Machine Learning and Artificial Intelligence"]);
+    expect(same).toMatchObject({ level: "Bachelor's", field: "Computer Science", specialization: "Machine Learning and Artificial Intelligence", school: "State University" });
+    const [long] = parseEducation(["Bachelor of Science in Biology, Concentration in Genetics, Lakeside College, 2022"]);
+    expect(long).toMatchObject({ field: "Biology", specialization: "Genetics" });
+    // a focus on the next line still belongs to the degree above it
+    const [below] = parseEducation(["M.S. in Data Science, State University, 2024", "Minor in Statistics"]);
+    expect(below).toMatchObject({ level: "Master's", field: "Data Science", specialization: "Statistics" });
+  });
+
   it("reads the degree, field, school and year", () => {
     expect(parseEducation(["B.S. Computer Science, State University, 2021"])).toEqual([
-      { level: "Bachelor's", field: "Computer Science", school: "State University", graduationYear: 2021 },
+      { level: "Bachelor's", field: "Computer Science", specialization: null, school: "State University", graduationYear: 2021 },
     ]);
   });
 

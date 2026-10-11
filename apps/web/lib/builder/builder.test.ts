@@ -91,6 +91,33 @@ describe("builderFromParsed", () => {
     expect(rebuilt.additional.languages).toEqual(["English", "Spanish"]);
     expect(rebuilt.summary).toBe("Frontend engineer who builds fast, accessible web apps.");
   });
+
+  it("keeps group labels out of the skills and a degree's focus out of its name", () => {
+    const resume = [
+      "Sam Rivera",
+      "EDUCATION",
+      "State University | Riverside, CA | Expected 2027",
+      "B.S. Computer Science, Specialization in Machine Learning and Artificial Intelligence",
+      "EXPERIENCE",
+      "Software Engineering Intern\tDec 2025 - Present",
+      "Ormond (Envira)\tPomona, CA",
+      "• Built tools used on the line",
+      "TECHNICAL SKILLS",
+      "Languages: Python, C#, SQL",
+      "Cloud, Data & Tools: AWS (S3, Lambda), Docker, Git",
+      "Concepts:",
+      "Machine Learning (ML), Data Structures & Algorithms",
+    ].join("\n");
+    const built = builderFromParsed(parseResume(resume, TODAY));
+    // "Cloud" and "Data & Tools: AWS (S3" used to come out as skills
+    expect(built.skills).toEqual(["Python", "C#", "SQL", "AWS (S3, Lambda)", "Docker", "Git", "Machine Learning (ML)", "Data Structures & Algorithms"]);
+    expect(built.experience).toHaveLength(1);
+    expect(built.experience[0]).toMatchObject({ title: "Software Engineering Intern", company: "Ormond (Envira)", location: "Pomona, CA" });
+    expect(built.education[0]).toMatchObject({ degree: "Bachelor's", field: "Computer Science, Specialization in Machine Learning and Artificial Intelligence", school: "State University" });
+    // and the preview shows the job once, with its company
+    const laidOut = layOut(built, "classic");
+    expect(laidOut.sections.find((section) => section.key === "experience")?.blocks.map((block) => (block.kind === "entry" ? block.title : ""))).toEqual(["Software Engineering Intern, Ormond (Envira)"]);
+  });
 });
 
 // the files we hand out have to pass the same checks we run on everyone else's

@@ -198,7 +198,10 @@ export type DegreeLevel = (typeof DEGREE_LEVELS)[number];
 // one school in the education section
 export type EducationEntry = {
   level: DegreeLevel | null;
+  // the major, like "Computer Science"
   field: string | null;
+  // a named focus inside the degree, like "Machine Learning". it is never the major
+  specialization: string | null;
   school: string | null;
   graduationYear: number | null;
 };
@@ -216,6 +219,19 @@ export function looksLikeTitle(text: string): boolean {
 const HEADER_SPLIT = /\s+[|·•—–@]\s+|\s+-\s+|,\s+|\s+at\s+|\t+|\s{3,}/;
 const PLACE = /^(?:[Rr]emote|[Hh]ybrid|[Oo]n-?[Ss]ite|[A-Z][A-Za-z.]+(?: [A-Z][A-Za-z.]+){0,2},? [A-Z]{2}|[A-Z][A-Za-z.]+(?: [A-Z][A-Za-z.]+){0,2}, [A-Z][a-z]+)$/;
 
+// tidies one piece of a job heading. a bracket is only dropped when its partner is missing,
+// so "Ormco (Envista)" keeps both and "(Remote" loses the stray one
+function trimPiece(part: string): string {
+  let piece = part.replace(/^[\s,|-]+|[\s,|-]+$/g, "");
+  // a piece that is all inside one pair of brackets, like "(Remote)", comes out of them
+  if (/^\([^()]*\)$/.test(piece)) piece = piece.slice(1, -1);
+  const opens = (piece.match(/\(/g) ?? []).length;
+  const closes = (piece.match(/\)/g) ?? []).length;
+  if (opens > closes) piece = piece.replace(/^\(+/, "");
+  if (closes > opens) piece = piece.replace(/\)+$/, "");
+  return piece.replace(/^[\s,|-]+|[\s,|-]+$/g, "");
+}
+
 // turns the heading lines of one job into a title, company, place and dates
 function readJobHeader(header: string[], today: Date): ExperienceEntry {
   let dates: DateRange | null = null;
@@ -226,7 +242,7 @@ function readJobHeader(header: string[], today: Date): ExperienceEntry {
     // take the dates out, then split what is left into pieces
     const rest = range ? line.replace(range.text, " ") : line;
     for (const part of rest.split(HEADER_SPLIT)) {
-      const cleaned = part.replace(/^[\s(,|-]+|[\s),|-]+$/g, "");
+      const cleaned = trimPiece(part);
       if (cleaned) parts.push(cleaned);
     }
   }
@@ -253,6 +269,14 @@ function isHeaderLine(line: string, today: Date): boolean {
   return line.length <= 90 && !/[.!?:;]$/.test(line);
 }
 
+// true when a line finishes the heading above it instead of starting the next job:
+// the heading has a title but no company yet, and this line has no dates and is not a job title itself
+function isCompanyLine(line: string, header: string[], today: Date): boolean {
+  if (findDateRange(line, today) || looksLikeTitle(line)) return false;
+  const soFar = readJobHeader(header, today);
+  return soFar.title !== null && looksLikeTitle(soFar.title) && soFar.company === null;
+}
+
 // splits the lines of the experience section into separate jobs
 export function parseExperience(lines: string[], today: Date = new Date()): ExperienceEntry[] {
   const entries: ExperienceEntry[] = [];
@@ -272,7 +296,8 @@ export function parseExperience(lines: string[], today: Date = new Date()): Expe
       const hasDates = header.some((entry) => findDateRange(entry, today));
       const hasName = header.some((entry) => entry.replace(findDateRange(entry, today)?.text ?? "", "").trim().length > 2);
       // a line that is only a place, like "Austin, TX", still belongs to the job above it
-      if (hasDates && hasName && !PLACE.test(line.trim())) startEntry();
+      // and so does the company when it sits on its own line under "Title    Dates"
+      if (hasDates && hasName && !PLACE.test(line.trim()) && !isCompanyLine(line, header, today)) startEntry();
       header.push(line);
       continue;
     }
@@ -324,6 +349,10 @@ export function degreeAtLeast(have: DegreeLevel, need: DegreeLevel): boolean {
 
 const SCHOOL = /\b(university|college|institute|school|academy|polytechnic)\b/i;
 
+// the words that introduce a focus inside a degree, and what ends the name of a field
+const FOCUS = "(?:[Ss]pecialization|[Cc]oncentration|[Ee]mphasis|[Mm]inor|[Tt]rack|[Ff]ocus)";
+const FIELD_END = "(?:,|\\s+[|·•—–-]\\s+|\\s+\\d{4}|\\)|$)";
+
 // reads the schools and degrees out of the education section
 export function parseEducation(lines: string[]): EducationEntry[] {
   const entries: EducationEntry[] = [];
@@ -337,17 +366,20 @@ export function parseEducation(lines: string[]): EducationEntry[] {
 
     // a second degree or a second school means a new entry
     if (!current || (level && current.level) || (school && current.school)) {
-      current = { level: null, field: null, school: null, graduationYear: null };
+      current = { level: null, field: null, specialization: null, school: null, graduationYear: null };
       entries.push(current);
     }
     current.level ??= level;
     current.school ??= school;
     current.graduationYear ??= year;
 
+    // a focus inside the degree, wherever it is written. it has its own "in", which must not be read as the major
+    current.specialization ??= line.match(new RegExp(`${FOCUS}\\s+in\\s+([A-Z][A-Za-z&/ ]+?)${FIELD_END}`))?.[1]?.trim() ?? null;
+
     // the field is what comes after "in", or the words right after a short degree name
     if (level && !current.field) {
-      const afterIn = line.match(/\b(?:in|of Science in|of Arts in)\s+([A-Z][A-Za-z&/ ]+?)(?:,|\s+[|·•—–-]\s+|\s+\d{4}|$)/);
-      const afterShort = line.match(/^(?:[A-Z]\.?){2,4}\.?\s+([A-Z][A-Za-z&/ ]+?)(?:,|\s+[|·•—–-]\s+|\s+\d{4}|$)/);
+      const afterIn = line.match(new RegExp(`(?<!${FOCUS}\\s)\\b(?:in|of Science in|of Arts in)\\s+([A-Z][A-Za-z&/ ]+?)${FIELD_END}`));
+      const afterShort = line.match(new RegExp(`^(?:[A-Z]\\.?){2,4}\\.?\\s+([A-Z][A-Za-z&/ ]+?)${FIELD_END}`));
       current.field = (afterIn?.[1] ?? afterShort?.[1])?.trim() ?? null;
     }
   }

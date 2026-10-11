@@ -66,6 +66,7 @@ export const GROUPS: Record<CheckGroup, { label: string; hint: string }> = {
   "job-level": { label: "Job level match", hint: "We add up the dates in your work history and compare the total with the years the job asks for." },
   measurable: { label: "Measurable results", hint: "Bullets with numbers show what changed because of your work. Aim for at least five." },
   tone: { label: "Resume tone", hint: "Overused phrases take up space without saying anything about you." },
+  placeholders: { label: "Unfinished text", hint: "Stand-ins like [N], TODO or XXX mean a draft went out before it was finished. Recruiters read them as carelessness." },
   "web-presence": { label: "Web presence", hint: "A LinkedIn profile, GitHub or portfolio lets a recruiter see more than fits on a page." },
   "word-count": { label: "Word count", hint: "Too short looks thin, too long does not get read. Most strong resumes land between 300 and 1000 words." },
   verbs: { label: "Action verbs", hint: "Starting many bullets with the same verb makes different work sound the same." },

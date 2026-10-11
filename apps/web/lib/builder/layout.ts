@@ -107,6 +107,9 @@ export function builderLayoutMeta(data: BuilderData, settings: TemplateSettings,
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const dateText = (date: { year: number; month: number | null; present: boolean }) => (date.present ? "" : joined([date.month ? MONTHS[date.month - 1] : undefined, String(date.year)], " "));
 
+// the name of a group of skills at the start of a line. it can have commas in it, like "Cloud, Data & Tools:"
+const SKILL_LABEL = /^[A-Za-z][A-Za-z &/,+-]{0,40}:\s*/;
+
 // fills the builder from a resume we already read, for "upload my resume" and the linkedin import
 export function builderFromParsed(parsed: ParsedResume): BuilderData {
   const data = emptyBuilder();
@@ -138,7 +141,8 @@ export function builderFromParsed(parsed: ParsedResume): BuilderData {
   data.education = parsed.education.map((school) => ({
     id: newId(),
     degree: school.level ?? "",
-    field: school.field ?? "",
+    // the major first, with any focus after it, so the focus is never shown as the degree
+    field: joined([school.field ?? "", school.specialization ? `Specialization in ${school.specialization}` : ""], ", "),
     school: school.school ?? "",
     location: "",
     year: school.graduationYear ? String(school.graduationYear) : "",
@@ -147,7 +151,8 @@ export function builderFromParsed(parsed: ParsedResume): BuilderData {
   data.skills = [
     ...new Set(
       linesOf("skills")
-        .flatMap((text) => strip(text).replace(/^[A-Za-z &/]+:\s*/, "").split(/[,;|•·]/))
+        // drop the label in front, like "Cloud, Data & Tools:", then split on commas that are not inside brackets
+        .flatMap((text) => strip(text).replace(SKILL_LABEL, "").split(/[,;|•·](?![^()]*\))/))
         .map((skill) => skill.trim())
         .filter((skill) => skill.length > 1 && skill.length <= 40),
     ),

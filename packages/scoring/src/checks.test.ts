@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formattingChecks, recruiterTipChecks, searchabilityChecks, type Check, type CheckInput } from "./checks";
+import { findPlaceholders, formattingChecks, recruiterTipChecks, searchabilityChecks, type Check, type CheckInput } from "./checks";
 import { analyzeJd } from "./jd";
 import { fontFamily, isStandardFont, type LayoutMeta } from "./layout";
 import { parseResume } from "./parse";
@@ -152,6 +152,22 @@ const LAYOUT: LayoutMeta = {
   lightTextShare: 0,
   offLeftShare: 0.08,
 };
+
+describe("leftover placeholders", () => {
+  it("flags stand-ins that were never filled in", () => {
+    const checks = recruiterTipChecks(input(RESUME.replace("Cleaned survey data", "Built a tool used by [N] operators, cutting errors by [X]%. TODO add the date. XXX")));
+    const found = byId(checks, "placeholders");
+    expect(found).toMatchObject({ passed: false, group: "placeholders", category: "recruiterTips" });
+    expect(found.message).toContain("[N], [X]%, TODO, XXX");
+    expect(findPlaceholders("Led [number] people at [Company Name]. TBD. Lorem ipsum dolor.")).toEqual(["[number]", "[Company Name]", "TBD", "Lorem ipsum"]);
+  });
+
+  it("leaves real text alone and adds nothing to a clean resume", () => {
+    expect(recruiterTipChecks(input()).some((check) => check.id === "placeholders")).toBe(false);
+    // footnotes, links in brackets, a todo app and ordinary words are not placeholders
+    expect(findPlaceholders("Built a Todo app [1] with a [Live Demo] link, [GitHub] and Xxx Corp. Sorted todo lists.")).toEqual([]);
+  });
+});
 
 describe("formatting checks", () => {
   it("only runs the text checks when there is no file", () => {

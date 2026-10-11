@@ -15,6 +15,7 @@ export type CheckGroup =
   | "job-level"
   | "measurable"
   | "tone"
+  | "placeholders"
   | "web-presence"
   | "word-count"
   | "verbs"
@@ -305,6 +306,15 @@ export function searchabilityChecks({ text, parsed, jd, jobTitle, educationOverr
   return checks;
 }
 
+// stand-ins people leave for later: "[N]", "[X]%", "[company name]", TODO, TBD, XXX and filler text
+const PLACEHOLDER = /\[(?:[A-Za-z#?_]{1,2}|x+|number|num|company(?: name)?|name|role|title|date|year|metric|your [a-z ]{1,30}|insert[^\]]{0,30})\]%?|\b(?:TODO|TBD|XXX+)\b|lorem ipsum/gi;
+
+// every leftover placeholder in a resume, each one listed once, as it was written
+export function findPlaceholders(text: string): string[] {
+  const found = (text.match(PLACEHOLDER) ?? []).filter((match) => match.startsWith("[") || /lorem/i.test(match) || match === match.toUpperCase());
+  return [...new Set(found)].slice(0, 8);
+}
+
 // the things a recruiter notices in a quick read
 export function recruiterTipChecks({ text, parsed, jd }: CheckInput): Check[] {
   const { sections, contact, yearsExperience } = parsed;
@@ -378,6 +388,12 @@ export function recruiterTipChecks({ text, parsed, jd }: CheckInput): Check[] {
   );
   if (negatives.length > 0) {
     checks.push(check("negative-tone", "recruiterTips", "tone", false, "", `Some wording reads as negative: ${negatives.join(", ")}. Say what you did instead.`));
+  }
+
+  // text that was meant to be filled in later and never was. only shown when there is some, so it never pads the score
+  const leftovers = findPlaceholders(text);
+  if (leftovers.length > 0) {
+    checks.push(check("placeholders", "recruiterTips", "placeholders", false, "", `Unfinished text is still in your resume: ${leftovers.join(", ")}. Fill in the real number or word before you send it.`));
   }
 
   // too long gets cut some slack for people with a long career
