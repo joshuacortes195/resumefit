@@ -1,6 +1,9 @@
+import { and, eq, sql } from "drizzle-orm";
 import { z } from "zod";
+import { detectAts } from "@resumefit/scoring";
+import { getDb, schema } from "@/db";
 import { webUrl } from "@/lib/scan-request";
-import { getJob } from "@/lib/data/jobs";
+import { createJob, getJob } from "@/lib/data/jobs";
 import { getResume, listResumes } from "@/lib/data/resumes";
 import { createScan, DAILY_SCAN_LIMIT, scansToday } from "@/lib/data/scans";
 import type { LayoutMeta } from "@resumefit/scoring";
@@ -17,6 +20,35 @@ const scanSchema = z.object({
   jobId: z.uuid().optional(),
 });
 
+type ScanInput = z.infer<typeof scanSchema>;
+
+// finds the tracker card a scan belongs to, or makes one, so the score always shows up on the tracker.
+// the card the panel named comes first, then one saved from the same page, then one with the same title at the same company
+async function cardFor(userId: string, input: ScanInput): Promise<{ jobId: string | null; added: boolean }> {
+  if (input.jobId && (await getJob(userId, input.jobId))) return { jobId: input.jobId, added: false };
+  const db = await getDb();
+  const mine = eq(schema.jobs.userId, userId);
+  const title = input.title?.trim();
+  const company = input.company?.trim();
+  if (input.url) {
+    const [byLink] = await db.select({ id: schema.jobs.id }).from(schema.jobs).where(and(mine, eq(schema.jobs.url, input.url))).limit(1);
+    if (byLink) return { jobId: byLink.id, added: false };
+  }
+  if (title && company) {
+    // the posting and its application form often sit at different addresses, so the name of the job is the next best thing
+    const [byName] = await db
+      .select({ id: schema.jobs.id })
+      .from(schema.jobs)
+      .where(and(mine, sql`lower(${schema.jobs.title}) = ${title.toLowerCase()}`, sql`lower(${schema.jobs.company}) = ${company.toLowerCase()}`))
+      .limit(1);
+    if (byName) return { jobId: byName.id, added: false };
+  }
+  // a page we could not read a title from has nothing to put on a card
+  if (!title) return { jobId: null, added: false };
+  const job = await createJob(userId, { title, company, url: input.url, description: input.jdText, detectedAts: detectAts(input.url, input.jdText)?.name ?? null });
+  return { jobId: job.id, added: true };
+}
+
 // scans a job description from the page against the base resume, or one the person picked
 export const POST = extRoute(async (request, user) => {
   const parsed = scanSchema.safeParse(await request.json());
@@ -28,6 +60,7 @@ export const POST = extRoute(async (request, user) => {
   const resume = resumeId ? await getResume(user.id, resumeId) : null;
   if (!resume?.rawText) throw new ExtError("You have no saved resume yet. Upload one in ResumeFit first.", 404);
 
+  const card = await cardFor(user.id, parsed.data);
   const scan = await createScan(user.id, {
     resumeId: resume.id,
     resumeText: resume.rawText,
@@ -36,9 +69,9 @@ export const POST = extRoute(async (request, user) => {
     jobTitle: parsed.data.title,
     company: parsed.data.company,
     jobUrl: parsed.data.url,
-    // only a job that belongs to this person, anything else is quietly dropped
-    jobId: parsed.data.jobId && (await getJob(user.id, parsed.data.jobId)) ? parsed.data.jobId : null,
+    // the scan hangs off the tracker card, which is where the score is shown
+    jobId: card.jobId,
   });
   const missing = [...scan.report.hardSkills, ...scan.report.softSkills].filter((skill) => skill.match === "missing").map((skill) => skill.name);
-  return { scanId: scan.id, matchRate: scan.matchRate, missing: missing.slice(0, 8), resumeName: resume.name };
+  return { scanId: scan.id, matchRate: scan.matchRate, missing: missing.slice(0, 8), resumeName: resume.name, jobId: card.jobId, addedToTracker: card.added };
 });

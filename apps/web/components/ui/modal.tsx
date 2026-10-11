@@ -44,7 +44,8 @@ export function Modal({ open, onClose, title, children, size = "md" }: ModalProp
       // a click on the dark area around the box closes it
       onClick={(event) => event.target === ref.current && onClose()}
       aria-label={title}
-      className={`m-auto w-[calc(100%-2rem)] rounded-2xl border border-border/70 bg-surface shadow-card p-0 text-foreground shadow-xl backdrop:bg-black/50 open:animate-pop ${
+      // never taller than the screen: what does not fit scrolls inside the box
+      className={`m-auto max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] overflow-y-auto overscroll-contain rounded-2xl border border-border/70 bg-surface shadow-card p-0 text-foreground shadow-xl backdrop:bg-black/50 open:animate-pop ${
         size === "wide" ? "max-w-4xl" : "max-w-md"
       }`}
     >

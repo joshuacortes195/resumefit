@@ -60,7 +60,7 @@ async function call<T>(path: string, body?: unknown): Promise<T> {
 export const api = {
   me: () => call<Account>("me"),
   saveJob: (job: { title: string; company?: string; location?: string; url?: string; description?: string }) => call<{ jobId: string; alreadySaved: boolean }>("jobs", job),
-  scan: (input: { jdText: string; title?: string; company?: string; url?: string; resumeId?: string; jobId?: string }) => call<{ scanId: string; matchRate: number; missing: string[]; resumeName: string }>("scan", input),
+  scan: (input: { jdText: string; title?: string; company?: string; url?: string; resumeId?: string; jobId?: string }) => call<{ scanId: string; matchRate: number; missing: string[]; resumeName: string; jobId: string | null }>("scan", input),
   importLinkedin: (profile: LinkedinImport) => call<{ saved: boolean }>("linkedin", profile),
 };
 

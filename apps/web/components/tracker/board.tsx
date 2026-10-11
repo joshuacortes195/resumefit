@@ -23,7 +23,8 @@ import { CSS } from "@dnd-kit/utilities";
 import { Archive, ArchiveRestore, Link2, Plus, Search } from "lucide-react";
 import { JOB_STATUSES, type JobStatus } from "@resumefit/shared";
 import { addJob, importJobFromLink, moveJobCard, setJobArchived } from "@/app/actions/jobs";
-import { ScoreRing } from "@/components/score-ring";
+import { RefreshOnFocus } from "@/components/refresh-on-focus";
+import { JobScore } from "@/components/score-ring";
 import { INPUT, PRIMARY_BUTTON, SECONDARY_BUTTON } from "@/components/ui/buttons";
 import { Modal } from "@/components/ui/modal";
 import type { BoardJob } from "@/lib/data/jobs";
@@ -51,16 +52,9 @@ function age(createdAt: Date | string): string {
 function CardFace({ job, lifted = false }: { job: BoardJob; lifted?: boolean }) {
   return (
     <div className={`flex items-center gap-3 rounded-xl border border-border bg-surface p-3 text-sm ${lifted ? "rotate-2 shadow-xl" : "shadow-sm"}`}>
-      {job.matchRate === null ? (
-        <span className="flex size-10 shrink-0 items-center justify-center rounded-full border-[5px] border-border text-xs text-muted" title="Not scanned yet">
-          <span aria-hidden>-</span>
-          <span className="sr-only">Not scanned yet</span>
-        </span>
-      ) : (
-        <ScoreRing score={job.matchRate} size="sm" />
-      )}
+      <JobScore matchRate={job.matchRate} />
       <div className="min-w-0 flex-1">
-        <p className="line-clamp-2 font-semibold leading-snug">{job.title}</p>
+        <p className="line-clamp-3 font-semibold leading-snug">{job.title}</p>
         {/* company on the left, how long ago it was added on the right */}
         <p className="mt-0.5 flex justify-between gap-2 text-xs text-muted">
           <span className="truncate">{job.company ?? "Company not set"}</span>
@@ -88,7 +82,7 @@ function JobCard({ job, archived }: { job: BoardJob; archived: boolean }) {
 function Column({ status, jobs, archived, isOver }: { status: JobStatus; jobs: BoardJob[]; archived: boolean; isOver: boolean }) {
   const { setNodeRef } = useDroppable({ id: status });
   return (
-    <section aria-label={COLUMNS[status].label} className="flex w-72 shrink-0 flex-col rounded-2xl bg-border/40 p-3 lg:w-auto lg:min-w-0 lg:flex-1">
+    <section aria-label={COLUMNS[status].label} className="flex min-w-0 flex-col rounded-2xl bg-border/40 p-3">
       <h2 className="flex items-center justify-between px-1 text-base font-semibold">
         {COLUMNS[status].label}
         <span className="rounded-full bg-surface px-2 py-0.5 text-xs font-medium tabular-nums text-muted">{jobs.length}</span>
@@ -186,6 +180,7 @@ export function Board({ jobs: serverJobs, archived }: { jobs: BoardJob[]; archiv
 
   return (
     <div>
+      <RefreshOnFocus />
       {/* add job, search and the archived switch */}
       <div className="flex flex-wrap items-center gap-3">
         <button type="button" onClick={() => setAdding(true)} className={PRIMARY_BUTTON}>
@@ -236,8 +231,8 @@ export function Board({ jobs: serverJobs, archived }: { jobs: BoardJob[]; archiv
         </ul>
       ) : (
         <DndContext sensors={sensors} collisionDetection={collisionDetection} onDragStart={handleDragStart} onDragOver={handleDragOver} onDragEnd={handleDragEnd} onDragCancel={cancelDrag}>
-          {/* the columns scroll sideways on small screens */}
-          <div className="-mx-4 mt-5 flex gap-3 overflow-x-auto px-4 pb-4 md:-mx-8 md:px-8 lg:mx-0 lg:px-0">
+          {/* as many columns side by side as fit at a readable width, the rest drop to the next row and the page scrolls */}
+          <div className="mt-5 grid grid-cols-[repeat(auto-fit,minmax(min(100%,15rem),1fr))] gap-3 pb-4">
             {JOB_STATUSES.map((status) => (
               <Column key={status} status={status} jobs={inColumn(status).filter(matches)} archived={archived} isOver={overColumn === status && dragging?.status !== status} />
             ))}

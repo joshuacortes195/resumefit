@@ -65,6 +65,22 @@ test("connect the extension, then save and scan a job the way it does", async ({
   expect(scan.matchRate).toBeLessThanOrEqual(100);
   expect(scan.scanId).toMatch(/^[0-9a-f-]{36}$/);
 
+  expect(scan.jobId).toBe(saved.jobId);
+
+  // scanning from the application page, at a different address, still lands on the same card
+  const again = await (await request.post("/api/ext/scan", { headers, data: { jdText: JD, title: "support specialist", company: "Harbor Freight Co", url: "https://apply.example.com/harbor/77/form" } })).json();
+  expect(again).toMatchObject({ jobId: saved.jobId, addedToTracker: false });
+
+  // a job that was never saved gets a card of its own when it is scanned, with the score on it
+  const fresh = await (await request.post("/api/ext/scan", { headers, data: { jdText: JD, title: "Help Desk Agent", company: "Pier Nine", url: "https://jobs.example.com/pier/3" } })).json();
+  expect(fresh.addedToTracker).toBe(true);
+  await page.goto("/tracker");
+  const card = page.getByRole("region", { name: "Saved", exact: true }).getByRole("listitem").filter({ hasText: "Help Desk Agent" });
+  await expect(card.getByRole("meter", { name: "Match rate" })).toHaveAttribute("aria-valuenow", String(fresh.matchRate));
+  // the dashboard shows the same ring where the logo used to be
+  await page.goto("/dashboard");
+  await expect(page.getByRole("region", { name: "Saved jobs" }).getByRole("listitem").filter({ hasText: "Help Desk Agent" }).getByRole("meter", { name: "Match rate" })).toHaveAttribute("aria-valuenow", String(fresh.matchRate));
+
   // the saved job is on the tracker, and the scan opens as a full report
   await page.goto("/tracker");
   await expect(page.getByRole("region", { name: "Saved", exact: true }).getByText("Support Specialist")).toBeVisible();

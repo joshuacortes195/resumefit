@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "ResumeFit",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "description": "Save jobs and scan them against your resume, right from the page you are on.",
   "action": { "default_title": "Open ResumeFit" },
   "side_panel": { "default_path": "sidepanel.html" },

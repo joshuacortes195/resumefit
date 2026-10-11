@@ -63,3 +63,14 @@ export function ScoreRing({ score, size = "md", label = "Match rate" }: ScoreRin
     </div>
   );
 }
+
+// a job's match rate as it shows on tracker cards and on the dashboard: the small ring, or an empty one when the job has not been scanned
+export function JobScore({ matchRate }: { matchRate: number | null }) {
+  if (matchRate !== null) return <ScoreRing score={matchRate} size="sm" />;
+  return (
+    <span className="flex size-10 shrink-0 items-center justify-center rounded-full border-[5px] border-border text-xs text-muted" title="Not scanned yet">
+      <span aria-hidden>-</span>
+      <span className="sr-only">Not scanned yet</span>
+    </span>
+  );
+}

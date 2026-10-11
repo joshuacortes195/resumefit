@@ -3,11 +3,11 @@ import Link from "next/link";
 import { ArrowRight, Briefcase, CalendarClock, Check, Minus, UserSearch, X } from "lucide-react";
 import { JOB_STATUSES } from "@resumefit/shared";
 import { ScanFormLoader } from "@/components/scan/scan-form-loader";
-import { ScoreRing } from "@/components/score-ring";
+import { RefreshOnFocus } from "@/components/refresh-on-focus";
+import { JobScore, ScoreRing } from "@/components/score-ring";
 import { CARD, LINK_BUTTON } from "@/components/ui/buttons";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getCurrentUser } from "@/lib/auth";
-import { CompanyLogo } from "@/components/company-logo";
 import { getCoverLetter, listJobs, nextInterview } from "@/lib/data/jobs";
 import { listLinkedinReports } from "@/lib/data/practice";
 import { latestScan } from "@/lib/data/scans";
@@ -33,6 +33,7 @@ const WHEN = new Intl.DateTimeFormat("en-US", { weekday: "short", month: "short"
 export default function DashboardPage() {
   return (
     <div className="mx-auto max-w-5xl space-y-6">
+      <RefreshOnFocus />
       <div>
         <h1 className="text-3xl font-semibold sm:text-4xl">Welcome to ResumeFit</h1>
         <p className="mt-2 max-w-xl text-muted">See how well your resume fits a job, fix what is missing and keep every application in one place.</p>
@@ -166,7 +167,7 @@ async function TrackerSummary() {
   return (
     <>
       {/* one column per stage, each with the cards that are in it */}
-      <div className="stagger mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+      <div className="stagger mt-5 grid grid-cols-[repeat(auto-fit,minmax(min(100%,13rem),1fr))] gap-3">
         {JOB_STATUSES.map((status) => {
           const cards = jobs.filter((job) => job.status === status);
           return (
@@ -183,12 +184,12 @@ async function TrackerSummary() {
                   {cards.slice(0, CARDS_PER_COLUMN).map((job) => (
                     <li key={job.id}>
                       <Link href={`/tracker/${job.id}/job`} className="flex items-center gap-2.5 rounded-lg border border-border/70 bg-surface p-2.5 transition-colors duration-150 hover:border-primary/60">
-                        <CompanyLogo company={job.company ?? job.title} size={28} />
+                        {/* the match rate sits where a logo would, the same ring as on the tracker */}
+                        <JobScore matchRate={job.matchRate} />
                         <span className="min-w-0 flex-1">
                           <span className="line-clamp-2 text-sm font-medium leading-snug">{job.title}</span>
                           <span className="block truncate text-xs text-muted">{job.company ?? "Company not set"}</span>
                         </span>
-                        {job.matchRate !== null && <span className="shrink-0 text-xs font-semibold tabular-nums text-primary">{job.matchRate}%</span>}
                       </Link>
                     </li>
                   ))}

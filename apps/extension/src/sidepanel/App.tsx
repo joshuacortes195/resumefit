@@ -292,7 +292,7 @@ type JobCardProps = {
 function JobCard({ job, account, jobId, onJob, open, heading }: JobCardProps) {
   const [busy, setBusy] = useState<"save" | "scan" | null>(null);
   const [saved, setSaved] = useState(false);
-  const [scan, setScan] = useState<{ scanId: string; matchRate: number; missing: string[]; resumeName: string } | null>(null);
+  const [scan, setScan] = useState<{ scanId: string; matchRate: number; missing: string[]; resumeName: string; jobId: string | null } | null>(null);
   const [resumeId, setResumeId] = useState(account.resumes.find((resume) => resume.isBase)?.id ?? account.resumes[0]?.id ?? "");
   const [error, setError] = useState<string | null>(null);
 
@@ -318,7 +318,13 @@ function JobCard({ job, account, jobId, onJob, open, heading }: JobCardProps) {
 
   const runScan = () =>
     run("scan", async () => {
-      setScan(await api.scan({ jdText: job.description, title: job.title || undefined, company: job.company || undefined, url: job.url || undefined, resumeId: resumeId || undefined, jobId: jobId ?? undefined }));
+      const result = await api.scan({ jdText: job.description, title: job.title || undefined, company: job.company || undefined, url: job.url || undefined, resumeId: resumeId || undefined, jobId: jobId ?? undefined });
+      setScan(result);
+      // the scan lands on a tracker card, so the score shows up there too
+      if (result.jobId) {
+        onJob(result.jobId);
+        setSaved(true);
+      }
     });
 
   const color = scan ? (scan.matchRate >= 75 ? "var(--success)" : scan.matchRate >= 40 ? "var(--warning)" : "var(--danger)") : undefined;
@@ -364,7 +370,7 @@ function JobCard({ job, account, jobId, onJob, open, heading }: JobCardProps) {
             <span className="score" style={{ color }}>
               {scan.matchRate}%
             </span>
-            <span className="muted small">match with {scan.resumeName}. Aim for 75% or more.</span>
+            <span className="muted small">match with {scan.resumeName}. Aim for 75% or more.{scan.jobId ? " Saved to your tracker with this score." : ""}</span>
           </p>
           {scan.missing.length > 0 && (
             <>
