@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { scanResume } from "./scan";
+import { matchRate } from "./score";
 import type { SkillTerm } from "./match";
 
 // skill lists for the tests
@@ -102,5 +103,68 @@ describe("scanResume", () => {
   it("gives the same answer every time", () => {
     const input = { resumeText: TAILORED, jdText: JD, hardSkills: HARD, softSkills: SOFT };
     expect(scanResume(input)).toEqual(scanResume(input));
+  });
+});
+
+describe("a posting we could not read skills from", () => {
+  const SKILLS = ["Python", "C++", "Linux", "Git", "SQL", "React", "TypeScript"].map((name) => ({ name }));
+  const JUNIOR = "Sam Rivera\nsam@example.com\n\nExperience\nSoftware Engineering Intern, Acme\nJun 2025 - Aug 2025\n• Built internal tools in Python, cutting report time by 40%\n\nSkills\nPython, Git, React, TypeScript";
+  // a posting the way some careers sites hand it over in their structured data: the whole thing on one line
+  const FLAT =
+    "Job Details: Job Description: Join our team as a software engineering intern working on validation tools in Python and C++ on Linux. Qualifications: You must possess the below minimum qualifications to be initially considered for this position. Minimum Qualifications: Candidate must be pursuing a Bachelor's degree in Computer Science. Experience with Python, Git and SQL. Preferred Qualifications: 3+ years of experience with C++ in a production environment. We are an equal opportunity employer and all qualified applicants will receive consideration without regard to race. Benefits: We offer a total compensation package that ranks among the best in the industry.";
+  const scan = (jdText: string, hardSkills = SKILLS, resumeText = JUNIOR, jobTitle?: string) => scanResume({ resumeText, jdText, jobTitle, hardSkills, softSkills: [], today: new Date(2026, 5, 15) });
+
+  it("reads the same skills from a posting on one line as from the same posting with its line breaks", () => {
+    const flat = scan(FLAT);
+    const broken = scan(FLAT.replace(/(?<=[.:]) /g, "\n"));
+    // one legal sentence at the end used to wipe out the whole line, and with it every skill
+    expect(flat.hardSkills.map((skill) => skill.name).sort()).toEqual(["C++", "Git", "Linux", "Python", "SQL"]);
+    expect(flat.hardSkills.map((skill) => [skill.name, skill.match]).sort()).toEqual(broken.hardSkills.map((skill) => [skill.name, skill.match]).sort());
+    expect(flat.matchRate).toBe(broken.matchRate);
+    // the nice to have part is still told apart, so its years are not read as required
+    expect(flat.jd.yearsRequired).toBeNull();
+    expect(flat.hardSkills.find((skill) => skill.name === "SQL")?.importance).toBe("required");
+  });
+
+  it("never lets an empty skill list raise the score", () => {
+    const withSkills = scan(FLAT);
+    const none = scan(FLAT, []);
+    expect(none.hardSkills).toEqual([]);
+    expect(none.unread).toEqual(["hardSkills", "softSkills"]);
+    expect(none.categoryScores.hardSkills).toBe(0);
+    expect(none.cap).toMatchObject({ reason: "noHardSkills", limit: 60 });
+    // what the rest of the report earns by itself is the most an unread posting can get, and it is held at 60 on top of that
+    const rest = matchRate(none.categoryScores, ["hardSkills", "softSkills"]);
+    expect(none.matchRate).toBe(Math.min(rest, 60));
+    expect(none.matchRate).toBeLessThanOrEqual(60);
+    // under the old rule the missing categories counted as full marks
+    const old = Math.round(100 * (0.5 + 0.15 + 0.15 * none.categoryScores.searchability + 0.1 * none.categoryScores.recruiterTips + 0.1 * none.categoryScores.formatting));
+    expect(none.matchRate).toBeLessThan(old);
+    // and a resume that really has every skill still beats one judged on nothing
+    const perfect = scan(FLAT, SKILLS, `${JUNIOR}, C++, Linux, SQL`);
+    expect(perfect.cap).toBeNull();
+    expect(perfect.matchRate).toBeGreaterThan(none.matchRate);
+    expect(withSkills.unread).toEqual(["softSkills"]);
+  });
+
+  it("does not score a junior resume above 60 against a staff posting, even when every skill matches", () => {
+    const STAFF = "Staff Software Engineer, Frontend\n\nWhat you will do\nLead the architecture of our React and TypeScript apps.\n\nRequirements\nDeep experience with React, TypeScript, Python and Git.";
+    const staff = scan(STAFF);
+    expect(staff.hardSkills.every((skill) => skill.match === "exact")).toBe(true);
+    expect(staff.jd.levelYears).toBe(7);
+    expect(staff.cap).toMatchObject({ reason: "levelGap", limit: 60, wanted: 7 });
+    expect(staff.matchRate).toBeLessThanOrEqual(60);
+    expect(staff.checks.find((check) => check.id === "job-level")).toMatchObject({ passed: false });
+
+    // the same posting at the resume's own level is not held back
+    const same = scan(STAFF.replace("Staff Software Engineer, Frontend", "Software Engineer, Frontend"));
+    expect(same.cap).toBeNull();
+    expect(same.matchRate).toBeGreaterThan(60);
+    // nor is someone who has the years
+    const veteran = scan(STAFF, SKILLS, JUNIOR.replace("Jun 2025 - Aug 2025", "Jun 2015 - Present"));
+    expect(veteran.cap).toBeNull();
+    // a number of years in the posting does the same job as a title
+    const years = scan(STAFF.replace("Staff Software Engineer, Frontend", "Software Engineer").replace("Deep experience", "8+ years of experience"));
+    expect(years.cap).toMatchObject({ reason: "levelGap", wanted: 8 });
   });
 });

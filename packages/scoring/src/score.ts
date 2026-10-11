@@ -18,8 +18,9 @@ export function matchCredit(match: SkillMatch["match"]): number {
 
 // weighted share of the job's skills that the resume covers, 0 to 1
 export function skillScore(skills: SkillMatch[]): number {
-  // no skills to check means nothing to lose points on
-  if (skills.length === 0) return 1;
+  // no skills were read from the posting. that is not a perfect match, it is no evidence at all, so it earns nothing
+  // and the match rate leaves the category out. see matchRate
+  if (skills.length === 0) return 0;
   let earned = 0;
   let possible = 0;
   for (const skill of skills) {
@@ -27,7 +28,7 @@ export function skillScore(skills: SkillMatch[]): number {
     earned += weight * matchCredit(skill.match);
     possible += weight;
   }
-  return possible === 0 ? 1 : earned / possible;
+  return possible === 0 ? 0 : earned / possible;
 }
 
 // share of checks that passed, 0 to 1
@@ -38,14 +39,18 @@ export function checkScore(checks: { passed: boolean; info?: boolean }[]): numbe
   return scored.filter((check) => check.passed).length / scored.length;
 }
 
-// rolls the five category scores into the final match rate, 0 to 100
-export function matchRate(scores: CategoryScores): number {
+// rolls the category scores into the final match rate, 0 to 100.
+// a category with nothing to judge is left out and the others share its weight, so "we could not read any skills" never counts as "you have them all"
+export function matchRate(scores: CategoryScores, leftOut: ScoreCategory[] = []): number {
   let total = 0;
+  let weight = 0;
   for (const category of Object.keys(SCORE_WEIGHTS) as ScoreCategory[]) {
+    if (leftOut.includes(category)) continue;
     const clamped = Math.min(1, Math.max(0, scores[category]));
     total += SCORE_WEIGHTS[category] * clamped;
+    weight += SCORE_WEIGHTS[category];
   }
-  return Math.round(100 * total);
+  return weight === 0 ? 0 : Math.round((100 * total) / weight);
 }
 
 // picks the gauge color for a score

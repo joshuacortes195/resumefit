@@ -133,16 +133,27 @@ export function Report({ data, resumes }: { data: ReportData; resumes: ResumeOpt
               <p className="text-sm text-muted">Aim for 75% or more</p>
             </div>
 
+            {/* says so when the score was held down, and why */}
+            {report.cap && (
+              <p role="note" className="mt-4 rounded-lg border border-warning/40 bg-warning/10 px-3 py-2 text-sm">
+                {report.cap.reason === "noHardSkills"
+                  ? `We could not read any hard skills from this job description, so the score is based on the rest of the report and held at ${report.cap.limit}% or less. Check that the whole posting was pasted, or add the skills it asks for under Hard skills.`
+                  : `This role asks for about ${report.cap.wanted} years of experience and your resume shows about ${report.cap.have}, so the score is held at ${report.cap.limit}% however well the skills match.`}
+              </p>
+            )}
+
             {/* one bar per part, the link jumps to that part */}
             <ul className="mt-5 space-y-3.5">
               {SECTIONS.map(({ key, label }) => {
                 const issues = report.issuesToFix[key];
+                // nothing was read from the posting for this part, which is not the same as nothing to fix
+                const unread = (key === "hardSkills" || key === "softSkills") && (report.unread?.includes(key) ?? false);
                 return (
                   <li key={key}>
                     <div className="flex justify-between gap-2 text-sm">
                       <span className="font-medium">{label}</span>
                       <a href={`#${key}`} onClick={() => setTab("report")} className={issues === 0 ? "text-muted" : LINK_BUTTON}>
-                        {issues === 0 ? "No issues" : `${issues} ${issues === 1 ? "issue" : "issues"} to fix`}
+                        {unread ? "None found in the job" : issues === 0 ? "No issues" : `${issues} ${issues === 1 ? "issue" : "issues"} to fix`}
                       </a>
                     </div>
                     <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-border">

@@ -1,5 +1,5 @@
 import { like } from "drizzle-orm";
-import { countSkills, looksLikeTitle, parseResume, type SkillTerm } from "@resumefit/scoring";
+import { countSkills, looksLikeTitle, parseResume, yearsWanted, type SkillTerm } from "@resumefit/scoring";
 import { HARD_SKILLS } from "@resumefit/skills-data";
 import { getDb, schema } from "@/db";
 import { BOARDS, type Board } from "@/lib/job-boards";
@@ -206,17 +206,8 @@ const ROLE_KINDS: [kind: string, signs: RegExp][] = [
 ];
 const roleKinds = (title: string) => ROLE_KINDS.filter(([, signs]) => signs.test(title)).map(([kind]) => kind);
 
-// the years of work a title usually asks for, going by the level named in it. null when it names none
-const LEVELS: [years: number, signs: RegExp][] = [
-  [12, /\b(vp|rvp|svp|evp|avp|vice president|chief|c[efot]o)\b/i],
-  [9, /\b(director|head of|principal|distinguished|fellow)\b/i],
-  [7, /\bstaff\b/i],
-  [5, /\b(lead|manager|architect)\b/i],
-  [4, /\b(senior|sr)\b\.?/i],
-];
-export function yearsWanted(title: string): number | null {
-  return LEVELS.find(([, signs]) => signs.test(title))?.[0] ?? null;
-}
+// the years of work a title usually asks for comes from the scoring package, so a scan and the job feed read a title the same way
+export { yearsWanted };
 
 // what a resume tells us about the kind of work its owner is after
 export type ResumeProfile = {

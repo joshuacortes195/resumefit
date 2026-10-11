@@ -1,6 +1,7 @@
 import type { SkillMatch } from "@resumefit/shared";
 import { formattingChecks, recruiterTipChecks, searchabilityChecks, type Check } from "./checks";
-import { analyzeJd, stripIgnoredSections, type JdAnalysis } from "./jd";
+import { SCORE_CAPS } from "./config";
+import { analyzeJd, stripIgnoredSections, yearsWanted, type JdAnalysis } from "./jd";
 import type { LayoutMeta } from "./layout";
 import { countSkills, matchSkills, type SkillTerm } from "./match";
 import { DEGREE_LEVELS, parseResume, type DegreeLevel, type ParsedResume } from "./parse";
@@ -77,6 +78,10 @@ export type ScanResult = {
   jobTitle: string | null;
   resume: ParsedResume;
   jd: JdAnalysis;
+  // skill categories the posting gave us nothing for. they are left out of the match rate. missing on scans saved before this was tracked
+  unread?: ("hardSkills" | "softSkills")[];
+  // set when the match rate was held down, with the reason, so the report can say why
+  cap?: { limit: number; reason: "noHardSkills" | "levelGap"; wanted?: number; have?: number } | null;
 };
 
 // counts the skills the resume does not fully cover
@@ -114,6 +119,8 @@ export function scanResume(input: ScanInput): ScanResult {
     educationPreferred: own.educationPreferred ?? asDegree(hints.educationPreferred),
   };
   const jobTitle = input.jobTitle?.trim() || jd.jobTitle;
+  // a title like Staff or Director says how senior the job is, even when the posting never gives a number of years
+  jd.levelYears = jobTitle ? yearsWanted(jobTitle) : null;
 
   // compare skills against the parts of the posting that are about the job
   const jobText = stripIgnoredSections(jdText);
@@ -140,8 +147,24 @@ export function scanResume(input: ScanInput): ScanResult {
     formatting: checkScore(formatting),
   };
 
+  // a category the posting gave nothing for cannot be judged, so it sits out
+  const unread: NonNullable<ScanResult["unread"]> = [...(hard.length === 0 ? (["hardSkills"] as const) : []), ...(soft.length === 0 ? (["softSkills"] as const) : [])];
+  const raw = matchRate(categoryScores, unread);
+
+  // the years the job wants: what the posting says, or what its title usually means, whichever is more
+  const wanted = Math.max(jd.yearsRequired ?? 0, jd.levelYears ?? 0);
+  // a resume with no jobs on it has no years yet. one with jobs but no readable dates is unknown, and is not held back
+  const have = resume.yearsExperience ?? (resume.experience.length === 0 ? 0 : null);
+  let cap: ScanResult["cap"] = null;
+  if (unread.includes("hardSkills")) cap = { limit: SCORE_CAPS.noHardSkills, reason: "noHardSkills" };
+  else if (wanted > 0 && have !== null && wanted - have >= SCORE_CAPS.levelGapYears) cap = { limit: SCORE_CAPS.levelGap, reason: "levelGap", wanted, have };
+  // only worth mentioning when it actually changed the number
+  if (cap && raw <= cap.limit) cap = cap.reason === "noHardSkills" ? cap : null;
+
   return {
-    matchRate: matchRate(categoryScores),
+    matchRate: cap ? Math.min(raw, cap.limit) : raw,
+    unread,
+    cap,
     categoryScores,
     hardSkills: hard,
     softSkills: soft,

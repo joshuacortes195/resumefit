@@ -49,7 +49,7 @@ export function SkillsSection({ kind, skills, resumeText, spans, customNames, re
 
       {view === "compare" &&
         (skills.length === 0 ? (
-          <p className="mt-4 text-sm text-muted">We did not find any {kind} skills in this job description. If you can see one we missed, add it below.</p>
+          <p className="mt-4 text-sm text-muted">We did not find any {kind} skills in this job description, so this part is left out of your match rate. If you can see one we missed, add it below.</p>
         ) : (
           <table className="mt-2 w-full text-sm">
             <thead>

@@ -1,5 +1,5 @@
 import { detectAts, type AtsInfo } from "./ats";
-import { requiredText } from "./match";
+import { requiredText, unflatten } from "./match";
 import { DEGREE_LEVELS, findDegreeLevels, looksLikeTitle, type DegreeLevel } from "./parse";
 
 // what we can read from a job description without any ai
@@ -8,6 +8,8 @@ export type JdAnalysis = {
   company: string | null;
   // lowest number of years the job asks for, null when it does not say
   yearsRequired: number | null;
+  // the years a title like Senior or Staff usually stands for, null when the title names no level. missing on scans saved before this was read
+  levelYears?: number | null;
   educationRequired: DegreeLevel | null;
   educationPreferred: DegreeLevel | null;
   ats: AtsInfo | null;
@@ -26,7 +28,7 @@ const LEGAL_LINE = /equal opportunity employer|without regard to race|reasonable
 export function stripIgnoredSections(jdText: string): string {
   const kept: string[] = [];
   let ignoring = false;
-  for (const line of jdText.split(/\r?\n/)) {
+  for (const line of unflatten(jdText).split(/\r?\n/)) {
     const trimmed = line.trim().replace(/[:*#]+$/g, "").replace(/^[#*\s]+/, "");
     // only short lines can be headings
     if (trimmed.length > 0 && trimmed.length <= 60) {
@@ -36,10 +38,28 @@ export function stripIgnoredSections(jdText: string): string {
       }
       if (JOB_HEADING.test(trimmed)) ignoring = false;
     }
-    if (ignoring || LEGAL_LINE.test(line)) continue;
-    kept.push(line);
+    if (ignoring) continue;
+    // legal wording is dropped a sentence at a time. dropping the whole line used to throw away a whole paragraph, skills and all, for one sentence at its end
+    kept.push(
+      line
+        .split(/(?<=[.!?])\s+/)
+        .filter((sentence) => !LEGAL_LINE.test(sentence))
+        .join(" "),
+    );
   }
   return kept.join("\n");
+}
+
+// the years of work a title usually asks for, going by the level named in it. null when it names none
+const LEVELS: [years: number, signs: RegExp][] = [
+  [12, /\b(vp|rvp|svp|evp|avp|vice president|chief|c[efot]o)\b/i],
+  [9, /\b(director|head of|principal|distinguished|fellow)\b/i],
+  [7, /\bstaff\b/i],
+  [5, /\b(lead|manager|architect)\b/i],
+  [4, /\b(senior|sr)\b\.?/i],
+];
+export function yearsWanted(title: string): number | null {
+  return LEVELS.find(([, signs]) => signs.test(title))?.[0] ?? null;
 }
 
 // number words people use for years of experience

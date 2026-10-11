@@ -15,6 +15,16 @@ export const SKILL_CONFIG = {
   relatedCredit: 0.5,
 };
 
+// ceilings on the match rate for the cases where a high number would mislead
+export const SCORE_CAPS = {
+  // no hard skill could be read from the posting, so half of what the score is made of is missing
+  noHardSkills: 60,
+  // the job asks for far more experience than the resume shows
+  levelGap: 60,
+  // how many years short counts as "far more"
+  levelGapYears: 3,
+};
+
 // score cutoffs for the gauge colors
 export const SCORE_BANDS = {
   good: 75,

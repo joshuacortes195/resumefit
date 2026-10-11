@@ -344,7 +344,19 @@ export function recruiterTipChecks({ text, parsed, jd }: CheckInput): Check[] {
   ];
 
   // years the job asks for against the years we can count from the dates
-  if (jd.yearsRequired === null) {
+  if (jd.yearsRequired === null && jd.levelYears && yearsExperience !== null) {
+    // the posting gives no number, but its title names a level
+    checks.push(
+      check(
+        "job-level",
+        "recruiterTips",
+        "job-level",
+        yearsExperience + 0.5 >= jd.levelYears,
+        `A title at this level usually means about ${jd.levelYears} years of experience, and your resume shows about ${yearsExperience}.`,
+        `A title at this level usually means about ${jd.levelYears} years of experience, and your resume shows about ${yearsExperience}. This role is likely more senior than your resume supports.`,
+      ),
+    );
+  } else if (jd.yearsRequired === null) {
     checks.push(note("job-level", "recruiterTips", "job-level", "No specific years of experience were found in this job description, so there is nothing to compare here."));
   } else if (yearsExperience === null) {
     checks.push(

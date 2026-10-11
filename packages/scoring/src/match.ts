@@ -103,11 +103,36 @@ const PREFERRED_PHRASE = /\b(is a plus|are a plus|a plus|nice to have|preferred|
 // headings that switch back to the must haves
 const REQUIRED_HEADING = /\b(requirements?|required|minimum|basic qualifications|must have|responsibilities|what you.ll do|what you will do)\b/i;
 
+// a short label with a colon at the start of a sentence, like "Preferred Qualifications: 3+ years of ..."
+const INLINE_LABEL = /^([A-Z][A-Za-z'’&/ ]{2,44}):\s+(?=\S)/;
+
+// gives a posting its lines back. some careers sites hand the whole description over as one long line,
+// and everything that reads a posting by its headings and lines (must haves, nice to haves, benefits, legal text) goes blind on that.
+// long lines are cut into sentences, and a label like "Qualifications:" gets a line of its own so it works as a heading again
+export function unflatten(jdText: string): string {
+  const lines: string[] = [];
+  for (const line of jdText.split(/\r?\n/)) {
+    if (line.length <= 300) {
+      lines.push(line);
+      continue;
+    }
+    for (let sentence of line.split(/(?<=[.!?])\s+(?=[A-Z0-9(•\-])/)) {
+      // "Job Details: Job Description: Join our team" has two labels in a row
+      for (let label = sentence.match(INLINE_LABEL); label && label[1] && label[1].split(/\s+/).length <= 5; label = sentence.match(INLINE_LABEL)) {
+        lines.push(`${label[1]}:`);
+        sentence = sentence.slice(label[0].length);
+      }
+      lines.push(sentence);
+    }
+  }
+  return lines.join("\n");
+}
+
 // keeps only the parts of the job description that are must haves
 export function requiredText(jdText: string): string {
   const kept: string[] = [];
   let optional = false;
-  for (const line of jdText.split(/\r?\n/)) {
+  for (const line of unflatten(jdText).split(/\r?\n/)) {
     const trimmed = line.trim();
     // short lines are treated as headings that flip the mode
     if (trimmed.length > 0 && trimmed.length <= 60) {
