@@ -1,13 +1,13 @@
 {
   "manifest_version": 3,
   "name": "ResumeFit",
-  "version": "0.6.2",
+  "version": "0.6.3",
   "description": "Save jobs and scan them against your resume, right from the page you are on.",
   "action": { "default_title": "Open ResumeFit" },
   "side_panel": { "default_path": "sidepanel.html" },
   "background": { "service_worker": "background.js", "type": "module" },
   "permissions": ["sidePanel", "storage", "activeTab", "scripting", "contextMenus"],
   "optional_host_permissions": ["https://*/*", "http://localhost/*"],
-  "externally_connectable": { "matches": ["http://localhost:3000/*", "https://*.vercel.app/*"] },
+  "externally_connectable": { "matches": ["http://localhost:3000/*", "https://resumefit-three.vercel.app/*"] },
   "icons": { "16": "icon-16.png", "48": "icon-48.png", "128": "icon-128.png" }
 }
