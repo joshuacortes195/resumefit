@@ -168,9 +168,10 @@ export function ScanHistory({ items, total, page, pageSize, search, sort, archiv
                   </td>
                   <td className="whitespace-nowrap py-3 pr-4 text-muted">{DATE.format(new Date(item.createdAt))}</td>
                   <td className="py-3 pr-4">
-                    {item.jobId ? (
+                    {/* tracked means the card is really there, the status comes from the card itself */}
+                    {item.jobId && item.jobStatus ? (
                       <Link href={`/tracker/${item.jobId}/job`} className={LINK_BUTTON}>
-                        Tracked
+                        {item.jobArchived ? "Tracked (archived)" : "Tracked"}
                       </Link>
                     ) : (
                       <button type="button" disabled={pending} onClick={() => run(() => trackScan(item.id))} className={`${SECONDARY_BUTTON} px-3 py-1.5`}>
