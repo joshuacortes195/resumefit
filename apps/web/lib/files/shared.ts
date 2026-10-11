@@ -52,3 +52,6 @@ export const MAX_PDF_PAGES = 15;
 
 // the most a word file may unpack to. a tiny zip can hide gigabytes
 export const MAX_UNPACKED_BYTES = 25 * 1024 * 1024;
+
+// a resume saved from word has a few dozen parts inside. thousands means it was built to waste memory
+export const MAX_ZIP_ENTRIES = 1000;

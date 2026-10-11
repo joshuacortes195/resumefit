@@ -1,7 +1,7 @@
 import { z } from "zod";
 import type { LayoutMeta } from "@resumefit/scoring";
 import { DAILY_RESUME_LIMIT, getResume, resumesToday, saveResume } from "@/lib/data/resumes";
-import { FileError, readResumeFile } from "@/lib/files";
+import { FileError, MAX_FILE_BYTES, readResumeFile, uploadBytes } from "@/lib/files";
 import { rateLimit, RateLimitError } from "@/lib/rate-limit";
 
 // a problem with what was sent that we can explain to the user
@@ -16,6 +16,19 @@ export class RequestError extends Error {
 
 // the resume a request points at, read and saved, ready to scan
 export type ResolvedResume = { resumeId: string; text: string; layout: LayoutMeta | null };
+
+// room for the file plus the pasted resume and job description that can ride along with it
+const MAX_FORM_BYTES = MAX_FILE_BYTES + 512 * 1024;
+
+// reads the form a request carries, turning away one that says it is too big before any of it is read
+export async function readForm(request: Request): Promise<FormData> {
+  if (Number(request.headers.get("content-length") ?? 0) > MAX_FORM_BYTES) throw new RequestError("That upload is too big. Files can be up to 5 MB.", 413);
+  try {
+    return await request.formData();
+  } catch {
+    throw new RequestError("We could not read that upload. Try again.");
+  }
+}
 
 // a form field as trimmed text, empty fields come back as undefined
 export function field(form: FormData, name: string): string | undefined {
@@ -38,8 +51,8 @@ export async function resolveResume(userId: string, form: FormData, linkedJobId?
   if (file instanceof File && file.size > 0) {
     // reading a file is the heavy part, so it has its own per minute limit
     await rateLimit(userId, "upload");
-    const bytes = new Uint8Array(await file.arrayBuffer());
     try {
+      const bytes = await uploadBytes(file);
       const { text, layout } = await readResumeFile(bytes, file.name);
       const name = field(form, "resumeName") ?? file.name.replace(/\.[a-z0-9]+$/i, "");
       const saved = await saveResume(userId, { name, text, layout, file: { bytes, type: layout.fileType }, linkedJobId });

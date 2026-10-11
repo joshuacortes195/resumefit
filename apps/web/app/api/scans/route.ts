@@ -4,7 +4,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { getJob, updateJob } from "@/lib/data/jobs";
 import { createScan, DAILY_SCAN_LIMIT, getScan, scansToday } from "@/lib/data/scans";
 import { rateLimit } from "@/lib/rate-limit";
-import { errorResponse, field, RequestError, resolveResume, webUrl } from "@/lib/scan-request";
+import { errorResponse, field, readForm, RequestError, resolveResume, webUrl } from "@/lib/scan-request";
 
 // the job side of a new scan
 const jobSchema = z.object({
@@ -18,7 +18,7 @@ const jobSchema = z.object({
 export async function POST(request: Request): Promise<Response> {
   try {
     const user = await getCurrentUser();
-    const form = await request.formData();
+    const form = await readForm(request);
 
     const job = jobSchema.safeParse({ jdText: field(form, "jdText"), jobTitle: field(form, "jobTitle"), company: field(form, "company"), jobUrl: field(form, "jobUrl") });
     if (!job.success) throw new RequestError(job.error.issues[0]?.message ?? "Check the job description.");

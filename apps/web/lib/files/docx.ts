@@ -1,7 +1,7 @@
 import type { LayoutMeta } from "@resumefit/scoring";
 import { XMLParser } from "fast-xml-parser";
 import JSZip from "jszip";
-import { FileError, isLightColor, MAX_UNPACKED_BYTES, type ExtractedFile } from "./shared";
+import { FileError, isLightColor, MAX_UNPACKED_BYTES, MAX_ZIP_ENTRIES, type ExtractedFile } from "./shared";
 
 // one xml element the way the parser hands it to us, children stay in document order
 type XmlNode = Record<string, unknown>;
@@ -75,6 +75,15 @@ function readRunProps(rPr: XmlNode | undefined, theme: { minor?: string; major?:
   return props;
 }
 
+// the part of the zip library that hands a file over piece by piece. it is real but missing from the library's own types
+type ZipStream = {
+  on(event: "data", handler: (chunk: Uint8Array) => void): ZipStream;
+  on(event: "error", handler: (error: Error) => void): ZipStream;
+  on(event: "end", handler: () => void): ZipStream;
+  pause(): ZipStream;
+  resume(): ZipStream;
+};
+
 // reads the text and layout details out of a word document
 export async function readDocx(bytes: Uint8Array, fileName: string | null): Promise<ExtractedFile> {
   let zip: JSZip;
@@ -83,10 +92,37 @@ export async function readDocx(bytes: Uint8Array, fileName: string | null): Prom
   } catch {
     throw new FileError("We could not open this file. Make sure it is a .docx saved from Word or Google Docs.");
   }
+  const tooBig = new FileError("This document is far bigger inside than a resume should be. Save a fresh copy from Word or Google Docs and try again.");
+  if (Object.keys(zip.files).length > MAX_ZIP_ENTRIES) throw tooBig;
   // add up what the archive says it unpacks to before unpacking any of it
   const unpacked = Object.values(zip.files).reduce((total, entry) => total + ((entry as unknown as { _data?: { uncompressedSize?: number } })._data?.uncompressedSize ?? 0), 0);
-  if (unpacked > MAX_UNPACKED_BYTES) throw new FileError("This document is far bigger inside than a resume should be. Save a fresh copy from Word or Google Docs and try again.");
-  const read = async (path: string) => (await zip.file(path)?.async("string")) ?? null;
+  if (unpacked > MAX_UNPACKED_BYTES) throw tooBig;
+
+  // the sizes written in an archive can lie, so each part is also counted as it unpacks, and we stop the moment
+  // the whole file has given more than it is allowed. this is the check that actually protects memory
+  let budget = MAX_UNPACKED_BYTES;
+  const read = async (path: string): Promise<string | null> => {
+    const entry = zip.file(path);
+    if (!entry) return null;
+    const chunks: Uint8Array[] = [];
+    await new Promise<void>((resolve, reject) => {
+      const stream = (entry as unknown as { internalStream(type: "uint8array"): ZipStream }).internalStream("uint8array");
+      stream
+        .on("data", (chunk) => {
+          budget -= chunk.byteLength;
+          if (budget >= 0) return void chunks.push(chunk);
+          stream.pause();
+          reject(tooBig);
+        })
+        .on("error", reject)
+        .on("end", () => resolve())
+        .resume();
+    });
+    const xml = Buffer.concat(chunks).toString("utf8");
+    // word never writes its own entity definitions. a file that has them is trying to make a few bytes expand into millions
+    if (/<!(DOCTYPE|ENTITY)/i.test(xml)) throw new FileError("This does not look like a Word document. Save it as .docx and try again.");
+    return xml;
+  };
   const documentXml = await read("word/document.xml");
   if (!documentXml) throw new FileError("This does not look like a Word document. Save it as .docx and try again.");
 

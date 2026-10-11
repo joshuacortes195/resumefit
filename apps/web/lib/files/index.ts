@@ -13,13 +13,28 @@ export function sniffFileType(bytes: Uint8Array): "pdf" | "docx" | null {
   return null;
 }
 
+const TOO_LARGE = "That file is over 5 MB. Resumes are usually much smaller, try exporting it again.";
+
+// the bytes of an upload, checked against the size limit before any of it is read into memory
+export async function uploadBytes(file: File): Promise<Uint8Array> {
+  if (file.size > MAX_FILE_BYTES) throw new FileError(TOO_LARGE);
+  return new Uint8Array(await file.arrayBuffer());
+}
+
 // reads an uploaded resume, pdf or docx, into text plus layout details
 export async function readResumeFile(bytes: Uint8Array, fileName: string | null): Promise<ExtractedFile> {
   if (bytes.byteLength === 0) throw new FileError("That file is empty.");
-  if (bytes.byteLength > MAX_FILE_BYTES) throw new FileError("That file is over 5 MB. Resumes are usually much smaller, try exporting it again.");
+  if (bytes.byteLength > MAX_FILE_BYTES) throw new FileError(TOO_LARGE);
 
+  // the type comes from the file's own bytes. its name and what the browser called it are never trusted
   const type = sniffFileType(bytes);
-  if (type === "pdf") return readPdf(bytes, fileName);
-  if (type === "docx") return readDocx(bytes, fileName);
-  throw new FileError("We can only read PDF and DOCX files. Old .doc files need to be saved as .docx first.");
+  if (!type) throw new FileError("We can only read PDF and DOCX files. Old .doc files need to be saved as .docx first.");
+  try {
+    return await (type === "pdf" ? readPdf(bytes, fileName) : readDocx(bytes, fileName));
+  } catch (error) {
+    if (error instanceof FileError) throw error;
+    // a damaged or odd file can trip the readers in ways we did not plan for. the detail goes to the server log, the person gets a plain message
+    console.error(`could not read an uploaded ${type}: ${error instanceof Error ? error.message : "unknown error"}`);
+    throw new FileError("We could not read this file. It may be damaged. Save a fresh copy as PDF or DOCX and upload it again.");
+  }
 }

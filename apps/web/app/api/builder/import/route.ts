@@ -3,15 +3,15 @@ import { getCurrentUser } from "@/lib/auth";
 import { builderFromParsed } from "@/lib/builder/layout";
 import { createBuilderResume } from "@/lib/data/builder";
 import { DAILY_RESUME_LIMIT, resumesToday } from "@/lib/data/resumes";
-import { FileError, readResumeFile } from "@/lib/files";
+import { FileError, readResumeFile, uploadBytes } from "@/lib/files";
 import { rateLimit } from "@/lib/rate-limit";
-import { errorResponse, field, RequestError } from "@/lib/scan-request";
+import { errorResponse, field, readForm, RequestError } from "@/lib/scan-request";
 
 // reads an uploaded resume or a linkedin profile pdf and opens it in the builder
 export async function POST(request: Request): Promise<Response> {
   try {
     const user = await getCurrentUser();
-    const form = await request.formData();
+    const form = await readForm(request);
     const file = form.get("file");
     if (!(file instanceof File) || file.size === 0) throw new RequestError("Pick a file first.");
     await rateLimit(user.id, "upload");
@@ -19,7 +19,7 @@ export async function POST(request: Request): Promise<Response> {
 
     let text: string;
     try {
-      ({ text } = await readResumeFile(new Uint8Array(await file.arrayBuffer()), file.name));
+      ({ text } = await readResumeFile(await uploadBytes(file), file.name));
     } catch (error) {
       if (error instanceof FileError) throw new RequestError(error.message);
       throw error;

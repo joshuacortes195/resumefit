@@ -1,7 +1,7 @@
 import { formattingChecks, parseResume, scanResume } from "@resumefit/scoring";
 import { describe, expect, it } from "vitest";
 import { headerContactDocx, messyPdf, plainDocx, scannedPdf, singleColumnPdf, tableDocx, twoColumnPdf } from "./fixtures";
-import { FileError, readResumeFile, sniffFileType } from "./index";
+import { FileError, readResumeFile, sniffFileType, uploadBytes } from "./index";
 
 // a fixed "today" so Present always means the same month
 const TODAY = new Date(2026, 5, 15);
@@ -182,5 +182,57 @@ describe("limits on what a file can hold", () => {
     const bomb = await zip.generateAsync({ type: "uint8array", compression: "DEFLATE" });
     expect(bomb.byteLength).toBeLessThan(1024 * 1024);
     await expect(readResumeFile(bomb, "resume.docx")).rejects.toThrow(/far bigger inside/);
+  });
+
+  it("is not fooled by an archive that lies about how big it is inside", async () => {
+    const JSZip = (await import("jszip")).default;
+    const zip = new JSZip();
+    zip.file("word/document.xml", "a".repeat(30 * 1024 * 1024));
+    const bomb = await zip.generateAsync({ type: "uint8array", compression: "DEFLATE" });
+    // rewrite the unpacked size in both places a zip keeps it, so the archive claims to hold a single kilobyte
+    const view = new DataView(bomb.buffer, bomb.byteOffset, bomb.byteLength);
+    for (let at = 0; at < bomb.byteLength - 30; at++) {
+      const mark = view.getUint32(at, true);
+      if (mark === 0x04034b50) view.setUint32(at + 22, 1024, true);
+      if (mark === 0x02014b50) view.setUint32(at + 24, 1024, true);
+    }
+    const loaded = await JSZip.loadAsync(bomb);
+    const claimed = Object.values(loaded.files).reduce((total, entry) => total + ((entry as unknown as { _data?: { uncompressedSize?: number } })._data?.uncompressedSize ?? 0), 0);
+    expect(claimed).toBe(1024);
+    // the count taken while unpacking still catches it, well before thirty megabytes are in memory
+    await expect(readResumeFile(bomb, "resume.docx")).rejects.toThrow(/far bigger inside/);
+  });
+
+  it("turns away an archive with thousands of parts, and one that defines its own entities", async () => {
+    const JSZip = (await import("jszip")).default;
+    const crowded = new JSZip();
+    crowded.file("word/document.xml", "<w:document/>");
+    for (let part = 0; part < 1200; part++) crowded.file(`junk/${part}.xml`, "x");
+    await expect(readResumeFile(await crowded.generateAsync({ type: "uint8array" }), "resume.docx")).rejects.toThrow(/far bigger inside/);
+
+    const laughs = new JSZip();
+    laughs.file("word/document.xml", '<?xml version="1.0"?><!DOCTYPE lolz [<!ENTITY lol "lol"><!ENTITY lol2 "&lol;&lol;&lol;&lol;&lol;&lol;&lol;&lol;">]><w:document>&lol2;</w:document>');
+    await expect(readResumeFile(await laughs.generateAsync({ type: "uint8array" }), "resume.docx")).rejects.toThrow(/does not look like a Word document/);
+  });
+
+  it("answers a damaged file with a plain message, never the error itself", async () => {
+    // a real word file cut off halfway, and a pdf that is only a header
+    const whole = await plainDocx();
+    for (const [bytes, name] of [
+      [whole.slice(0, Math.floor(whole.byteLength / 2)), "cut.docx"],
+      [new TextEncoder().encode("%PDF-1.7\n1 0 obj << /Type /Catalog >> endobj\ntrailer << /Root 1 0 R >>"), "broken.pdf"],
+    ] as const) {
+      const error = await readResumeFile(bytes, name).catch((caught: unknown) => caught);
+      expect(error).toBeInstanceOf(FileError);
+      // nothing from inside the readers leaks into what the person is shown
+      expect((error as Error).message).not.toMatch(/at |Error:|\.ts|\.js|undefined|null|stack/);
+    }
+  });
+
+  it("checks the size of an upload before reading any of it", async () => {
+    let read = false;
+    const huge = { size: 6 * 1024 * 1024, arrayBuffer: async () => ((read = true), new ArrayBuffer(0)) } as unknown as File;
+    await expect(uploadBytes(huge)).rejects.toThrow(/5 MB/);
+    expect(read).toBe(false);
   });
 });
