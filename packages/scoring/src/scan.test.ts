@@ -168,3 +168,19 @@ describe("a posting we could not read skills from", () => {
     expect(years.cap).toMatchObject({ reason: "levelGap", wanted: 8 });
   });
 });
+
+describe("job level", () => {
+  it("does not hold an internship to a number of years found in its posting", () => {
+    const jd = "Software Engineering - Intern, Bachelor's\n\nQualifications\nMust be pursuing a Bachelor's degree in Computer Science.\n3+ years of experience with Python is a strong signal for our full time roles.";
+    const resume = "Sam Rivera\nsam@example.com\n\nExperience\nIT Technician, Acme\nMay 2025 - Dec 2025\n• Supported 200 users\n\nSkills\nPython";
+    // the title comes from the page, the way the extension sends it
+    const intern = scanResume({ resumeText: resume, jdText: jd, jobTitle: "Software Engineering - Intern, Bachelor's", hardSkills: [{ name: "Python" }], softSkills: [], today: new Date(2026, 5, 15) });
+    expect(intern.jobTitle).toContain("Intern");
+    expect(intern.jd.yearsRequired).toBeNull();
+    expect(intern.cap).toBeNull();
+    expect(intern.checks.find((check) => check.id === "job-level")).toMatchObject({ info: true });
+    // the same words under a full time title are still read as an ask
+    const fullTime = scanResume({ resumeText: resume, jdText: jd, jobTitle: "Software Engineer", hardSkills: [{ name: "Python" }], softSkills: [], today: new Date(2026, 5, 15) });
+    expect(fullTime.jd.yearsRequired).toBe(3);
+  });
+});

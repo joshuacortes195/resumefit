@@ -66,13 +66,27 @@ export function yearsWanted(title: string): number | null {
 const NUMBER_WORDS: Record<string, number> = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10 };
 const YEARS = /(\d{1,2}|one|two|three|four|five|six|seven|eight|nine|ten)\s*(?:\+|plus|or more)?\s*(?:(?:-|–|to)\s*\d{1,2}\s*\+?\s*)?(?:years?|yrs?)/gi;
 
+// words that make a number of years about the candidate's experience
+const ABOUT_EXPERIENCE = /experience|exp\b|background|work(?:ing)? (?:with|in)/i;
+// years that are about something else: the company's age, a degree, a contract, a benefit
+const OTHER_YEARS = /^\s*(?:of\s+)?(?:college|university|school|study|studies|coursework|undergraduate|graduate|remaining|left|ago|old|in business|of history|of innovation|of service|of excellence|program|term|contract|warranty|vesting)\b/i;
+const COMPANY_YEARS = /(?:for|over|more than|nearly|almost|past|last)\s+(?:the\s+)?(?:past\s+|last\s+)?$/i;
+const STUDENT_YEARS = /(?:within|in|after|before|until)\s+(?:the\s+)?(?:next\s+)?$/i;
+
 // the most years of experience the must have parts ask for, like "5+ years"
 export function findYearsRequired(jdText: string): number | null {
   let most: number | null = null;
   // only sentences about experience count, not "401k after 2 years"
   for (const sentence of requiredText(jdText).split(/(?<=[.!?])\s+|\n/)) {
-    if (!/experience|exp\b|background|work(?:ing)? (?:with|in)/i.test(sentence)) continue;
+    if (!ABOUT_EXPERIENCE.test(sentence)) continue;
     for (const hit of sentence.matchAll(YEARS)) {
+      const at = hit.index ?? 0;
+      const before = sentence.slice(Math.max(0, at - 90), at);
+      const after = sentence.slice(at + hit[0].length, at + hit[0].length + 90);
+      // the number has to sit near the word that makes it about experience. a long sentence can mention both without one being about the other
+      if (!ABOUT_EXPERIENCE.test(before) && !ABOUT_EXPERIENCE.test(after)) continue;
+      // "for over 50 years", "within 2 years of graduating", "4 years of college" are not asks for experience
+      if (OTHER_YEARS.test(after) || STUDENT_YEARS.test(before) || (COMPANY_YEARS.test(before) && !/experience/i.test(after.slice(0, 40)))) continue;
       const raw = (hit[1] ?? "").toLowerCase();
       const years = NUMBER_WORDS[raw] ?? Number(raw);
       if (Number.isFinite(years) && years > 0 && years <= 30 && (most === null || years > most)) most = years;

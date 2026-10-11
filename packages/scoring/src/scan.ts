@@ -119,6 +119,8 @@ export function scanResume(input: ScanInput): ScanResult {
     educationPreferred: own.educationPreferred ?? asDegree(hints.educationPreferred),
   };
   const jobTitle = input.jobTitle?.trim() || jd.jobTitle;
+  // an internship does not ask for years of experience. a number that turns up in one is about the degree, the program or the company
+  if (jobTitle && /\b(intern|internship|co-?op|apprentice(?:ship)?)\b/i.test(jobTitle) && (jd.yearsRequired ?? 0) > 1) jd.yearsRequired = null;
   // a title like Staff or Director says how senior the job is, even when the posting never gives a number of years
   jd.levelYears = jobTitle ? yearsWanted(jobTitle) : null;
 

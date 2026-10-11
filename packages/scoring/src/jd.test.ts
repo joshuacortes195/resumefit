@@ -56,6 +56,26 @@ describe("findYearsRequired", () => {
     expect(findYearsRequired("At least three years of relevant experience")).toBe(3);
   });
 
+  it("leaves out years that are not about the candidate's experience", () => {
+    // the company's own age, in a sentence that happens to mention experience
+    expect(findYearsRequired("For more than 50 years we have built processors, and you will gain hands on experience here.")).toBeNull();
+    expect(findYearsRequired("Our experienced team has led the industry for the last 3 years.")).toBeNull();
+    // a student's timeline
+    expect(findYearsRequired("Must be pursuing a Bachelor's degree and graduating within 3 years. Experience with Python.")).toBeNull();
+    expect(findYearsRequired("Completed 3 years of college coursework, with some lab experience.")).toBeNull();
+    // a number and the word experience far apart in one long sentence
+    expect(
+      findYearsRequired(
+        "This is a 3 year rotational program in which interns move between teams across several business groups and sites, learning from mentors along the way and building real experience.",
+      ),
+    ).toBeNull();
+    // the real thing still counts, wherever the number sits
+    expect(findYearsRequired("3+ years of experience in software development")).toBe(3);
+    expect(findYearsRequired("Experience: 3+ years")).toBe(3);
+    expect(findYearsRequired("At least 3 years working with Python")).toBe(3);
+    expect(findYearsRequired("Over 5 years of professional experience")).toBe(5);
+  });
+
   it("returns null when the posting does not say", () => {
     expect(findYearsRequired("Experience with React and TypeScript")).toBeNull();
   });
