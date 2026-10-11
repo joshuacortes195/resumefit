@@ -206,7 +206,7 @@ export function FindJobs({ resumes }: { resumes: ResumeOption[] }) {
           {error}
         </p>
       )}
-      {summary && results !== null && <p className="text-sm text-muted">{summary} The fit is an estimate from the skills each posting names. Run a full scan before you apply.</p>}
+      {summary && results !== null && <p className="text-sm text-muted">{summary} The fit is an estimate from the title, level and skills each posting names, not a scan score. Run a full scan before you apply.</p>}
 
       {/* while the first search runs */}
       {results === null && (

@@ -186,40 +186,104 @@ const FIELDS: [category: string, signs: RegExp][] = [
   ["Legal Services", /paralegal|attorney|legal|litigation|compliance/i],
 ];
 
+// the kind of work a job title is, read from the title alone. a title can be more than one, like "Sales Engineer"
+const ROLE_KINDS: [kind: string, signs: RegExp][] = [
+  ["tech", /engineer|developer|programmer|software|devops|\bsre\b|architect|technician|\bit\b|\bqa\b|tester/i],
+  ["data", /\bdata\b|analyst|analytics|scientist|machine learning|\bml\b|research/i],
+  ["legal", /counsel|attorney|lawyer|paralegal|legal|litigation|compliance|\bgrc\b|assurance|\baudit|\brisk\b|policy/i],
+  ["sales", /\bsales\b|account (executive|manager|director)|business development|\b(sdr|bdr)\b|partnerships?|revenue|go.to.market|\bgtm\b|customer success/i],
+  ["marketing", /marketing|\bbrand|content|communications|narrative|social media|public relations|copywriter|\bgrowth\b|\bseo\b|editor|writer/i],
+  ["finance", /account(ant|ing)|financ|bookkeep|payroll|\btax\b|controller|treasury|investment|banking/i],
+  ["people", /recruit|talent|human resources|\bhr\b|people (ops|operations|partner)/i],
+  ["design", /design|\bux\b|\bui\b|creative|illustrator/i],
+  ["product", /(product|program|project) (manager|owner|lead)|scrum/i],
+  ["support", /customer (service|support)|help desk|support (specialist|agent|representative)|call center/i],
+  ["healthcare", /nurs(e|ing)|clinical|medical|physician|therapist|pharmac|patient|caregiver|dental/i],
+  ["education", /teach(er|ing)|tutor|instructor|professor|curriculum/i],
+  ["operations", /operations|logistics|supply chain|warehouse|procurement|office manager|administrative|coordinator|executive assistant/i],
+  ["retail", /retail|cashier|barista|\bstore\b|server\b|restaurant|\bcook\b|merchandis/i],
+  ["trades", /mechanic|electrician|welder|plumber|carpenter|driver|operator|foreman/i],
+];
+const roleKinds = (title: string) => ROLE_KINDS.filter(([, signs]) => signs.test(title)).map(([kind]) => kind);
+
+// the years of work a title usually asks for, going by the level named in it. null when it names none
+const LEVELS: [years: number, signs: RegExp][] = [
+  [12, /\b(vp|rvp|svp|evp|avp|vice president|chief|c[efot]o)\b/i],
+  [9, /\b(director|head of|principal|distinguished|fellow)\b/i],
+  [7, /\bstaff\b/i],
+  [5, /\b(lead|manager|architect)\b/i],
+  [4, /\b(senior|sr)\b\.?/i],
+];
+export function yearsWanted(title: string): number | null {
+  return LEVELS.find(([, signs]) => signs.test(title))?.[0] ?? null;
+}
+
 // what a resume tells us about the kind of work its owner is after
 export type ResumeProfile = {
   skills: Set<string>;
   // words from the job titles the person has held
   titleWords: Set<string>;
+  // the kinds of work those titles are, empty when the resume has no jobs on it yet
+  kinds: Set<string>;
   fields: string[];
   // true for students and people with under a year of work behind them
   earlyCareer: boolean;
+  // years of work on the resume, null when it has no dates to count
+  years: number | null;
 };
 
-const TITLE_NOISE = new Set(["senior", "junior", "lead", "staff", "principal", "associate", "assistant", "the", "and", "of", "for", "intern", "internship", "i", "ii", "iii"]);
-const titleWordsOf = (title: string) => title.toLowerCase().split(/[^a-z+#]+/).filter((word) => word.length > 2 && !TITLE_NOISE.has(word));
+const TITLE_NOISE = new Set(["senior", "junior", "lead", "staff", "principal", "associate", "assistant", "director", "head", "vice", "president", "the", "and", "of", "for", "intern", "internship", "new", "grad", "graduate", "summer", "fall", "spring", "winter", "i", "ii", "iii"]);
+// "engineering" and "engineer" are the same word as far as a title goes
+const titleWordsOf = (title: string) =>
+  title
+    .toLowerCase()
+    .split(/[^a-z+#]+/)
+    .filter((word) => word.length > 2 && !TITLE_NOISE.has(word))
+    .map((word) => (word.length > 6 ? word.replace(/ing$/, "") : word));
 
 // reads a resume for the skills, job titles and field that decide which openings suit it
 export function profileResume(resumeText: string, skills: SkillTerm[] = HARD_SKILLS): ResumeProfile {
   const parsed = parseResume(resumeText);
   const titles = parsed.experience.map((job) => job.title ?? "").filter(looksLikeTitle);
   const fields = FIELDS.filter(([, signs]) => signs.test(`${titles.join(" ")} ${resumeText.slice(0, 6000)}`)).map(([category]) => category);
+  const earlyCareer = (parsed.yearsExperience ?? 0) < 1.5 || /\b(student|expected(?: graduation)?:? (?:[a-z]+\.? )?20\d\d|class of 20\d\d|gpa)\b/i.test(resumeText);
   return {
     skills: new Set(countSkills(resumeText, skills).keys()),
     titleWords: new Set(titles.flatMap(titleWordsOf)),
+    kinds: new Set(titles.flatMap(roleKinds)),
     fields: fields.slice(0, 3),
-    earlyCareer: (parsed.yearsExperience ?? 0) < 1.5 || /\b(student|expected graduation|class of 20\d\d|gpa)\b/i.test(resumeText),
+    earlyCareer,
+    // a student with no dated jobs has no years yet, anyone else with no dates is simply unknown
+    years: parsed.yearsExperience ?? (earlyCareer ? 0 : null),
   };
 }
 
-// how well an opening suits a resume, 0 to 100. mostly the share of its skills the resume has, plus how close the job title is to ones already held.
-// openings that name fewer than three skills are judged on their title alone, and capped, since that is thin evidence
-export function fitScore(job: Pick<FeedJob, "title" | "skills">, profile: ResumeProfile): number {
+// a posting has to name this many skills before matching all of them counts in full. three matching buzzwords are thin proof of a fit
+const FULL_SKILL_EVIDENCE = 4;
+
+// how well an opening suits a resume, 0 to 100. it starts from the share of the posting's skills the resume has and how close the title is to ones already held,
+// then is cut down when the job is a different kind of work, or asks for far more (or far fewer) years than the resume shows. nothing is ever added, so there is no floor
+export function fitScore(job: Pick<FeedJob, "title" | "skills"> & { intern?: boolean }, profile: ResumeProfile): number {
   const words = titleWordsOf(job.title);
   const titleFit = words.length === 0 || profile.titleWords.size === 0 ? 0 : words.filter((word) => profile.titleWords.has(word)).length / words.length;
-  if (job.skills.length < 3) return Math.round(titleFit * 55);
-  const skillFit = job.skills.filter((skill) => profile.skills.has(skill)).length / job.skills.length;
-  return Math.round(100 * (0.75 * skillFit + 0.25 * titleFit));
+  // openings that name fewer than three skills are judged on their title alone, and capped, since that is thin evidence
+  const skillFit = job.skills.filter((skill) => profile.skills.has(skill)).length / Math.max(job.skills.length, FULL_SKILL_EVIDENCE);
+  const base = job.skills.length < 3 ? titleFit * 55 : 100 * (0.7 * skillFit + 0.3 * titleFit);
+
+  // a different kind of work: a counsel or sales role for an engineer, whatever skills its posting happens to mention
+  const kinds = roleKinds(job.title);
+  const otherKind = kinds.length > 0 && profile.kinds.size > 0 && !kinds.some((kind) => profile.kinds.has(kind));
+  // a title we cannot place and that shares no word with the person's own titles is weak evidence too
+  const kindFit = otherKind ? 0.3 : kinds.length === 0 && titleFit === 0 ? 0.7 : 1;
+
+  // every year the title asks for beyond the resume takes a slice off, so staff and director roles drop well below junior ones
+  const wanted = yearsWanted(job.title);
+  const short = wanted === null || profile.years === null ? 0 : Math.max(0, wanted - profile.years);
+  const isIntern = job.intern ?? INTERN.test(job.title);
+  // and an internship is not a step forward for someone years into their career
+  const levelFit = isIntern && (profile.years ?? 0) >= 3 ? 0.5 : Math.max(0.3, 1 - 0.14 * short);
+
+  return Math.round(base * kindFit * levelFit);
 }
 
 // an opening from the wider job site, with its description kept so it can be shown without asking again
