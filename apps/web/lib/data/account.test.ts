@@ -53,6 +53,33 @@ describe("account export and delete", () => {
   });
 });
 
+describe("a saved ai key", () => {
+  it("is stored locked, shows only its last four characters, and goes when the account goes", async () => {
+    const { encrypt } = await import("@/lib/ai/crypto");
+    const { encryptionSecret } = await import("@/lib/ai/secret");
+    const { aiStatus } = await import("@/lib/ai/status");
+    const person = await seedPerson(`key-${randomUUID()}@example.com`);
+    const key = "AIzaSy-test-key-0123456789abcdefWXYZ";
+    const db = await getDb();
+    await db.insert(schema.userAiKeys).values({ userId: person.id, provider: "gemini", encryptedKey: encrypt(key, encryptionSecret() ?? "") });
+
+    // what is in the database is not the key
+    const [saved] = await db.select().from(schema.userAiKeys).where(eq(schema.userAiKeys.userId, person.id));
+    expect(saved?.encryptedKey).not.toContain(key);
+    expect(saved?.encryptedKey).not.toContain("WXYZ");
+
+    // what the settings page is given names the key without holding it
+    const status = await aiStatus(person.id);
+    expect(status).toMatchObject({ hasOwnKey: true, ownKeyEnding: "WXYZ" });
+    expect(JSON.stringify(status)).not.toContain(key.slice(0, -4));
+    // and the export leaves it out
+    expect(JSON.stringify(JSON.parse((await (await JSZip.loadAsync(await exportAccount(person.id))).file("data.json")?.async("string")) ?? "{}"))).not.toContain("WXYZ");
+
+    await deleteAccount(person.id);
+    expect(await db.select().from(schema.userAiKeys).where(eq(schema.userAiKeys.userId, person.id))).toHaveLength(0);
+  });
+});
+
 describe("admin settings", () => {
   it("makes invite codes without look alike characters", async () => {
     for (let round = 0; round < 20; round++) expect(newInviteCode()).toMatch(/^[A-HJ-NP-Z2-9]{8}$/);

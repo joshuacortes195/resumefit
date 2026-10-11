@@ -89,7 +89,7 @@ export function AiSettings({ status }: { status: AiStatus }) {
           <p className="mt-3 flex flex-wrap items-center gap-3 text-sm">
             <span className="inline-flex items-center gap-1 text-success">
               <Check className="size-4" aria-hidden />
-              Your key is saved and in use.
+              {status.ownKeyEnding ? `Your key ending in ${status.ownKeyEnding} is saved and in use.` : "Your key is saved and in use."}
             </span>
             <button type="button" disabled={pending} onClick={() => run(removeOwnKey, "Your key was removed.")} className="font-semibold text-danger hover:underline">
               Remove key

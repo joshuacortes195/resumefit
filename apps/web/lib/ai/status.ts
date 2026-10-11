@@ -1,6 +1,8 @@
 import { and, eq } from "drizzle-orm";
 import { getDb, schema } from "@/db";
+import { decrypt } from "@/lib/ai/crypto";
 import { AI_FEATURES, usedToday, type AiFeature } from "@/lib/ai/limits";
+import { encryptionSecret } from "@/lib/ai/secret";
 import { dailyCaps } from "@/lib/data/settings";
 import { readyProviders, savedProviderHealth } from "@/lib/ai/router";
 
@@ -9,10 +11,19 @@ export type AiStatus = {
   // true when at least one provider can be called for this user
   available: boolean;
   hasOwnKey: boolean;
+  // the last four characters of the saved key, so it can be told apart. the rest never leaves the server
+  ownKeyEnding: string | null;
   providers: { name: string; ready: boolean; lastError: string | null }[];
   // uses left today for each capped feature
   remaining: Partial<Record<AiFeature, number>>;
 };
+
+// the last four characters of a saved key, null when there is none or it can no longer be unlocked
+function keyEnding(encryptedKey: string | undefined): string | null {
+  const secret = encryptionSecret();
+  const key = encryptedKey && secret ? decrypt(encryptedKey, secret) : null;
+  return key ? key.slice(-4) : null;
+}
 
 // gathers which providers are set up and how much of today's allowance is left
 export async function aiStatus(userId: string): Promise<AiStatus> {
@@ -20,7 +31,7 @@ export async function aiStatus(userId: string): Promise<AiStatus> {
   const [ready, ownKey] = await Promise.all([
     readyProviders(userId),
     db
-      .select({ provider: schema.userAiKeys.provider })
+      .select({ encryptedKey: schema.userAiKeys.encryptedKey })
       .from(schema.userAiKeys)
       .where(and(eq(schema.userAiKeys.userId, userId), eq(schema.userAiKeys.provider, "gemini")))
       .limit(1),
@@ -39,6 +50,7 @@ export async function aiStatus(userId: string): Promise<AiStatus> {
   return {
     available: ready.length > 0,
     hasOwnKey: ownKey.length > 0,
+    ownKeyEnding: keyEnding(ownKey[0]?.encryptedKey),
     providers: (["gemini", "groq", "cloudflare"] as const).map((name) => ({ name, ready: names.has(name), lastError: health[name]?.lastError ?? null })),
     remaining,
   };
