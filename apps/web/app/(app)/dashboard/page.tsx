@@ -16,11 +16,11 @@ export const metadata = { title: "Dashboard" };
 
 // how each tracker column is named on the dashboard, with its own dot color
 const COLUMNS = {
-  saved: { label: "Saved", dot: "var(--c-scans)" },
-  applied: { label: "Applied", dot: "var(--c-linkedin)" },
-  interview: { label: "Interview", dot: "var(--c-builder)" },
-  offer: { label: "Offer", dot: "var(--c-tracker)" },
-  rejected: { label: "Rejected", dot: "var(--c-resumes)" },
+  saved: { label: "Saved", dot: "var(--stage-saved)" },
+  applied: { label: "Applied", dot: "var(--stage-applied)" },
+  interview: { label: "Interview", dot: "var(--stage-interview)" },
+  offer: { label: "Offer", dot: "var(--stage-offer)" },
+  rejected: { label: "Rejected", dot: "var(--stage-rejected)" },
 } as const;
 
 // how many cards each column shows before it says "and more"

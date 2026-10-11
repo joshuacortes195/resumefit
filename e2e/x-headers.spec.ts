@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./fixtures";
 
 // every page and endpoint that shows one person's data
 const PRIVATE = ["/dashboard", "/tracker", "/scans", "/scans/new", "/resumes", "/jobs", "/builder", "/optimize", "/cover-letter", "/linkedin", "/interview", "/extension", "/settings", "/api/export", "/api/ext/me"];

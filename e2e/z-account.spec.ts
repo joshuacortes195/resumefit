@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./fixtures";
 
 // this file runs last on purpose: its final test deletes the account the other tests share
 

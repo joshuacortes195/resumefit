@@ -1,110 +1,38 @@
 @import "tailwindcss";
 
-/* base colors: warm paper, white sheets, ink for text, and a highlighter. each part of the app adds its own color on top */
+/* base colors: warm paper, white sheets, ink for text, a highlighter, and one accent */
 :root {
   --background: #f7f6f2;
   --surface: #ffffff;
   --foreground: #1c1b18;
   --muted: #5f5e58;
   --border: #e4e2da;
-  /* the accent, used for links, buttons, active things and progress. the pages below swap it for their own */
-  --primary: #47515f;
-  --primary-soft: #e8eaee;
+  /* the one accent, the green of the logo. links, buttons, active things and progress all use it, on every page */
+  --primary: #0a6960;
+  --primary-soft: #d6f0eb;
   --on-primary: #ffffff;
   --marker: #ffe45c;
   --on-marker: #2b2500;
   --success: #2a7a4b;
   --warning: #a86400;
+  /* red is only for deleting things and for errors */
   --danger: #c2362b;
   --card-shadow: 0 1px 2px rgb(28 27 24 / 0.05), 0 6px 20px rgb(28 27 24 / 0.04);
 
-  /* one color per part of the app: a deep tone and a soft tint */
-  --c-dashboard: #0a6960;
-  --s-dashboard: #d6f0eb;
-  --c-scans: #3a3eb5;
-  --s-scans: #e2e3fb;
-  --c-optimize: #6b30b0;
-  --s-optimize: #ecdffa;
-  --c-letter: #ad2d5b;
-  --s-letter: #fbdfe8;
-  --c-linkedin: #155ea6;
-  --s-linkedin: #dbeafb;
-  --c-tracker: #1c7439;
-  --s-tracker: #daf2e0;
-  --c-jobs: #0a677e;
-  --s-jobs: #d5eef4;
-  --c-builder: #835500;
-  --s-builder: #fbebc8;
-  --c-resumes: #ad372c;
-  --s-resumes: #fbe0dc;
-  --c-extension: #872c8a;
-  --s-extension: #f5ddf6;
-  --c-interview: #55650a;
-  --s-interview: #e8f0c9;
+  /* the dot next to each stage of an application. these tell the stages apart, they are not accents */
+  --stage-saved: #3a3eb5;
+  --stage-applied: #155ea6;
+  --stage-interview: #835500;
+  --stage-offer: #1c7439;
+  --stage-rejected: #ad372c;
 }
 
-/* everything derived from the accent follows it, whichever page sets it */
+/* everything derived from the accent follows it */
 :root {
   --primary-hover: color-mix(in srgb, var(--primary) 82%, black);
   --ink: var(--primary);
   --ink-hover: var(--primary-hover);
   --on-ink: #ffffff;
-}
-
-/* each part of the app wears its own color. the html tag says which part we are in */
-html[data-section="dashboard"] {
-  --primary: var(--c-dashboard);
-  --primary-soft: var(--s-dashboard);
-}
-
-html[data-section="scans"] {
-  --primary: var(--c-scans);
-  --primary-soft: var(--s-scans);
-}
-
-html[data-section="optimize"] {
-  --primary: var(--c-optimize);
-  --primary-soft: var(--s-optimize);
-}
-
-html[data-section="letter"] {
-  --primary: var(--c-letter);
-  --primary-soft: var(--s-letter);
-}
-
-html[data-section="linkedin"] {
-  --primary: var(--c-linkedin);
-  --primary-soft: var(--s-linkedin);
-}
-
-html[data-section="tracker"] {
-  --primary: var(--c-tracker);
-  --primary-soft: var(--s-tracker);
-}
-
-html[data-section="jobs"] {
-  --primary: var(--c-jobs);
-  --primary-soft: var(--s-jobs);
-}
-
-html[data-section="builder"] {
-  --primary: var(--c-builder);
-  --primary-soft: var(--s-builder);
-}
-
-html[data-section="resumes"] {
-  --primary: var(--c-resumes);
-  --primary-soft: var(--s-resumes);
-}
-
-html[data-section="extension"] {
-  --primary: var(--c-extension);
-  --primary-soft: var(--s-extension);
-}
-
-html[data-section="interview"] {
-  --primary: var(--c-interview);
-  --primary-soft: var(--s-interview);
 }
 
 /* lets tailwind classes like bg-surface and text-muted use the colors above */

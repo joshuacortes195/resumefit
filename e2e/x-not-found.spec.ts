@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./fixtures";
 
 const MISSING = "00000000-0000-0000-0000-000000000000";
 

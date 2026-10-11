@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./fixtures";
 import { singleColumnPdf } from "../apps/web/lib/files/fixtures";
 
 test("build a resume from scratch and download it", async ({ page }) => {
