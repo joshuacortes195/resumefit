@@ -14,6 +14,8 @@ import { BOARDS, fieldJobs, jobDescription, profileResume, refreshFeed, savedJob
 type Result<T = object> = ({ ok: true } & T) | { ok: false; error: string };
 
 const OFF = { ok: false as const, error: "Find Jobs is switched off." };
+// how long a search waits for the wider job site before answering without it
+const WIDER_WAIT_MS = 2500;
 const SLOW_DOWN = { ok: false as const, error: "That is a lot of requests in a short time. Wait a minute and try again." };
 
 const searchSchema = z.object({
@@ -36,30 +38,58 @@ export async function findJobs(input: z.input<typeof searchSchema>): Promise<Res
   // a search reads the whole pool and may reach out to job sites, so it is limited per person
   if (!(await withinLimit(user.id, "find-jobs"))) return SLOW_DOWN;
 
-  // the resume decides the ranking, and which fields to look in
-  const resumes = await listResumes(user.id);
-  const chosen = resumes.find((entry) => entry.id === parsed.data.resumeId) ?? resumes.find((entry) => entry.isBase) ?? resumes[0];
-  const row = chosen ? await getResume(user.id, chosen.id) : null;
-  const profile = row?.rawText ? profileResume(row.rawText) : null;
+  const started = Date.now();
+  const took: Record<string, number> = {};
+  const timed = async <T>(name: string, work: Promise<T>): Promise<T> => {
+    const value = await work;
+    took[name] = Date.now() - started;
+    return value;
+  };
 
-  let pool = await savedJobs();
+  // the saved openings and the resume are read side by side, neither waits for the other
+  const [firstPool, chosen] = await Promise.all([
+    timed("pool", savedJobs()),
+    // the resume decides the ranking, and which fields to look in
+    timed(
+      "resume",
+      (async () => {
+        const resumes = await listResumes(user.id);
+        const pick = resumes.find((entry) => entry.id === parsed.data.resumeId) ?? resumes.find((entry) => entry.isBase) ?? resumes[0];
+        return pick ? getResume(user.id, pick.id) : null;
+      })(),
+    ),
+  ]);
+  const profile = chosen?.rawText ? profileResume(chosen.rawText) : null;
+
+  let pool = firstPool;
   // the very first search finds the cupboard bare, so fetch a few companies right now
   if (pool.boards < 12) {
-    await refreshFeed(6000);
+    await timed("first fill", refreshFeed(6000));
     pool = await savedJobs();
   }
   // and keep topping it up after the answer has gone out, without making anyone wait
   if (pool.boards < BOARDS.length) after(() => refreshFeed(25_000).catch(() => undefined));
 
-  // openings from the wider job site, in the fields the resume points at
+  // openings from the wider job site, in the fields the resume points at. that site can take many seconds to answer,
+  // so a search only waits a short while for it. when it is slower, the answer goes out without it and its openings are there for the next search
   let wider: FeedJob[] = [];
+  let widerLate = false;
   if (profile && profile.fields.length > 0) {
     const level = parsed.data.internOnly ? "Internship" : profile.earlyCareer ? "Entry Level" : null;
-    wider = await fieldJobs(profile.fields.slice(0, 2), level, 2);
+    const asked = fieldJobs(profile.fields.slice(0, 2), level, 2).catch(() => [] as FeedJob[]);
+    const answer = await timed("wider site", Promise.race([asked, new Promise<null>((resolve) => setTimeout(() => resolve(null), WIDER_WAIT_MS))]));
+    if (answer) wider = answer;
+    else {
+      widerLate = true;
+      after(() => asked);
+    }
   }
 
   const jobs = searchJobs([...pool.jobs, ...wider], parsed.data, profile);
-  return { ok: true, jobs, total: pool.jobs.length + wider.length, resumeName: profile ? (row?.name ?? null) : null, gathering: pool.boards < BOARDS.length };
+  took.total = Date.now() - started;
+  // where the time went, in the server log, so a slow search can be explained afterwards
+  if (took.total > 3000) console.info(`find jobs took ${took.total} ms: ${Object.entries(took).map(([name, at]) => `${name} done at ${at}`).join(", ")}, ${pool.jobs.length} saved openings${widerLate ? ", wider site left out" : ""}`);
+  return { ok: true, jobs, total: pool.jobs.length + wider.length, resumeName: profile ? (chosen?.name ?? null) : null, gathering: pool.boards < BOARDS.length || widerLate };
 }
 
 // the full text of one opening
