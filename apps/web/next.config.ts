@@ -10,6 +10,8 @@ const SECURITY_HEADERS = [
 ];
 
 const nextConfig: NextConfig = {
+  // no need to tell visitors what the app is built with
+  poweredByHeader: false,
   // the same safety headers on every page
   headers: async () => [{ source: "/:path*", headers: SECURITY_HEADERS }],
   // these load their own files at runtime, so they are left out of the bundle

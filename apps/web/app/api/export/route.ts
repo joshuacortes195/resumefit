@@ -2,6 +2,7 @@ import { z } from "zod";
 import { getCurrentUser } from "@/lib/auth";
 import { letterDocx, resumeDocx } from "@/lib/export/docx";
 import { letterPdf, resumePdf } from "@/lib/export/pdf";
+import { rateLimit } from "@/lib/rate-limit";
 import { errorResponse, RequestError } from "@/lib/scan-request";
 
 const exportSchema = z.object({
@@ -16,7 +17,9 @@ const TYPES = { pdf: "application/pdf", docx: "application/vnd.openxmlformats-of
 // turns resume or letter text into a word file or a pdf to download
 export async function POST(request: Request): Promise<Response> {
   try {
-    await getCurrentUser();
+    const user = await getCurrentUser();
+    // drawing a pdf is real work for the server, so it has a per minute limit like the other heavy things
+    await rateLimit(user.id, "export");
     const parsed = exportSchema.safeParse(await request.json());
     if (!parsed.success) throw new RequestError("There is nothing to export yet.");
     const { text, format, kind, name } = parsed.data;

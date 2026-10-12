@@ -10,6 +10,9 @@ export const RATE_LIMITS = {
   "find-jobs": 30,
   "job-import": 15,
   "save-job": 30,
+  export: 30,
+  // shared by everyone, for the job refresh address when it has no secret
+  "feed-refresh": 2,
 } as const;
 export type RateBucket = keyof typeof RATE_LIMITS;
 

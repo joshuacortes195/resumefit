@@ -15,6 +15,8 @@ const serverSchema = z.object({
   SUPABASE_SECRET_KEY: z.string().min(1).optional(),
   INVITE_ONLY: flag(true),
   ENCRYPTION_KEY: z.string().min(32).optional(),
+  // sent by the host with its scheduled visits, so nobody else can set off the daily job refresh
+  CRON_SECRET: z.string().min(16).optional(),
   // free ai providers, all optional so the app runs without them
   AI_PROVIDER_ORDER: z.string().default("gemini,groq,cloudflare"),
   GEMINI_API_KEY: z.string().min(1).optional(),
@@ -50,13 +52,14 @@ export const publicEnv = parse(publicSchema, {
   NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL || undefined,
   // supabase now calls this the publishable key, either name works
   NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || undefined,
-  NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
+  NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL || undefined,
   NEXT_PUBLIC_EXTENSION_ID: process.env.NEXT_PUBLIC_EXTENSION_ID || undefined,
 });
 
 // only call this on the server
 export function serverEnv() {
-  const env = parse(serverSchema, process.env);
+  // a line left empty in the env file means "not set", the same as leaving the line out
+  const env = parse(serverSchema, Object.fromEntries(Object.entries(process.env).filter(([, value]) => value !== "")));
   // the supabase and vercel integration fills in the database address under its own name, so that one is accepted too
   return { ...env, DATABASE_URL: env.DATABASE_URL ?? (process.env.POSTGRES_URL || undefined) };
 }

@@ -53,6 +53,8 @@ export async function addJob(input: z.input<typeof newJobSchema>): Promise<Actio
   const parsed = newJobSchema.safeParse(input);
   if (!parsed.success) return fail(parsed.error.issues[0]?.message ?? "Check the job details.");
   const user = await getCurrentUser();
+  // the same limit the extension and find jobs have for saving
+  if (!(await withinLimit(user.id, "save-job"))) return fail("That is a lot of jobs in a short time. Wait a minute and try again.");
   const job = await createJob(user.id, parsed.data);
   refresh();
   return { ok: true, jobId: job.id };
