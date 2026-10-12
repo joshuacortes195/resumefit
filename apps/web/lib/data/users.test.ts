@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { getDb, schema } from "@/db";
 import { getCurrentUser } from "@/lib/auth";
 import { deleteAccount } from "./account";
@@ -84,5 +84,21 @@ describe("the admin spot", () => {
     await deleteAccount(newer.id);
     expect(await noUsersYet()).toBe(false);
     expect(await admitUser(person("stranger@example.com"), null)).toEqual({ error: "Enter your invite code to sign up." });
+  });
+
+  it("always lets the owner's email in as an admin, which is the way back when the admin account is gone", async () => {
+    vi.stubEnv("ADMIN_EMAIL", "owner@example.com");
+    // the test above left an emptied app where a stranger is turned away
+    expect(await admitUser(person("another.stranger@example.com"), null)).toEqual({ error: "Enter your invite code to sign up." });
+    const owner = person("Owner@Example.com");
+    expect(await admitUser(owner, null)).toMatchObject({ user: { email: "owner@example.com", isAdmin: true } });
+
+    // if the spot was handed on while the owner was a plain member, signing in gives it back
+    const db = await getDb();
+    await db.update(schema.users).set({ isAdmin: false }).where(eq(schema.users.id, owner.id));
+    expect(await admitUser(owner, null)).toMatchObject({ user: { isAdmin: true } });
+    const [row] = await db.select({ isAdmin: schema.users.isAdmin }).from(schema.users).where(eq(schema.users.id, owner.id));
+    expect(row?.isAdmin).toBe(true);
+    vi.unstubAllEnvs();
   });
 });

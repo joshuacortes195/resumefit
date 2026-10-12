@@ -58,12 +58,24 @@ export async function inviteProblem(code: string | null | undefined): Promise<st
   return result.ok ? null : INVITE_ERRORS[result.reason];
 }
 
+// true for the owner's email from the environment. the sign in provider has already proved the person owns it
+export function isOwnerEmail(email: string): boolean {
+  const owner = serverEnv().ADMIN_EMAIL;
+  return owner !== undefined && owner.toLowerCase() === email.trim().toLowerCase();
+}
+
 // lets a newly signed in person into the app, using up their invite code. returns a message when they cannot come in
 export async function admitUser(person: { id: string; email: string; name: string | null; avatar: string | null }, inviteCode: string | null): Promise<{ user: CurrentUser } | { error: string }> {
+  const owner = isOwnerEmail(person.email);
   const existing = await findUser(person.id);
-  if (existing) return { user: existing };
+  if (existing) {
+    // the owner gets the admin spot back if it was handed on while they were away
+    if (owner && !existing.isAdmin) await (await getDb()).update(schema.users).set({ isAdmin: true }).where(eq(schema.users.id, existing.id));
+    return { user: { ...existing, isAdmin: existing.isAdmin || owner } };
+  }
 
-  const first = await noUsersYet();
+  // the very first person ever, or the owner, comes in as an admin with no code
+  const first = (await noUsersYet()) || owner;
   const needsInvite = serverEnv().INVITE_ONLY && !first;
   if (needsInvite) {
     const problem = await inviteProblem(inviteCode);

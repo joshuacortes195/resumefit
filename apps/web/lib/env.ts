@@ -15,6 +15,8 @@ const serverSchema = z.object({
   SUPABASE_SECRET_KEY: z.string().min(1).optional(),
   INVITE_ONLY: flag(true),
   ENCRYPTION_KEY: z.string().min(32).optional(),
+  // the owner's email. whoever signs in with it needs no invite code and is always an admin, which is the way back in if the admin account is ever lost
+  ADMIN_EMAIL: z.email().optional(),
   // sent by the host with its scheduled visits, so nobody else can set off the daily job refresh
   CRON_SECRET: z.string().min(16).optional(),
   // free ai providers, all optional so the app runs without them
