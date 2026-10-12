@@ -11,8 +11,8 @@ export const RATE_LIMITS = {
   "job-import": 15,
   "save-job": 30,
   export: 30,
-  // shared by everyone, for the job refresh address when it has no secret
-  "feed-refresh": 2,
+  // shared by everyone, for the job refresh address when it has no secret. this one is per ten minutes
+  "feed-refresh": 1,
 } as const;
 export type RateBucket = keyof typeof RATE_LIMITS;
 
@@ -28,7 +28,7 @@ const WINDOW_MS = 60_000;
 
 // counts one more use and says whether it is still within the limit. the count lives in the database,
 // so it holds across the many short lived copies of the app that a host runs, not just inside one of them
-export async function withinLimit(userId: string, bucket: RateBucket, limit: number = RATE_LIMITS[bucket], now = Date.now()): Promise<boolean> {
+export async function withinLimit(userId: string, bucket: RateBucket, limit: number = RATE_LIMITS[bucket], now = Date.now(), windowMs = WINDOW_MS): Promise<boolean> {
   const db = await getDb();
   const key = `rate:${userId}:${bucket}`;
   const fresh = JSON.stringify({ start: now, count: 1 });
@@ -40,7 +40,7 @@ export async function withinLimit(userId: string, bucket: RateBucket, limit: num
       target: schema.appSettings.key,
       set: {
         // a window that has run out starts again from one, otherwise the count goes up
-        value: sql`case when (${schema.appSettings.value}->>'start')::bigint <= ${now - WINDOW_MS} then ${fresh}::jsonb else jsonb_set(${schema.appSettings.value}, '{count}', to_jsonb((${schema.appSettings.value}->>'count')::int + 1)) end`,
+        value: sql`case when (${schema.appSettings.value}->>'start')::bigint <= ${now - windowMs} then ${fresh}::jsonb else jsonb_set(${schema.appSettings.value}, '{count}', to_jsonb((${schema.appSettings.value}->>'count')::int + 1)) end`,
       },
     })
     .returning({ value: schema.appSettings.value });

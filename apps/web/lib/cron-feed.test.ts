@@ -14,11 +14,11 @@ describe("the daily job refresh address", () => {
     expect((await visit("Bearer a-long-secret-for-the-scheduler")).status).toBe(200);
   });
 
-  it("answers a couple of visits a minute and no more when there is no secret", async () => {
+  it("answers one visit every ten minutes and no more when there is no secret", async () => {
     vi.stubEnv("JOB_FEED_OFFLINE", "1");
     vi.stubEnv("CRON_SECRET", "");
     const answers = [];
     for (let visits = 0; visits < 4; visits++) answers.push((await visit()).status);
-    expect(answers).toEqual([200, 200, 429, 429]);
+    expect(answers).toEqual([200, 429, 429, 429]);
   });
 });
