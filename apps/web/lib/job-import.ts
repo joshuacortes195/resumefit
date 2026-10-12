@@ -1,5 +1,7 @@
 import { lookup } from "node:dns/promises";
-import { isIP } from "node:net";
+import { request } from "node:https";
+import { isIP, type LookupFunction } from "node:net";
+import { createBrotliDecompress, createGunzip, createInflate } from "node:zlib";
 import { htmlToText } from "@/lib/jobs-feed";
 
 // what we could read off a job posting's page
@@ -36,32 +38,73 @@ export async function checkPublicUrl(raw: string): Promise<URL> {
   return url;
 }
 
+// looks a site up for the connection itself and refuses a private address right there.
+// checking first and connecting later would let a site answer "public" to the check and "private" to the connection
+export const publicLookup: LookupFunction = (hostname, options, callback) => {
+  lookup(hostname, { all: true }).then(
+    (addresses) => {
+      if (addresses.length === 0 || addresses.some((entry) => isPrivateAddress(entry.address))) return callback(new Error("private address"), "", 0);
+      // newer versions of node ask for the whole list, older ones for a single address
+      if (typeof options === "object" && options.all) return callback(null, addresses);
+      const first = addresses[0];
+      if (first) callback(null, first.address, first.family);
+    },
+    (error: NodeJS.ErrnoException) => callback(error, "", 0),
+  );
+};
+
+type Page = { status: number; location: string | null; type: string; body: string };
+
+// one request to one address, connecting only to the address that passed the check, and cutting off anything huge or slow
+function getPage(url: URL, accept: string): Promise<Page> {
+  return new Promise((resolve, reject) => {
+    const give = (error: unknown) => reject(error instanceof ImportError ? error : new ImportError("The job site would not show us that page. Paste the details in instead."));
+    const call = request(url, { method: "GET", lookup: publicLookup, signal: AbortSignal.timeout(TIMEOUT_MS), headers: { Accept: accept, "Accept-Encoding": "gzip, deflate, br", "User-Agent": "Mozilla/5.0 (compatible; ResumeFit job import)" } }, (response) => {
+      const status = response.statusCode ?? 0;
+      const location = response.headers.location ?? null;
+      // a redirect or a refusal has no body worth reading
+      if (status < 200 || status >= 300) {
+        response.destroy();
+        return resolve({ status, location, type: "", body: "" });
+      }
+      // pages usually arrive squeezed, so they are unpacked on the way in
+      const encoding = String(response.headers["content-encoding"] ?? "").toLowerCase();
+      const unpack = encoding === "br" ? createBrotliDecompress() : encoding === "gzip" || encoding === "x-gzip" ? createGunzip() : encoding === "deflate" ? createInflate() : null;
+      const stream = unpack ? response.pipe(unpack) : response;
+      const chunks: Buffer[] = [];
+      let size = 0;
+      const done = () => resolve({ status, location, type: String(response.headers["content-type"] ?? ""), body: Buffer.concat(chunks).toString("utf8") });
+      stream.on("data", (chunk: Buffer) => {
+        chunks.push(chunk);
+        size += chunk.length;
+        // a giant page is cut off here instead of filling memory. the size is counted after unpacking
+        if (size >= MAX_BYTES) {
+          response.destroy();
+          done();
+        }
+      });
+      stream.on("end", done);
+      stream.on("error", (error) => (size > 0 ? done() : give(error)));
+      response.on("error", give);
+    });
+    call.on("error", give);
+    call.end();
+  });
+}
+
 // fetches a page, checking every hop of a redirect and giving up on anything huge or slow
 async function fetchPublic(raw: string, accept: string): Promise<string> {
   let next = raw;
   for (let hop = 0; hop < 4; hop++) {
     const url = await checkPublicUrl(next);
-    const response = await fetch(url, { redirect: "manual", signal: AbortSignal.timeout(TIMEOUT_MS), headers: { Accept: accept, "User-Agent": "Mozilla/5.0 (compatible; ResumeFit job import)" } });
-    const location = response.headers.get("location");
-    if (response.status >= 300 && response.status < 400 && location) {
-      next = new URL(location, url).toString();
+    const page = await getPage(url, accept);
+    if (page.status >= 300 && page.status < 400 && page.location) {
+      next = new URL(page.location, url).toString();
       continue;
     }
-    if (!response.ok) throw new ImportError("The job site would not show us that page. Paste the details in instead.");
-    if (!/html|json|text/.test(response.headers.get("content-type") ?? "")) throw new ImportError("That link is not a web page.");
-    // read it in pieces so a giant page is cut off instead of filling memory
-    const reader = response.body?.getReader();
-    if (!reader) return "";
-    const chunks: Uint8Array[] = [];
-    let size = 0;
-    while (size < MAX_BYTES) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      chunks.push(value);
-      size += value.length;
-    }
-    void reader.cancel().catch(() => undefined);
-    return Buffer.concat(chunks).toString("utf8");
+    if (page.status < 200 || page.status >= 300) throw new ImportError("The job site would not show us that page. Paste the details in instead.");
+    if (!/html|json|text/.test(page.type)) throw new ImportError("That link is not a web page.");
+    return page.body;
   }
   throw new ImportError("That link redirects too many times.");
 }

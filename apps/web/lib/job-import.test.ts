@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { checkPublicUrl, isPrivateAddress, readJobPage } from "@/lib/job-import";
+import { checkPublicUrl, isPrivateAddress, publicLookup, readJobPage } from "@/lib/job-import";
 
 describe("reading a job from a link", () => {
   it("refuses addresses inside a private network", () => {
@@ -9,6 +9,12 @@ describe("reading a job from a link", () => {
 
   it("only takes plain https links to a real site", async () => {
     for (const link of ["http://example.com/job", "https://127.0.0.1/job", "https://localhost/job", "https://user:pass@example.com/", "https://example.com:8443/", "file:///etc/passwd", "not a link", "https://[::1]/"]) await expect(checkPublicUrl(link), link).rejects.toThrow();
+  });
+
+  it("refuses a private address at the moment of connecting, not only when the link is first checked", async () => {
+    // this is the lookup the connection itself uses, so a site cannot pass the check and then point somewhere else
+    const error = await new Promise<Error | null>((resolve) => publicLookup("localhost", { all: true }, (problem) => resolve(problem)));
+    expect(error?.message).toBe("private address");
   });
 
   it("reads the posting from a page's structured data", () => {
