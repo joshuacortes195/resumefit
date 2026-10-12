@@ -4,7 +4,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { authMode } from "@/lib/auth";
-import { emailKnown, inviteProblem, noUsersYet } from "@/lib/data/users";
+import { emailKnown, inviteProblem, isOwnerEmail, noUsersYet } from "@/lib/data/users";
 import { appUrl, serverEnv } from "@/lib/env";
 import { inviteErrorCode } from "@/lib/invite";
 import { supabaseServer } from "@/lib/supabase/server";
@@ -14,6 +14,9 @@ export type SignInState = { error?: string; sent?: string };
 
 // the cookie that carries the invite code from the form to the moment the person comes back signed in
 const INVITE_COOKIE = "rf_invite";
+
+// added to an invite problem, since someone who already has an account may have an old code sitting in the box
+const MEMBER_HINT = "Already have an account? Clear the invite code box and try again.";
 
 // keeps the invite code for when the person comes back from their email or google
 async function rememberInvite(code: string): Promise<void> {
@@ -27,9 +30,17 @@ export async function signInWithEmail(_previous: SignInState, form: FormData): P
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Check your email address." };
   const { email, invite } = parsed.data;
 
-  // while invites are needed, the form answers "check your email" whatever was typed, so it cannot be used to find out
-  // who is a member. a link only really goes out to someone who is already in, or who typed a code that works
-  if (serverEnv().INVITE_ONLY && !(await noUsersYet()) && !(await emailKnown(email)) && (await inviteProblem(invite))) return { sent: email };
+  // while invites are needed, what the form answers never depends on whether the email already has an account,
+  // so it cannot be used to find out who is a member
+  if (serverEnv().INVITE_ONLY && !(await noUsersYet())) {
+    if (invite) {
+      // a typed code that does not work says so, to members and new people alike. members are told to leave the box empty
+      const problem = await inviteProblem(invite);
+      if (problem) return { error: `${problem} ${MEMBER_HINT}` };
+    }
+    // with no code the answer is always "check your email", though a link only goes out to someone who is already in
+    else if (!(await emailKnown(email)) && !isOwnerEmail(email)) return { sent: email };
+  }
   await rememberInvite(invite);
 
   const supabase = await supabaseServer();

@@ -19,7 +19,7 @@ export function SignInForm({ inviteOnly, error, invite }: { inviteOnly: boolean;
         <p className="mt-3 font-semibold">Check your email</p>
         <p className="mt-1 text-sm text-muted">We sent a sign in link to {state.sent}. It works once and expires in an hour.</p>
         {/* shown to everyone, since the form never says whether an email already has an account */}
-        {inviteOnly && <p className="mt-3 text-sm text-muted">Nothing after a minute or two? If this is your first time here you need an invite code that still works. Reload this page, check the code and try again.</p>}
+        {inviteOnly && <p className="mt-3 text-sm text-muted">Nothing after a minute or two? If this is your first time here you need an invite code. Reload this page and enter it with your email.</p>}
       </div>
     );
   }
