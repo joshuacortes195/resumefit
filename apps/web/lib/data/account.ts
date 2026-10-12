@@ -1,6 +1,7 @@
 import { eq, inArray } from "drizzle-orm";
 import JSZip from "jszip";
 import { getDb, schema } from "@/db";
+import { handOverAdmin, markClaimed } from "@/lib/data/users";
 import { clearRateLimits } from "@/lib/rate-limit";
 import { deleteFile, loadFile } from "@/lib/storage";
 
@@ -55,5 +56,9 @@ export async function deleteAccount(userId: string): Promise<void> {
   await db.delete(schema.appSettings).where(eq(schema.appSettings.key, `auto-submit:${userId}`));
   await db.delete(schema.appSettings).where(eq(schema.appSettings.key, `application:${userId}`));
   await clearRateLimits(userId);
+  // the app has had its first admin, so emptying it does not make the next stranger one
+  await markClaimed();
+  // if this was the only admin, someone else takes over
+  await handOverAdmin(userId);
   await db.delete(schema.users).where(eq(schema.users.id, userId));
 }
