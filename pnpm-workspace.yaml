@@ -6,3 +6,6 @@ ignoredBuiltDependencies:
   - unrs-resolver
 onlyBuiltDependencies:
   - esbuild
+# the migration tool pulls in an old build tool with a known flaw, this moves it to a fixed version
+overrides:
+  "@esbuild-kit/core-utils>esbuild": "^0.25.0"
