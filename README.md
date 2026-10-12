@@ -94,7 +94,8 @@ The migrations switch on row level security for every table with no policies, wh
    | `NEXT_PUBLIC_APP_URL` | your Vercel address, like `https://your-app.vercel.app` |
    | `ENCRYPTION_KEY` | 64 random characters, from `openssl rand -hex 32` |
    | `INVITE_ONLY` | optional. Left out, new people need an invite code. Set it to `false` to let anyone sign up |
-   | `CRON_SECRET` | optional but worth setting, 16 or more random characters. Vercel sends it with its scheduled visits, and with it set nobody else can set off the daily job refresh |
+   | `ADMIN_EMAIL` | optional, your own email. Whoever signs in with it needs no invite code and is always an admin. It is the way back in if the admin account is ever deleted |
+   | `CRON_SECRET` | optional, 16 or more random characters. Vercel sends it with its scheduled visits, and with it set nobody else can set off the daily job refresh. Without it that address answers one visit every ten minutes |
    | `GEMINI_API_KEY` | optional, a free key from Google AI Studio that everyone shares |
    | `GROQ_API_KEY` | optional fallback, free at console.groq.com |
    | `CF_ACCOUNT_ID`, `CF_API_TOKEN` | optional fallback, Cloudflare Workers AI |
@@ -106,7 +107,7 @@ The migrations switch on row level security for every table with no policies, wh
 
 ### 3. First sign in and inviting friends
 
-The first person to sign in becomes the admin and needs no invite code, so sign in yourself first. Then open Settings, follow the link to the admin page and create invite codes. While invites are needed, the sign in form answers "check your email" whatever is typed, so it cannot be used to find out who has an account. Copy link gives you a sign in link with the code already filled in.
+The first person to sign in becomes the admin and needs no invite code, so sign in yourself first. Then open Settings, follow the link to the admin page and create invite codes. While invites are needed, the sign in form never shows whether an email has an account: with no code it always answers "check your email", and a code that does not work says so to everyone. Copy link gives you a sign in link with the code already filled in.
 
 Keep `ENCRYPTION_KEY` safe and do not change it later. It locks the API keys people save, and a new one would make those unreadable.
 
@@ -150,10 +151,10 @@ This project includes information from the [O*NET 30.0 Database](https://www.one
 
 - **Scores on the tracker**: a card shows the score of the newest scan of its own job, or "Not scanned yet". A scan and a card count as the same job only when the titles agree and the company or the link agrees too.
 - **Rate limits**, per person per minute: 20 scans, 20 uploads, 20 AI requests, 30 job searches, 15 link imports, 30 saved jobs and 30 downloads. On top of the daily caps per feature, one person can make 150 AI requests a day in total and everyone together 1,200. The numbers are in `apps/web/lib/rate-limit.ts` and `apps/web/lib/ai/limits.ts`.
-- **Uploads**: PDF or DOCX up to 4 MB (the host refuses any request over 4.5 MB), told apart by the file's own bytes and not its name. A PDF can have 15 pages. A DOCX can hold 1,000 parts and unpack to 25 MB, counted while it unpacks.
+- **Uploads**: PDF or DOCX up to 4 MB (Vercel refuses any request over 4.5 MB), told apart by the file's own bytes and not its name. A PDF can have 15 pages. A DOCX can hold 1,000 parts and unpack to 25 MB, counted while it unpacks.
 - **Content policy**: scripts only run with a code that is new on every request, set in `apps/web/proxy.ts`. This is why pages are not built ahead of time.
 - **Job links**: a pasted link is only read over https from a public address, and that is checked again at the moment of connecting and on every redirect.
-- **The admin**: the first person ever to sign in is the admin. If the only admin deletes their account, whoever has been a member longest takes over. If everyone leaves, the next person still needs an invite code.
+- **The admin**: the first person ever to sign in is the admin. If the only admin deletes their account, whoever has been a member longest takes over. If everyone leaves, the next person still needs an invite code, unless they sign in with the `ADMIN_EMAIL` address.
 - **Caching**: anything that depends on who is signed in is sent as `private, no-store`.
 - **Addresses that point at nothing** answer with a real 404 and the app's own not found page.
 
