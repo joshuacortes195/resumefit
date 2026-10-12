@@ -13,7 +13,7 @@ export function sniffFileType(bytes: Uint8Array): "pdf" | "docx" | null {
   return null;
 }
 
-const TOO_LARGE = "That file is over 5 MB. Resumes are usually much smaller, try exporting it again.";
+const TOO_LARGE = "That file is over 4 MB. Resumes are usually much smaller, try exporting it again.";
 
 // the bytes of an upload, checked against the size limit before any of it is read into memory
 export async function uploadBytes(file: File): Promise<Uint8Array> {

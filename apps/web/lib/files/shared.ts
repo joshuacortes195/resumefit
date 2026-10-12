@@ -9,8 +9,9 @@ export type ExtractedFile = {
 // a problem with the file that we can explain to the user
 export class FileError extends Error {}
 
-// biggest upload we accept
-export const MAX_FILE_BYTES = 5 * 1024 * 1024;
+// biggest upload we accept. the host turns away any request over 4.5 MB before the app sees it,
+// so the limit sits under that and people get our own message
+export const MAX_FILE_BYTES = 4 * 1024 * 1024;
 
 // true for colors too pale to read on a white page, takes "#rrggbb", "rrggbb" or "rgb(r,g,b)"
 export function isLightColor(color: string): boolean {

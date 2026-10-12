@@ -5,7 +5,7 @@ import { FileText, Upload, X } from "lucide-react";
 import { LINK_BUTTON } from "@/components/ui/buttons";
 
 // biggest file we take, same limit the server checks
-const MAX_BYTES = 5 * 1024 * 1024;
+const MAX_BYTES = 4 * 1024 * 1024;
 
 type DropzoneProps = {
   file: File | null;
@@ -26,7 +26,7 @@ export function Dropzone({ file, onFile }: DropzoneProps) {
       return;
     }
     if (next.size > MAX_BYTES) {
-      setProblem("That file is over 5 MB. Try exporting it again.");
+      setProblem("That file is over 4 MB. Try exporting it again.");
       return;
     }
     setProblem(null);
@@ -76,7 +76,7 @@ export function Dropzone({ file, onFile }: DropzoneProps) {
             upload a file
           </button>
         </p>
-        <p className="text-xs text-muted">PDF or DOCX, up to 5 MB</p>
+        <p className="text-xs text-muted">PDF or DOCX, up to 4 MB</p>
         {/* the real file input, hidden behind the button above */}
         <input
           ref={inputRef}

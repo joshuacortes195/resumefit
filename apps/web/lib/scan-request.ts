@@ -18,11 +18,11 @@ export class RequestError extends Error {
 export type ResolvedResume = { resumeId: string; text: string; layout: LayoutMeta | null };
 
 // room for the file plus the pasted resume and job description that can ride along with it
-const MAX_FORM_BYTES = MAX_FILE_BYTES + 512 * 1024;
+const MAX_FORM_BYTES = MAX_FILE_BYTES + 400 * 1024;
 
 // reads the form a request carries, turning away one that says it is too big before any of it is read
 export async function readForm(request: Request): Promise<FormData> {
-  if (Number(request.headers.get("content-length") ?? 0) > MAX_FORM_BYTES) throw new RequestError("That upload is too big. Files can be up to 5 MB.", 413);
+  if (Number(request.headers.get("content-length") ?? 0) > MAX_FORM_BYTES) throw new RequestError("That upload is too big. Files can be up to 4 MB.", 413);
   try {
     return await request.formData();
   } catch {

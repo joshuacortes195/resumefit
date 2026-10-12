@@ -161,7 +161,7 @@ describe("files we cannot read", () => {
 
   it("turns away empty and oversized files", async () => {
     await expect(readResumeFile(new Uint8Array(0), "a.pdf")).rejects.toThrow(/empty/);
-    await expect(readResumeFile(new Uint8Array(6 * 1024 * 1024), "a.pdf")).rejects.toThrow(/5 MB/);
+    await expect(readResumeFile(new Uint8Array(6 * 1024 * 1024), "a.pdf")).rejects.toThrow(/4 MB/);
   });
 });
 
@@ -232,7 +232,7 @@ describe("limits on what a file can hold", () => {
   it("checks the size of an upload before reading any of it", async () => {
     let read = false;
     const huge = { size: 6 * 1024 * 1024, arrayBuffer: async () => ((read = true), new ArrayBuffer(0)) } as unknown as File;
-    await expect(uploadBytes(huge)).rejects.toThrow(/5 MB/);
+    await expect(uploadBytes(huge)).rejects.toThrow(/4 MB/);
     expect(read).toBe(false);
   });
 });
