@@ -25,7 +25,7 @@ const TOPICS: { title: string; questions: { q: string; a: React.ReactNode }[] }[
       { q: "Why does it say AI is not set up?", a: <>The writing helpers run on free tiers that need a key. Add your own free Gemini key under <Link href="/settings#ai" className={LINK_BUTTON}>AI settings</Link>. Everything else in the app works without it.</> },
       { q: "Why does it say AI is busy?", a: "The free tiers have limits per minute and per day. When all of them are busy, wait a little and try again. Your work is not lost." },
       { q: "Will it make things up about me?", a: "It is told not to, and we check its work: suggestions can only change one existing line, and anything that adds a skill your resume never mentions has to be confirmed by you first. Still, read every suggestion. You are the one who has to stand behind your resume in an interview." },
-      { q: "What is sent to the AI?", a: <>Your resume and the job text, with your name, email, phone, address and links swapped for placeholders first. See the <Link href="/privacy" className={LINK_BUTTON}>privacy page</Link> for the details.</> },
+      { q: "What is sent to the AI?", a: <>Your resume and the job text, after the app has looked for your name, email, phone, address and links and swapped them for placeholders. It is a best effort, so leave out anything you would not want sent. A scan also sends the job description, never your resume, for a smarter read of the posting. See the <Link href="/privacy" className={LINK_BUTTON}>privacy page</Link> for the details.</> },
     ],
   },
   {

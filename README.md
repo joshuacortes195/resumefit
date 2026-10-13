@@ -16,7 +16,7 @@ A free tool for matching a resume to a job description and tracking applications
 - **Find Jobs**: open roles from the public job boards of about 160 companies plus a wider job site that covers fields like healthcare, logistics and finance. Pick a resume and every job gets an estimated fit, worked out from its title, level and the skills it names. It is an estimate, not a scan score, and is labelled that way. An admin can switch it off.
 - **Chrome extension**: scan the job posting you are on against your resume and see the match rate and missing skills without leaving the page, or save it to your tracker.
 
-The match score is plain code with no language model behind it, so it works with nothing set up and always gives the same answer for the same input. The writing features run on free tiers only (Google Gemini, then Groq, then Cloudflare Workers AI) and the app keeps working when they are off or busy.
+The match score is worked out by plain code, so it works with nothing set up. When an AI key is set up, a scan also asks a model to read the job description (never the resume) for the skills it names, which can add skills to the list. That read is saved, so the same posting is scored the same way every time after. The writing features run on free tiers only (Google Gemini, then Groq, then Cloudflare Workers AI) and the app keeps working when they are off or busy.
 
 ## Layout
 
@@ -162,7 +162,8 @@ This project includes information from the [O*NET 30.0 Database](https://www.one
 ## Privacy, in short
 
 - Every query is scoped to the signed in person. Uploaded files sit in a private bucket.
-- Before any text goes to a model provider, names, emails, phone numbers, addresses and links are swapped for placeholders, and put back afterwards.
+- Before any text goes to a model provider, the app looks for names, emails, phone numbers, addresses, links and birth dates and swaps them for placeholders, and puts them back afterwards. It is a best effort that works from the usual shapes of these details, and the privacy page says so.
+- The admin can see each member's email, name, join date, invite code and scan count, and nothing else of theirs.
 - People can download everything they have stored, or delete their account and all of it, from Settings.
 
 The full version is at `/privacy` in the app.

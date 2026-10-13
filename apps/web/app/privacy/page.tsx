@@ -15,18 +15,38 @@ export default function PrivacyPage() {
           <li>The job descriptions you scan, your scan reports, and the jobs, notes, interviews and cover letters on your tracker.</li>
           <li>Your email address, so you can sign in.</li>
         </ul>
-        <p className="mt-2">Only you can see your own data. Uploaded files are kept in private storage and are never public.</p>
+        <p className="mt-2">Only you can see your resumes, scans, tracker and everything you write here. Uploaded files are kept in private storage and are never public.</p>
+        <p className="mt-2">
+          The person who runs this copy of ResumeFit can see a list of members: each email address and name, the day they joined, the invite code they used and how many scans they have run. They cannot
+          open anyone's resumes, scans or tracker.
+        </p>
       </section>
 
       <section>
         <h2>What the AI features send, and where</h2>
         <p>
           AI features send redacted resume and job text to a free AI provider: Groq, Google Gemini or Cloudflare Workers AI, whichever is set up and answering. Free tiers may use what they are sent to
-          improve their models. Your name and contact info are removed first: your name, email, phone number, street address and links are swapped for placeholders before anything is sent, and put
-          back when the answer arrives.
+          improve their models. Before anything is sent, the app looks for your name, email, phone number, street address, links and date of birth and swaps them for placeholders, then puts them
+          back when the answer arrives. A hiring manager's name you type for a cover letter is swapped out the same way.
         </p>
-        <p className="mt-2">Nothing is sent to any of them until you press a button that uses AI.</p>
-        <p className="mt-2">Match scores, reports, the tracker and exports never use AI and never leave the app.</p>
+        <p className="mt-2">
+          This is a best effort. It works from the usual ways these details are written and from what the app read off the top of your resume, so something written in an unusual way can slip through.
+          Leave out anything you would not want an AI provider to see.
+        </p>
+        <p className="mt-2">Your resume is only ever sent when you press a button that uses AI.</p>
+        <p className="mt-2">
+          Running a scan sends the job description, never your resume, for a smarter read of the skills the posting asks for. Emails and phone numbers in the posting are hidden first, and the read is
+          saved so the same posting is not sent again. The match score itself is worked out by plain code inside the app.
+        </p>
+        <p className="mt-2">The tracker and exports never use AI and never leave the app.</p>
+      </section>
+
+      <section>
+        <h2>Company logos</h2>
+        <p>
+          Find Jobs shows a small logo next to each company. Your browser loads it from DuckDuckGo's icon service using the company's web address, so DuckDuckGo sees that address and, like any site
+          you load an image from, your IP address. Nothing about your account or your resume goes with it.
+        </p>
       </section>
 
       <section>
