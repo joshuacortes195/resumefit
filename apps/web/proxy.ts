@@ -27,15 +27,33 @@ function contentPolicy(nonce: string): string {
     `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${dev ? " 'unsafe-eval'" : ""}`,
     // styles written on an element, like the fill of a score ring, cannot carry a code
     "style-src 'self' 'unsafe-inline'",
-    // company logos on the job pages come straight from those sites
-    "img-src 'self' data: blob: https:",
+    // the only pictures from somewhere else are the little company logos on the job pages
+    "img-src 'self' data: blob: https://icons.duckduckgo.com",
     "font-src 'self' data:",
-    `connect-src 'self' https://*.supabase.co${dev ? " ws: http://localhost:*" : ""}`,
+    // the pages only ever talk to the app itself
+    `connect-src 'self'${dev ? " ws: http://localhost:*" : ""}`,
     "frame-ancestors 'none'",
     "form-action 'self'",
     "base-uri 'self'",
     "object-src 'none'",
   ].join("; ");
+}
+
+// true when a request that changes something through the api was sent by a page on another site.
+// browsers say where such a request came from, and the app's own pages are the only ones that should be making them.
+// the extension's endpoints are left out, they are opened to it on purpose and ask for its key instead of a session
+function fromAnotherSite(request: NextRequest): boolean {
+  if (["GET", "HEAD", "OPTIONS"].includes(request.method)) return false;
+  const { pathname, host } = request.nextUrl;
+  if (!pathname.startsWith("/api/") || pathname.startsWith("/api/ext/")) return false;
+  const origin = request.headers.get("origin");
+  if (!origin) return false;
+  try {
+    const from = new URL(origin).host;
+    return from !== host && from !== request.headers.get("host");
+  } catch {
+    return true;
+  }
 }
 
 // the names this computer goes by
@@ -47,6 +65,7 @@ export async function proxy(request: NextRequest) {
   const nonce = Buffer.from(crypto.randomUUID()).toString("base64");
   request.headers.set("x-nonce", nonce);
   request.headers.set("Content-Security-Policy", contentPolicy(nonce));
+  if (fromAnotherSite(request)) return finish(request, NextResponse.json({ error: "That request did not come from ResumeFit." }, { status: 403 }));
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
@@ -87,5 +106,6 @@ export async function proxy(request: NextRequest) {
   return finish(request, response);
 }
 
-// skip files like images and the framework's own assets
-export const config = { matcher: ["/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)"] };
+// skip only the framework's own assets and the few real picture files. an address that merely ends in .png still gets
+// the policy and the sign in check like any other page
+export const config = { matcher: ["/((?!_next/static|_next/image|favicon.ico|icon.svg|landing/).*)"] };
