@@ -2,7 +2,7 @@ import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { getDb, schema } from "@/db";
 import { decrypt } from "@/lib/ai/crypto";
-import { globalCapReached, logUsage, remainingToday, userCapReached, type AiFeature } from "@/lib/ai/limits";
+import { globalCapReached, logFailure, logUsage, remainingToday, userCapReached, type AiFeature } from "@/lib/ai/limits";
 import { mockCall } from "@/lib/ai/mock";
 import { encryptionSecret } from "@/lib/ai/secret";
 import { cloudflareCall, DEFAULT_MODELS, geminiCall, groqCall, isModelProblem, PROVIDERS, ProviderError, type ProviderCall, type ProviderName } from "@/lib/ai/providers";
@@ -199,6 +199,8 @@ async function attempt<T>(
       }
     }
   }
+  // nobody answered. it still cost calls to the providers, so it is counted
+  if (!options.untracked) await logFailure(options.userId, feature);
   throw new AiBusyError();
 }
 

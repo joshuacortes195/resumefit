@@ -1,8 +1,10 @@
+import { randomUUID } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
+import { getDb, schema } from "@/db";
 import { decrypt, encrypt } from "@/lib/ai/crypto";
 import { jdHints } from "@/lib/ai/jd";
-import { DAILY_CAPS, GLOBAL_DAILY_CAP, logUsage, remainingToday, USER_DAILY_CAP, userCapReached } from "@/lib/ai/limits";
+import { DAILY_CAPS, GLOBAL_DAILY_CAP, logUsage, remainingToday, usedToday, USER_DAILY_CAP, userCapReached } from "@/lib/ai/limits";
 import { jdExtractionSchema, type JdExtraction } from "@/lib/ai/prompts/jd-extraction";
 import { tidy } from "@/lib/ai/prompts/style";
 import { errorDetail, groqCall, isModelProblem, ProviderError, type ProviderRequest } from "@/lib/ai/providers";
@@ -73,6 +75,19 @@ describe("provider router", () => {
     const down = [fake("gemini", [new ProviderError("x", 429)]), fake("groq", [new ProviderError("x", 500)])];
     await expect(generateText("bullets", { system: "s", prompt: "p" }, { userId: user.id, providers: down })).rejects.toThrow(AiBusyError);
     await expect(generateText("bullets", { system: "s", prompt: "p" }, { userId: user.id, providers: [] })).rejects.toThrow(AiUnavailableError);
+  });
+
+  it("counts a request nobody answered toward the day's total, but not against that one feature", async () => {
+    const db = await getDb();
+    const id = randomUUID();
+    await db.insert(schema.users).values({ id, email: `failing-${id}@example.com` });
+    const down = [fake("gemini", [new ProviderError("x", 500)])];
+    const featureBefore = await remainingToday(id, "bullets");
+    const totalBefore = await usedToday(undefined, id);
+    for (let round = 0; round < 3; round++) await expect(generateText("bullets", { system: "s", prompt: "p" }, { userId: id, providers: down })).rejects.toThrow(AiBusyError);
+    // three failed tries used none of the thirty bullet rewrites, and three of the day's total
+    expect(await remainingToday(id, "bullets")).toBe(featureBefore);
+    expect(await usedToday(undefined, id)).toBe(totalBefore + 3);
   });
 
   it("tries a provider's smaller model when the main one wants billing or is gone", async () => {
@@ -262,6 +277,18 @@ Maria Garcia-Lopez led a team of 8 from 2019 - 2023. Maria shipped 3 apps.`;
   it("leaves ordinary sentences that only look a bit like an address or a number alone", () => {
     const plain = "Led 5 engineers along the way. Cut costs 20 percent in the first place. Jan 2020 - Mar 2023. GPA 3.85 (2019 - 2023). Grew revenue to 1,200,000.";
     expect(redact(plain, { name: "Sam Hill" }).text).toBe(plain);
+  });
+
+  it("does not mistake a skill with a dot in it for one of the person's links", () => {
+    const resume = `Jordan Lee
+pixelcraft.io | Austin
+${"\n• Built things".repeat(8)}
+Skills: Node.js, ASP.NET, Vue.js, socket.io. B.Sc Computer Science. Portfolio at jordanlee.dev and pixelcraft.io`;
+    const redacted = redact(resume, { name: "Jordan Lee", links: ["Node.js", "ASP.NET", "Vue.js", "socket.io", "B.Sc", "jordanlee.dev", "pixelcraft.io"] });
+    // the site in the contact lines and the one with the name in it are hidden, the skills are not
+    expect(redacted.text).toContain("Skills: Node.js, ASP.NET, Vue.js, socket.io. B.Sc Computer Science. Portfolio at [LINK_");
+    expect(redacted.text).not.toContain("jordanlee.dev");
+    expect(redacted.text).not.toContain("pixelcraft.io");
   });
 
   it("shares one set of stand ins across several pieces of text", () => {

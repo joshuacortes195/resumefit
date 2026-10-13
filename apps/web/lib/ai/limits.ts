@@ -1,4 +1,4 @@
-import { and, count, eq, gte } from "drizzle-orm";
+import { and, count, eq, gte, ne } from "drizzle-orm";
 import { getDb, schema } from "@/db";
 
 // the things people can ask the writing helpers to do
@@ -25,19 +25,31 @@ export const GLOBAL_DAILY_CAP = 1200;
 // so no single account can use it all up however it spreads its requests
 export const USER_DAILY_CAP = 150;
 
+// what is written in place of a model's name for a request that no provider answered
+export const NO_ANSWER = "failed";
+
 // midnight today, the caps reset then
 function startOfDay(): Date {
   const now = new Date();
   return new Date(now.getFullYear(), now.getMonth(), now.getDate());
 }
 
-// how many times a feature was used today, by one person or by everyone
+// how many times a feature was used today, by one person or by everyone.
+// the count for one feature leaves out requests nobody answered, so a busy provider does not eat someone's ten cover letters.
+// the counts across all features keep them in, because a request that failed still used up the shared allowance on the way
 export async function usedToday(feature?: AiFeature, userId?: string): Promise<number> {
   const db = await getDb();
   const [row] = await db
     .select({ total: count() })
     .from(schema.aiUsage)
-    .where(and(gte(schema.aiUsage.createdAt, startOfDay()), feature ? eq(schema.aiUsage.feature, feature) : undefined, userId ? eq(schema.aiUsage.userId, userId) : undefined));
+    .where(
+      and(
+        gte(schema.aiUsage.createdAt, startOfDay()),
+        feature ? eq(schema.aiUsage.feature, feature) : undefined,
+        feature ? ne(schema.aiUsage.model, NO_ANSWER) : undefined,
+        userId ? eq(schema.aiUsage.userId, userId) : undefined,
+      ),
+    );
   return row?.total ?? 0;
 }
 
@@ -58,6 +70,12 @@ export async function userCapReached(userId: string): Promise<boolean> {
 // true when the shared daily allowance is used up
 export async function globalCapReached(): Promise<boolean> {
   return (await usedToday()) >= GLOBAL_DAILY_CAP;
+}
+
+// writes down a request that every provider failed. it counts toward the person's and everyone's daily total,
+// so sending requests that are bound to fail is not a way around the caps
+export async function logFailure(userId: string, feature: AiFeature): Promise<void> {
+  await logUsage({ userId, feature, provider: "none", model: NO_ANSWER, tokensIn: 0, tokensOut: 0 }).catch(() => undefined);
 }
 
 // writes down one call, the caps and the admin page are built from these rows
