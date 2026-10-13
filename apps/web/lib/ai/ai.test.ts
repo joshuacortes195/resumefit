@@ -7,7 +7,7 @@ import { jdExtractionSchema, type JdExtraction } from "@/lib/ai/prompts/jd-extra
 import { tidy } from "@/lib/ai/prompts/style";
 import { errorDetail, groqCall, isModelProblem, ProviderError, type ProviderRequest } from "@/lib/ai/providers";
 import { plainProblem } from "@/lib/ai/status";
-import { redact } from "@/lib/ai/redact";
+import { redact, redactor } from "@/lib/ai/redact";
 import { AiBusyError, AiLimitError, AiUnavailableError, generateJSON, generateText, type ReadyProvider } from "@/lib/ai/router";
 import { getCurrentUser } from "@/lib/auth";
 import { createScan } from "@/lib/data/scans";
@@ -239,6 +239,44 @@ Jordan Lee built 12 dashboards in 2023.`;
     const name = redacted.text.split("\n")[0] ?? "";
     expect(redacted.text.split(name)).toHaveLength(3);
     expect(redacted.restore(`Dear team, ${name} here.`)).toBe("Dear team, Jordan Lee here.");
+  });
+
+  it("hides details written the way other countries and other people write them", () => {
+    const tricky = `MARIA GARCIA-LOPEZ
+1428 W. Elm Street, Apt 4B | 22 baker street | P.O. Box 4471 | 742 Evergreen Terrace
++44 20 7946 0958 | 07911 123456 | +91 98765 43210 | +61 412 345 678
+mariagarcia.dev | maria-garcia.com/work | github: @mariagl
+Date of birth: 12 March 1990 | SSN 123-45-6789
+
+Maria Garcia-Lopez led a team of 8 from 2019 - 2023. Maria shipped 3 apps.`;
+    const redacted = redact(tricky, { name: "MARIA GARCIA-LOPEZ", links: ["mariagarcia.dev", "maria-garcia.com/work"] });
+    for (const secret of ["Maria", "MARIA", "Garcia", "Elm Street", "baker street", "Box 4471", "Evergreen", "7946", "07911", "98765", "412 345", "mariagarcia.dev", "maria-garcia.com", "mariagl", "1990", "123-45-6789"]) {
+      expect(redacted.text, secret).not.toContain(secret);
+    }
+    // years of work and plain numbers are not mistaken for phone numbers
+    expect(redacted.text).toContain("led a team of 8 from 2019 - 2023");
+    expect(redacted.text).toContain("shipped 3 apps");
+    expect(redacted.restore(redacted.text)).toBe(tricky);
+  });
+
+  it("leaves ordinary sentences that only look a bit like an address or a number alone", () => {
+    const plain = "Led 5 engineers along the way. Cut costs 20 percent in the first place. Jan 2020 - Mar 2023. GPA 3.85 (2019 - 2023). Grew revenue to 1,200,000.";
+    expect(redact(plain, { name: "Sam Hill" }).text).toBe(plain);
+  });
+
+  it("shares one set of stand ins across several pieces of text", () => {
+    const hidden = redactor({ name: "Jordan Lee" });
+    const resume = hidden.hide("Jordan Lee, jordan@example.com");
+    const answer = hidden.hide("Reach me at jordan@example.com or other@example.com");
+    expect(resume).toBe("[NAME_2], [EMAIL_1]");
+    expect(answer).toBe("Reach me at [EMAIL_1] or [EMAIL_3]");
+    expect(hidden.restore("[NAME_2] can be reached at [EMAIL_3]")).toBe("Jordan Lee can be reached at other@example.com");
+  });
+
+  it("stays quick on one very long run of letters", () => {
+    const started = Date.now();
+    redact(`${"a".repeat(60_000)} ${"1".repeat(60_000)} ${"a.".repeat(30_000)}`, { name: "Jordan Lee" });
+    expect(Date.now() - started).toBeLessThan(1000);
   });
 });
 

@@ -47,7 +47,7 @@ export async function suggestEdits(scan: SavedScan, options: GenerateOptions): P
         jobTitle: scan.report.jobTitle,
         missing: skills.filter((skill) => skill.match !== "exact").map((skill) => skill.name),
         present: skills.filter((skill) => skill.match === "exact").map((skill) => skill.name),
-        jdSummary: scan.jdText.slice(0, 6000),
+        jdSummary: redact(scan.jdText.slice(0, 6000)).text,
       }),
     },
     suggestionsSchema,

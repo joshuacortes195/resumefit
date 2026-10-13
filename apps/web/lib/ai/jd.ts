@@ -2,6 +2,7 @@ import { eq } from "drizzle-orm";
 import type { JdHints } from "@resumefit/scoring";
 import { getDb, schema } from "@/db";
 import { JD_EXTRACTION_SYSTEM, jdExtractionPrompt, jdExtractionSchema } from "@/lib/ai/prompts/jd-extraction";
+import { redact } from "@/lib/ai/redact";
 import { generateJSON, readyProviders, type GenerateOptions } from "@/lib/ai/router";
 import { cachedHints, hashJd, toHints } from "@/lib/data/scans";
 
@@ -14,8 +15,8 @@ export async function jdHints(userId: string, jdText: string, options: Partial<G
   try {
     const providers = options.providers ?? (await readyProviders(userId));
     if (providers.length === 0) return null;
-    // job descriptions are public text, so nothing needs to be hidden before sending
-    const extraction = await generateJSON("jd-extraction", { system: JD_EXTRACTION_SYSTEM, prompt: jdExtractionPrompt(jdText) }, jdExtractionSchema, {
+    // a posting is public text, but it can still name a recruiter's email or phone, so those are hidden before sending
+    const extraction = await generateJSON("jd-extraction", { system: JD_EXTRACTION_SYSTEM, prompt: jdExtractionPrompt(redact(jdText).text) }, jdExtractionSchema, {
       userId,
       fast: true,
       timeoutMs: 8000,

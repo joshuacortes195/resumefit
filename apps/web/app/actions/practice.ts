@@ -8,7 +8,7 @@ import { remainingToday } from "@/lib/ai/limits";
 import { feedbackSchema, INTERVIEW_FEEDBACK_SYSTEM, INTERVIEW_QUESTIONS_SYSTEM, interviewFeedbackPrompt, interviewQuestionsPrompt, questionsSchema } from "@/lib/ai/prompts/interview";
 import { headlinesSchema, LINKEDIN_ABOUT_SYSTEM, LINKEDIN_HEADLINE_SYSTEM, linkedinPrompt } from "@/lib/ai/prompts/linkedin";
 import { tidy } from "@/lib/ai/prompts/style";
-import { redact } from "@/lib/ai/redact";
+import { redactor } from "@/lib/ai/redact";
 import { AiBusyError, AiLimitError, AiUnavailableError, aiAvailable, generateJSON, generateText } from "@/lib/ai/router";
 import { getCurrentUser } from "@/lib/auth";
 import { getJob } from "@/lib/data/jobs";
@@ -59,9 +59,10 @@ export async function rewriteLinkedin(reportId: string, part: "headline" | "abou
     const saved = await getLinkedinReport(user.id, reportId);
     if (!saved) return { ok: false, error: "We could not find that report." };
 
-    // a profile is full of personal details, so they are hidden like on a resume
-    const whole = redact([saved.profile.headline, saved.profile.about, saved.profile.experience].join("\n<<<>>>\n"));
-    const [headline = "", about = "", experience = ""] = whole.text.split("\n<<<>>>\n");
+    // a profile is full of personal details, so they are hidden like on a resume. the name to look for comes from the person's own resume
+    const resume = await resumeFor(user.id, null);
+    const whole = redactor(resume ? parseResume(resume).contact : null);
+    const [headline, about, experience] = [saved.profile.headline, saved.profile.about, saved.profile.experience].map((part) => whole.hide(part));
     const wanted = saved.report.keywords.filter((keyword) => keyword.category === "hard").sort((a, b) => b.jdCount - a.jdCount).slice(0, 10).map((keyword) => keyword.name);
     const prompt = linkedinPrompt({ headline, about, experience, skills: saved.profile.skills, jobTitles: saved.report.jobTitles, wanted });
 
@@ -97,8 +98,8 @@ export async function startPractice(input: { jobId?: string; jdText?: string }):
   let questions = fallbackQuestions(jdText, resume, jobTitle);
   if (await aiAvailable(user.id)) {
     try {
-      const hidden = redact(resume, resume ? parseResume(resume).contact : null);
-      const reply = await generateJSON("interview", { system: INTERVIEW_QUESTIONS_SYSTEM, prompt: interviewQuestionsPrompt({ jobTitle, jdText, resume: hidden.text }) }, questionsSchema, { userId: user.id });
+      const hidden = redactor(resume ? parseResume(resume).contact : null);
+      const reply = await generateJSON("interview", { system: INTERVIEW_QUESTIONS_SYSTEM, prompt: interviewQuestionsPrompt({ jobTitle, jdText: hidden.hide(jdText.slice(0, 6000)), resume: hidden.hide(resume) }) }, questionsSchema, { userId: user.id });
       if (reply.questions.length >= 6) questions = reply.questions.slice(0, 8).map((question) => ({ ...question, question: hidden.restore(question.question) }));
     } catch {
       // the built in questions are a fine stand in
@@ -128,15 +129,26 @@ export async function answerQuestion(input: { sessionId: string; index: number; 
     const job = session.jobId ? await getJob(user.id, session.jobId) : null;
     const resume = await resumeFor(user.id, job?.resumeId);
     const contact = resume ? parseResume(resume).contact : null;
-    const hiddenResume = redact(resume, contact);
-    const hiddenAnswer = redact(text, contact);
+    // the resume, the answer, the question and the posting share one set of stand ins
+    const hidden = redactor(contact);
     const feedback = await generateJSON(
       "interview",
-      { system: INTERVIEW_FEEDBACK_SYSTEM, prompt: interviewFeedbackPrompt({ question: question.question, answer: hiddenAnswer.text, jobTitle: session.jobTitle, jdText: session.jdText, resume: hiddenResume.text }) },
+      {
+        system: INTERVIEW_FEEDBACK_SYSTEM,
+        prompt: interviewFeedbackPrompt({ question: hidden.hide(question.question), answer: hidden.hide(text), jobTitle: session.jobTitle, jdText: hidden.hide(session.jdText.slice(0, 4000)), resume: hidden.hide(resume) }),
+      },
       feedbackSchema,
       { userId: user.id },
     );
-    answer.feedback = { ...feedback, score: Math.round(feedback.score), sample_answer: hiddenResume.restore(hiddenAnswer.restore(tidy(feedback.sample_answer))) };
+    // every piece of the coaching can mention a stand in, so the real details go back into all of them
+    answer.feedback = {
+      ...feedback,
+      score: Math.round(feedback.score),
+      relevance: hidden.restore(feedback.relevance),
+      specificity: hidden.restore(feedback.specificity),
+      improve: feedback.improve.map((tip) => hidden.restore(tip)),
+      sample_answer: hidden.restore(tidy(feedback.sample_answer)),
+    };
   } catch (error) {
     // the answer and its measurements are still saved, only the coaching is missing
     note = error instanceof AiBusyError || error instanceof AiLimitError || error instanceof AiUnavailableError ? error.message : "Coaching is not available right now.";

@@ -1,23 +1,32 @@
 import type { ResumeContact } from "@resumefit/scoring";
 import { coverLetterPrompt, coverLetterSystem, THANK_YOU_SYSTEM, thankYouPrompt, type Length, type Tone } from "@/lib/ai/prompts/letters";
 import { tidy } from "@/lib/ai/prompts/style";
-import { redact } from "@/lib/ai/redact";
+import { redact, redactor } from "@/lib/ai/redact";
 import { generateText, type GenerateOptions } from "@/lib/ai/router";
 
 // openers we never want, a letter that starts with one gets it cut off
 const STALE_OPENERS = /^(?:I am writing to express my (?:strong |keen )?interest[^.]*\.\s*|I am excited to apply[^.]*\.\s*)/i;
+
+// what the model sees in place of the hiring manager's name
+const MANAGER = "[HIRING_MANAGER]";
 
 // writes a cover letter from a resume and a job description
 export async function writeCoverLetter(
   input: { resume: string; contact: Partial<ResumeContact> | null; jdText: string; jobTitle: string | null; company: string | null; tone: Tone; length: Length; why?: string; manager?: string },
   options: GenerateOptions,
 ): Promise<string> {
-  const redacted = redact(input.resume, input.contact);
-  const letter = await generateText("cover-letter", { system: coverLetterSystem(input.tone, input.length), prompt: coverLetterPrompt({ ...input, resume: redacted.text }) }, options);
+  // the resume, the person's own reason and the posting all go out with details hidden, and the manager's name is swapped for a stand in
+  const hidden = redactor(input.contact);
+  const manager = input.manager?.trim();
+  const prompt = coverLetterPrompt({ ...input, resume: hidden.hide(input.resume), jdText: hidden.hide(input.jdText), why: input.why ? hidden.hide(input.why) : undefined, manager: manager ? MANAGER : undefined });
+  const letter = await generateText("cover-letter", { system: coverLetterSystem(input.tone, input.length), prompt }, options);
   // tidy the dashes, drop a stale opener if one slipped in, then put the person's details back
   const [greeting = "", ...rest] = tidy(letter).split(/\n\s*\n/);
   const body = rest.join("\n\n").replace(STALE_OPENERS, "");
-  return redacted.restore([greeting, body].filter(Boolean).join("\n\n"));
+  return hidden
+    .restore([greeting, body].filter(Boolean).join("\n\n"))
+    .split(MANAGER)
+    .join(manager ?? "");
 }
 
 // writes a short thank-you email for after an interview
