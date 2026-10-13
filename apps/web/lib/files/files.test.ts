@@ -1,6 +1,6 @@
 import { formattingChecks, parseResume, scanResume } from "@resumefit/scoring";
 import { describe, expect, it } from "vitest";
-import { headerContactDocx, messyPdf, plainDocx, scannedPdf, singleColumnPdf, tableDocx, twoColumnPdf } from "./fixtures";
+import { headerContactDocx, heavyPdf, messyPdf, plainDocx, scannedPdf, singleColumnPdf, tableDocx, twoColumnPdf } from "./fixtures";
 import { FileError, readResumeFile, sniffFileType, uploadBytes } from "./index";
 
 // a fixed "today" so Present always means the same month
@@ -173,6 +173,22 @@ describe("limits on what a file can hold", () => {
     for (let page = 0; page < 16; page++) doc.addPage([612, 792]).drawText("Work Experience and lots of other text on every page", { x: 54, y: 700, size: 11, font });
     await expect(readResumeFile(await doc.save(), "book.pdf")).rejects.toThrow(/16 pages/);
   });
+
+  it("gives up on a pdf whose one page hides far more work than a resume, without holding up anything else", async () => {
+    // the clock keeps ticking in this thread only if the reading happens somewhere else
+    let ticks = 0;
+    const clock = setInterval(() => ticks++, 50);
+    const started = Date.now();
+    await expect(readResumeFile(heavyPdf(20), "resume.pdf")).rejects.toThrow(/far more work to read/);
+    clearInterval(clock);
+    const took = Date.now() - started;
+    expect(took).toBeLessThan(11_000);
+    expect(ticks).toBeGreaterThan(took / 50 / 2);
+    // a smaller one that still has thousands of pieces of text on a page is turned away quickly too
+    const again = Date.now();
+    await expect(readResumeFile(heavyPdf(1), "resume.pdf")).rejects.toThrow(/far more work to read/);
+    expect(Date.now() - again).toBeLessThan(3000);
+  }, 30_000);
 
   it("turns away a word file that unpacks to something huge", async () => {
     const JSZip = (await import("jszip")).default;

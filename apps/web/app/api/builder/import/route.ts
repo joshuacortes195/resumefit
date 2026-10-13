@@ -7,6 +7,9 @@ import { FileError, readResumeFile, uploadBytes } from "@/lib/files";
 import { rateLimit } from "@/lib/rate-limit";
 import { errorResponse, field, readForm, RequestError } from "@/lib/scan-request";
 
+// reading a file is the heaviest thing the app does, so the host stops a request that is still going after this many seconds
+export const maxDuration = 30;
+
 // reads an uploaded resume or a linkedin profile pdf and opens it in the builder
 export async function POST(request: Request): Promise<Response> {
   try {

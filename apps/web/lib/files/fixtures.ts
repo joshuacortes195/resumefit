@@ -1,4 +1,5 @@
 // builds small resume files in memory for the tests, so no binary files live in the repo
+import { deflateSync } from "node:zlib";
 import { AlignmentType, Document, Footer, Header, ImageRun, Packer, Paragraph, Table, TableCell, TableRow, TextRun, WidthType } from "docx";
 import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage } from "pdf-lib";
 
@@ -214,4 +215,23 @@ export async function tableDocx(): Promise<Uint8Array> {
       ],
     }),
   );
+}
+
+// a one page pdf whose page squeezes down to a few KB and unpacks to megabytes of drawing commands, the way a file built to tie a server up does
+export function heavyPdf(megabytes: number): Uint8Array {
+  const line = "BT /F1 9 Tf 1 0 0 1 20 700 Tm (Experience with many skills) Tj ET\n";
+  const packed = deflateSync(Buffer.from(line.repeat(Math.floor((megabytes * 1024 * 1024) / line.length))), { level: 9 });
+  const objects = ["<< /Type /Catalog /Pages 2 0 R >>", "<< /Type /Pages /Kids [3 0 R] /Count 1 >>", "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>", null, "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>"];
+  const parts = [Buffer.from("%PDF-1.4\n")];
+  const offsets: number[] = [];
+  let at = parts[0]?.length ?? 0;
+  objects.forEach((body, index) => {
+    offsets.push(at);
+    // the fourth object is the page's content, the rest are plain
+    const part = body === null ? Buffer.concat([Buffer.from(`${index + 1} 0 obj\n<< /Length ${packed.length} /Filter /FlateDecode >>\nstream\n`), packed, Buffer.from("\nendstream\nendobj\n")]) : Buffer.from(`${index + 1} 0 obj\n${body}\nendobj\n`);
+    parts.push(part);
+    at += part.length;
+  });
+  const xref = `xref\n0 6\n0000000000 65535 f \n${offsets.map((offset) => `${String(offset).padStart(10, "0")} 00000 n \n`).join("")}trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n${at}\n%%EOF\n`;
+  return new Uint8Array(Buffer.concat([...parts, Buffer.from(xref)]));
 }

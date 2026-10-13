@@ -14,6 +14,9 @@ const jobSchema = z.object({
   jobUrl: webUrl("That job link does not look right. Paste the full address, starting with https://").optional(),
 });
 
+// reading a file is the heaviest thing the app does, so the host stops a request that is still going after this many seconds
+export const maxDuration = 30;
+
 // runs a new scan from the form: a resume (file, text or saved) plus a job description
 export async function POST(request: Request): Promise<Response> {
   try {

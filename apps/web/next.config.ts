@@ -16,6 +16,8 @@ const nextConfig: NextConfig = {
   headers: async () => [{ source: "/:path*", headers: SECURITY_HEADERS }],
   // these load their own files at runtime, so they are left out of the bundle
   serverExternalPackages: ["@electric-sql/pglite", "unpdf"],
+  // the pdf page reader is started as a side thread from its own file, so that file has to be shipped with the routes that take uploads
+  outputFileTracingIncludes: { "/api/**": ["./lib/files/pdf-pages.mjs"] },
   // workspace packages ship as typescript, so next has to compile them
   transpilePackages: ["@resumefit/shared", "@resumefit/scoring", "@resumefit/skills-data"],
   turbopack: {
