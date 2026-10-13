@@ -73,12 +73,18 @@ function getPage(url: URL, accept: string): Promise<Page> {
       const stream = unpack ? response.pipe(unpack) : response;
       const chunks: Buffer[] = [];
       let size = 0;
-      const done = () => resolve({ status, location, type: String(response.headers["content-type"] ?? ""), body: Buffer.concat(chunks).toString("utf8") });
+      let stopped = false;
+      const done = () => resolve({ status, location, type: String(response.headers["content-type"] ?? ""), body: Buffer.concat(chunks).subarray(0, MAX_BYTES).toString("utf8") });
       stream.on("data", (chunk: Buffer) => {
+        // nothing is kept once the page has been cut off
+        if (stopped) return;
         chunks.push(chunk);
         size += chunk.length;
-        // a giant page is cut off here instead of filling memory. the size is counted after unpacking
+        // a giant page is cut off here instead of filling memory. the size is counted after unpacking,
+        // and the unpacking is stopped too, or a few bytes built to unpack into gigabytes would keep going
         if (size >= MAX_BYTES) {
+          stopped = true;
+          unpack?.destroy();
           response.destroy();
           done();
         }
@@ -154,18 +160,50 @@ function boardApi(url: URL): { api: string; read: (data: unknown) => ImportedJob
   return null;
 }
 
+// the longest a single tag is allowed to be before it is taken for junk
+const MAX_TAG = 4000;
+
+// every tag with a given name, each with what sits between it and its closing tag when asked for.
+// the page is walked once from start to end, so a page full of unfinished tags costs no more than an ordinary one
+function tags(html: string, lower: string, name: string, withBody: boolean): { tag: string; body: string }[] {
+  const found: { tag: string; body: string }[] = [];
+  let at = 0;
+  while (found.length < 500) {
+    const open = lower.indexOf(`<${name}`, at);
+    if (open === -1) break;
+    const close = lower.indexOf(">", open);
+    // a tag that never ends means there are no more whole tags after it
+    if (close === -1) break;
+    at = close + 1;
+    if (close - open > MAX_TAG) continue;
+    const tag = html.slice(open, close + 1);
+    if (!withBody) {
+      found.push({ tag, body: "" });
+      continue;
+    }
+    const end = lower.indexOf(`</${name}`, close);
+    // no closing tag from here on, so none for anything later either
+    if (end === -1) break;
+    found.push({ tag, body: html.slice(close + 1, end) });
+    at = end;
+  }
+  return found;
+}
+
 // what a page says about itself in its <meta> tags
-function meta(html: string, name: string): string {
-  const tag = html.match(new RegExp(`<meta[^>]+(?:property|name)=["']${name}["'][^>]*>`, "i"))?.[0] ?? "";
+function meta(metaTags: string[], name: string): string {
+  const wanted = new RegExp(`(?:property|name)=["']${name}["']`, "i");
+  const tag = metaTags.find((candidate) => wanted.test(candidate)) ?? "";
   return htmlToText(tag.match(/content=(["'])([\s\S]*?)\1/i)?.[2] ?? "");
 }
 
 // finds the job posting inside the structured data many job sites put in the page for search engines
-function structuredJob(html: string): Record<string, unknown> | null {
-  for (const match of html.matchAll(/<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi)) {
+function structuredJob(html: string, lower: string): Record<string, unknown> | null {
+  for (const script of tags(html, lower, "script", true)) {
+    if (!/type=["']application\/ld\+json["']/i.test(script.tag)) continue;
     let data: unknown;
     try {
-      data = JSON.parse(match[1] ?? "");
+      data = JSON.parse(script.body);
     } catch {
       continue;
     }
@@ -186,7 +224,8 @@ function structuredJob(html: string): Record<string, unknown> | null {
 
 // reads the job out of a page's html. kept apart from the fetching so it can be tested on its own
 export function readJobPage(html: string): ImportedJob | null {
-  const posting = structuredJob(html);
+  const lower = html.toLowerCase();
+  const posting = structuredJob(html, lower);
   if (posting) {
     const company = posting.hiringOrganization as { name?: unknown } | string | undefined;
     const place = [posting.jobLocation].flat()[0] as { address?: { addressLocality?: unknown; addressRegion?: unknown; addressCountry?: unknown } | string } | undefined;
@@ -197,9 +236,10 @@ export function readJobPage(html: string): ImportedJob | null {
     if (title) return { title, company: htmlToText(typeof company === "string" ? company : text(company?.name)), location: location || (posting.jobLocationType === "TELECOMMUTE" ? "Remote" : ""), description: htmlToText(text(posting.description)) };
   }
   // no structured data, so fall back to what the page shows when it is shared
-  const title = meta(html, "og:title") || htmlToText(html.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1] ?? "");
+  const metaTags = tags(html, lower, "meta", false).map((entry) => entry.tag);
+  const title = meta(metaTags, "og:title") || htmlToText(tags(html, lower, "title", true)[0]?.body ?? "");
   if (!title) return null;
-  return { title, company: meta(html, "og:site_name"), location: "", description: meta(html, "og:description") || meta(html, "description") };
+  return { title, company: meta(metaTags, "og:site_name"), location: "", description: meta(metaTags, "og:description") || meta(metaTags, "description") };
 }
 
 // trims everything to what the tracker stores

@@ -25,6 +25,50 @@ export type FeedJob = {
   intern: boolean;
 };
 
+// the character a numbered code like &#39; stands for, nothing when the number is not a real character
+function character(code: number): string {
+  return code > 0 && code <= 0x10ffff ? String.fromCodePoint(code) : "";
+}
+
+// closing one of these, or a line break, ends a line
+const LINE_ENDERS = new Set(["/p", "/div", "/li", "/ul", "/ol", "/h1", "/h2", "/h3", "/h4", "/h5", "/h6", "/tr", "br"]);
+
+// takes the tags out of html in a single walk from start to end: scripts and styles go with everything in them,
+// list items become bullets and the ends of blocks become new lines. it never looks at the same character twice,
+// so a page made of millions of unfinished tags costs no more than an ordinary one
+function withoutTags(html: string): string {
+  const lower = html.toLowerCase();
+  const kept: string[] = [];
+  // once a closing tag was looked for and not found, there is none further on either
+  const noClose: Record<string, boolean> = {};
+  let at = 0;
+  while (at < html.length) {
+    const open = html.indexOf("<", at);
+    const close = open === -1 ? -1 : html.indexOf(">", open + 1);
+    // no more tags, or one that never ends: the rest is plain text
+    if (close === -1) {
+      kept.push(html.slice(at));
+      break;
+    }
+    kept.push(html.slice(at, open));
+    at = close + 1;
+    // "<>" is not a tag
+    if (close === open + 1) {
+      kept.push("<>");
+      continue;
+    }
+    const name = /^\/?[a-z][a-z0-9]*/.exec(lower.slice(open + 1, Math.min(close, open + 12)))?.[0] ?? "";
+    if (name === "script" || name === "style") {
+      // skip to the end of its closing tag, when it has one
+      const end = noClose[name] ? -1 : lower.indexOf(`</${name}>`, open);
+      if (end === -1) noClose[name] = true;
+      else at = end + name.length + 3;
+    } else if (name === "li") kept.push("\n• ");
+    else if (LINE_ENDERS.has(name)) kept.push("\n");
+  }
+  return kept.join("");
+}
+
 // turns the html job boards send into plain text, keeping paragraphs and bullets. nothing from it is ever shown as html
 export function htmlToText(html: string): string {
   const decode = (text: string) =>
@@ -33,18 +77,13 @@ export function htmlToText(html: string): string {
       .replace(/&lt;/g, "<")
       .replace(/&gt;/g, ">")
       .replace(/&quot;/g, '"')
-      .replace(/&#(\d+);/g, (_, code: string) => String.fromCodePoint(Number(code)))
-      .replace(/&#x([0-9a-f]+);/gi, (_, code: string) => String.fromCodePoint(parseInt(code, 16)))
+      .replace(/&#(\d{1,8});/g, (_, code: string) => character(Number(code)))
+      .replace(/&#x([0-9a-f]{1,8});/gi, (_, code: string) => character(parseInt(code, 16)))
       .replace(/&apos;/g, "'")
       .replace(/&amp;/g, "&");
   // greenhouse sends its html with the tags themselves escaped, so decode once before stripping
   const raw = /&lt;\/?[a-z]/i.test(html) ? decode(html) : html;
-  const text = raw
-    .replace(/<(script|style)[\s\S]*?<\/\1>/gi, "")
-    .replace(/<li[^>]*>/gi, "\n• ")
-    .replace(/<\/(p|div|li|ul|ol|h[1-6]|tr)>|<br\s*\/?>/gi, "\n")
-    .replace(/<[^>]+>/g, "");
-  return decode(text)
+  return decode(withoutTags(raw))
     .replace(/[ \t]+/g, " ")
     .replace(/ ?\n ?/g, "\n")
     .replace(/\n{3,}/g, "\n\n")

@@ -29,6 +29,14 @@ const JOBS = [
 const ANY = { query: "", location: "", remoteOnly: false, internOnly: false, days: null, sort: "relevance" as const };
 
 describe("htmlToText", () => {
+  it("stays quick on text built to be slow to strip", () => {
+    for (const hostile of ["<".repeat(1_500_000), "<li ".repeat(400_000), "<script>".repeat(200_000), "<br" + " ".repeat(1_000_000), "&#".repeat(700_000)]) {
+      const started = Date.now();
+      htmlToText(hostile);
+      expect(Date.now() - started, hostile.slice(0, 12)).toBeLessThan(1500);
+    }
+  });
+
   it("keeps paragraphs and bullets and drops the tags", () => {
     expect(htmlToText("<h3>Requirements</h3><ul><li>5+ years of SQL</li><li>Tableau &amp; Excel</li></ul><p>Apply&nbsp;today.</p>")).toBe("Requirements\n\n• 5+ years of SQL\n\n• Tableau & Excel\n\nApply today.");
   });
@@ -39,6 +47,12 @@ describe("htmlToText", () => {
 
   it("never lets a script through", () => {
     expect(htmlToText('<p>Hello</p><script>alert("x")</script><img src=x onerror="alert(1)">')).toBe("Hello");
+    expect(htmlToText('<STYLE>p { color: red }</STYLE><p class="a">One</p><br/>Two<br >Three<ul><li class="x">Four</li></ul>')).toBe("One\n\nTwo\nThree\n• Four");
+    // a tag that never ends and a script that never closes are left as they are, never run and never slow
+    expect(htmlToText("a < b")).toBe("a < b");
+    expect(htmlToText("<script>one<p>two</p>")).toBe("onetwo");
+    // a numbered character that does not exist is dropped instead of breaking the read
+    expect(htmlToText("ok&#99999999;&#x110000;&#65;")).toBe("okA");
   });
 });
 

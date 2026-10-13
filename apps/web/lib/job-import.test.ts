@@ -27,4 +27,25 @@ describe("reading a job from a link", () => {
     expect(readJobPage(html)).toEqual({ title: "Nurse Manager & Lead", company: "Mesa Health", location: "", description: "Lead a team of twelve." });
     expect(readJobPage("<p>nothing here</p>")).toBeNull();
   });
+
+  it("falls back to the page title, and skips structured data that is broken or about something else", () => {
+    const html = `<html><head><script type="application/ld+json">{not json</script><script type="application/ld+json">{"@type":"Organization","name":"Acme"}</script><TITLE lang="en">Dock Supervisor at Acme</TITLE></head></html>`;
+    expect(readJobPage(html)).toEqual({ title: "Dock Supervisor at Acme", company: "", location: "", description: "" });
+  });
+
+  it("reads a page built to be slow about as fast as any other", () => {
+    const hostile = [
+      "<script ".repeat(250_000),
+      "<meta ".repeat(300_000),
+      "<title>".repeat(250_000),
+      `<script type="application/ld+json">{"@type":"JobPosting","title":"T","description":"${"<".repeat(1_500_000)}"}</script>`,
+      `<script type="application/ld+json">`.repeat(50_000),
+      "<script>".repeat(200_000),
+    ];
+    for (const html of hostile) {
+      const started = Date.now();
+      readJobPage(html);
+      expect(Date.now() - started, html.slice(0, 40)).toBeLessThan(1500);
+    }
+  });
 });
