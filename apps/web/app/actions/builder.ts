@@ -16,8 +16,11 @@ import { createBuilderResume, saveBuilderResume } from "@/lib/data/builder";
 import { deleteResume } from "@/lib/data/resumes";
 import { savedJobs } from "@/lib/jobs-feed";
 import { safeErrorText } from "@/lib/log";
+import { withinLimit } from "@/lib/rate-limit";
 
 type Result<T = object> = ({ ok: true } & T) | { ok: false; error: string };
+
+const SLOW_DOWN = "That is a lot of requests in a short time. Wait a minute and try again.";
 
 // turns anything that went wrong with a writing request into a message
 function problem(error: unknown): { ok: false; error: string } {
@@ -61,6 +64,7 @@ export async function writeBullets(input: { title: string; company: string; desc
 
 // writes the summary from the rest of the resume, leaning toward a job description when one is given
 export async function writeSummary(data: unknown, jdText: string): Promise<Result<{ summary: string; remaining: number | null }>> {
+  if (typeof jdText !== "string") jdText = "";
   const parsed = builderDataSchema.safeParse(data);
   if (!parsed.success) return { ok: false, error: "Fill in your experience first." };
   if (parsed.data.experience.length === 0 && parsed.data.education.length === 0) return { ok: false, error: "Add some experience or education first, the summary is written from them." };
@@ -78,9 +82,10 @@ export async function writeSummary(data: unknown, jdText: string): Promise<Resul
 
 // finds the skills a job description asks for, most mentioned first. no ai involved
 export async function skillsFromJob(jdText: string): Promise<Result<{ skills: string[] }>> {
-  const text = jdText.trim();
+  const text = typeof jdText === "string" ? jdText.trim() : "";
   if (text.length < 20) return { ok: false, error: "Paste a job description, or at least a few lines of one." };
-  await getCurrentUser();
+  const user = await getCurrentUser();
+  if (!(await withinLimit(user.id, "skill-lookup"))) return { ok: false, error: SLOW_DOWN };
   const counts = countSkills(text.slice(0, 60_000), [...HARD_SKILLS, ...SOFT_SKILLS]);
   const skills = [...counts].sort((a, b) => b[1] - a[1]).map(([name]) => name);
   return skills.length > 0 ? { ok: true, skills: skills.slice(0, 24) } : { ok: false, error: "We did not recognize any skills in that text. Try pasting more of the job description." };
@@ -91,9 +96,10 @@ const TITLE_FILLER = new Set(["senior", "junior", "lead", "staff", "principal", 
 
 // suggests skills from a job title alone. real postings with that title are read first, a model fills in when there are too few
 export async function skillsForTitle(title: string): Promise<Result<{ skills: string[] }>> {
-  const wanted = title.trim().slice(0, 100);
+  const wanted = typeof title === "string" ? title.trim().slice(0, 100) : "";
   if (wanted.length < 2) return { ok: false, error: "Type the job title you are aiming for, like Supply Chain Analyst." };
   const user = await getCurrentUser();
+  if (!(await withinLimit(user.id, "skill-lookup"))) return { ok: false, error: SLOW_DOWN };
   const words = wanted
     .toLowerCase()
     .split(/[^a-z0-9+#]+/)

@@ -10,7 +10,11 @@ export const RATE_LIMITS = {
   "find-jobs": 30,
   "job-import": 15,
   "save-job": 30,
+  // looking up skills for the builder, which reads through thousands of them each time
+  "skill-lookup": 30,
   export: 30,
+  // the zip of everything someone has stored is the heaviest download there is
+  "account-export": 3,
   // shared by everyone, for the job refresh address when it has no secret. this one is per ten minutes
   "feed-refresh": 1,
   // sign in emails one address can ask for, and sign in tries from one connection. these two are per quarter of an hour

@@ -39,6 +39,9 @@ export function field(form: FormData, name: string): string | undefined {
   return value || undefined;
 }
 
+// the longest name a resume can be saved under
+const MAX_NAME = 200;
+
 const resumeTextSchema = z.string().min(50, "That resume looks too short. Paste the full text.").max(60_000, "That resume is too long to scan.");
 
 // works out which resume a form is about: an uploaded file, pasted text or a saved one
@@ -57,7 +60,7 @@ export async function resolveResume(userId: string, form: FormData, linkedJobId?
     try {
       const bytes = await uploadBytes(file);
       const { text, layout } = await readResumeFile(bytes, file.name);
-      const name = field(form, "resumeName") ?? file.name.replace(/\.[a-z0-9]+$/i, "");
+      const name = (field(form, "resumeName") ?? file.name.replace(/\.[a-z0-9]+$/i, "")).slice(0, MAX_NAME);
       const saved = await saveResume(userId, { name, text, layout, file: { bytes, type: layout.fileType }, linkedJobId });
       return { resumeId: saved.id, text, layout: (saved.layoutMeta as LayoutMeta | null) ?? layout };
     } catch (error) {
@@ -76,7 +79,7 @@ export async function resolveResume(userId: string, form: FormData, linkedJobId?
   // text pasted into the box
   const parsed = resumeTextSchema.safeParse(resumeText ?? "");
   if (!parsed.success) throw new RequestError(resumeText ? (parsed.error.issues[0]?.message ?? "Check your resume text.") : "Add a resume first. Upload a file, paste the text or pick a saved one.");
-  const name = field(form, "resumeName") ?? `Pasted resume, ${new Date().toLocaleDateString("en-US", { month: "short", day: "numeric" })}`;
+  const name = field(form, "resumeName")?.slice(0, MAX_NAME) ?? `Pasted resume, ${new Date().toLocaleDateString("en-US", { month: "short", day: "numeric" })}`;
   const saved = await saveResume(userId, { name, text: parsed.data, linkedJobId });
   return { resumeId: saved.id, text: parsed.data, layout: null };
 }

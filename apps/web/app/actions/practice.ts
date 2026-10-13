@@ -36,8 +36,10 @@ const profileSchema = z.object({
 
 // scores a linkedin profile against one to three job descriptions and saves the report
 export async function createLinkedinReport(input: { profile: z.input<typeof profileSchema>; jobDescriptions: string[] }): Promise<Result<{ id: string }>> {
-  const profile = profileSchema.safeParse(input.profile);
-  const jobs = z.array(z.string().trim().min(50).max(60_000)).min(1, "Add at least one job description to compare your profile with.").max(3).safeParse(input.jobDescriptions.filter((jd) => jd.trim()));
+  const profile = profileSchema.safeParse(input?.profile);
+  // only text counts as a job description, whatever else was sent is dropped
+  const pasted = Array.isArray(input?.jobDescriptions) ? input.jobDescriptions.filter((jd): jd is string => typeof jd === "string" && jd.trim() !== "") : [];
+  const jobs = z.array(z.string().trim().min(50).max(60_000)).min(1, "Add at least one job description to compare your profile with.").max(3).safeParse(pasted);
   if (!profile.success) return { ok: false, error: "Part of your profile is too long. Trim it and try again." };
   if (!jobs.success) return { ok: false, error: jobs.error.issues[0]?.code === "too_small" && jobs.error.issues[0].path.length > 0 ? "One of the job descriptions is too short. Paste the full posting." : (jobs.error.issues[0]?.message ?? "Check the job descriptions.") };
   if (!profile.data.headline && !profile.data.about && !profile.data.experience) return { ok: false, error: "Add your headline, About section or experience first." };
@@ -54,6 +56,7 @@ export async function createLinkedinReport(input: { profile: z.input<typeof prof
 
 // drafts three headlines or a new About section for a saved report
 export async function rewriteLinkedin(reportId: string, part: "headline" | "about"): Promise<Result<{ options: string[]; remaining: number | null }>> {
+  if (!z.uuid().safeParse(reportId).success || (part !== "headline" && part !== "about")) return { ok: false, error: "We could not find that report." };
   try {
     const user = await getCurrentUser();
     const saved = await getLinkedinReport(user.id, reportId);

@@ -176,7 +176,8 @@ export async function listManagedResumes(userId: string): Promise<ManagedResume[
       jobCompany: schema.jobs.company,
     })
     .from(schema.resumes)
-    .leftJoin(schema.jobs, eq(schema.resumes.linkedJobId, schema.jobs.id))
+    // the job has to be the same person's too, whatever id the resume carries
+    .leftJoin(schema.jobs, and(eq(schema.resumes.linkedJobId, schema.jobs.id), eq(schema.jobs.userId, userId)))
     .where(eq(schema.resumes.userId, userId))
     .orderBy(desc(schema.resumes.isBase), desc(schema.resumes.updatedAt));
   return rows.map(({ rawText, ...row }) => ({ ...row, words: (rawText ?? "").split(/\s+/).filter(Boolean).length }));

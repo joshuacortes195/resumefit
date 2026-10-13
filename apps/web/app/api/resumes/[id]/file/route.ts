@@ -2,6 +2,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { builderPdf } from "@/lib/builder/export-pdf";
 import { toBuilderResume } from "@/lib/data/builder";
 import { getResume } from "@/lib/data/resumes";
+import { withinLimit } from "@/lib/rate-limit";
 import { loadFile } from "@/lib/storage";
 
 // file names in a download header can only use plain characters
@@ -13,6 +14,7 @@ function safeName(name: string): string {
 export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }): Promise<Response> {
   const { id } = await params;
   const user = await getCurrentUser();
+  if (!(await withinLimit(user.id, "export"))) return new Response("That is a lot of downloads in a short time. Wait a minute and try again.", { status: 429 });
   const resume = /^[0-9a-f-]{36}$/i.test(id) ? await getResume(user.id, id) : null;
   if (!resume) return new Response("Resume not found", { status: 404 });
 

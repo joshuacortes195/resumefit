@@ -83,6 +83,7 @@ export async function addSkill(scanId: string, input: { name: string; category: 
 
 // takes back a skill that was added by hand
 export async function removeSkill(scanId: string, name: string): Promise<ActionResult> {
+  if (typeof name !== "string") return fail("We could not find that skill.");
   const user = await getCurrentUser();
   const scan = id.safeParse(scanId).success ? await getScan(user.id, scanId) : null;
   if (!scan) return fail("We could not find that scan.");

@@ -181,17 +181,20 @@ async function attempt<T>(
       try {
         const { value, tokensIn, tokensOut } = await run(provider, model, AbortSignal.timeout(options.timeoutMs ?? 25_000));
         // the first good call on this copy of the app is written down, and so is one that follows a problem. that is what lets a saved problem be cleared
-        const worthSaving = !health[provider.name]?.lastOk || Boolean(health[provider.name]?.lastError);
-        record(provider.name);
+        const worthSaving = !options.untracked && (!health[provider.name]?.lastOk || Boolean(health[provider.name]?.lastError));
+        if (!options.untracked) record(provider.name);
         if (worthSaving) await saveHealth(provider.name);
         if (!options.untracked) await logUsage({ userId: options.userId, feature, provider: provider.name, model, tokensIn, tokensOut });
         return value;
       } catch (error) {
         // rate limits, outages, timeouts and unusable answers all mean "try the next one"
-        record(provider.name, error instanceof Error ? error : new Error("unknown error"));
-        // also into the server log and the database, so the reason can be found afterwards
-        console.error(`ai provider ${provider.name} (${model}) failed for ${feature}: ${health[provider.name]?.lastError ?? "unknown"}`);
-        await saveHealth(provider.name);
+        // someone trying out a key of their own is not news about the shared providers, so nothing is noted down for that
+        if (!options.untracked) {
+          record(provider.name, error instanceof Error ? error : new Error("unknown error"));
+          // also into the server log and the database, so the reason can be found afterwards
+          console.error(`ai provider ${provider.name} (${model}) failed for ${feature}: ${health[provider.name]?.lastError ?? "unknown"}`);
+          await saveHealth(provider.name);
+        }
         // "wants billing", "not allowed" and "no such model" are about that one model, so the smaller one is worth a try.
         // anything else, like a rate limit, is about the whole provider, so move on to the next
         // groq says a retired model with a 400, so the reason it gives counts too, not only the status

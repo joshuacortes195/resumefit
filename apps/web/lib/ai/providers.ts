@@ -103,14 +103,15 @@ async function postJson(url: string, token: string, body: unknown, signal: Abort
   const response = await fetch(url, { method: "POST", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" }, body: JSON.stringify(body), signal });
   if (!response.ok) {
     const answer = await response.text().catch(() => "");
-    // the shape of what was sent and the provider's own answer, in the server log only. the text of the prompt is left out, its size is enough
-    const sent = body as { model?: unknown; messages?: { role?: string; content?: string }[]; response_format?: unknown } & Record<string, unknown>;
-    console.error(
-      `ai request refused: ${response.status} from ${new URL(url).host}, model ${String(sent.model ?? "(in the address)")}, fields [${Object.keys(sent).join(", ")}], messages ${(sent.messages ?? []).map((message) => `${message.role}:${message.content?.length ?? 0} chars`).join(" + ")}, response_format ${JSON.stringify(sent.response_format ?? null)}. answer: ${answer.slice(0, 600)}`,
-    );
     // keep what the provider said about why. a bare "status 400" tells nobody what to fix
     const detail = errorDetail(answer);
-    const reason = [detail.code, detail.message].filter(Boolean).join(": ");
+    const reason = [detail.code, detail.message].filter(Boolean).join(": ").slice(0, 300);
+    // the shape of what was sent and the provider's reason, in the server log only. the text of the prompt is left out, its size is enough,
+    // and so is the body of the answer: some providers put the model's half written reply in it, which is made from someone's resume
+    const sent = body as { model?: unknown; messages?: { role?: string; content?: string }[]; response_format?: unknown } & Record<string, unknown>;
+    console.error(
+      `ai request refused: ${response.status} from ${new URL(url).host}, model ${String(sent.model ?? "(in the address)")}, fields [${Object.keys(sent).join(", ")}], messages ${(sent.messages ?? []).map((message) => `${message.role}:${message.content?.length ?? 0} chars`).join(" + ")}, response_format ${JSON.stringify(sent.response_format ?? null)}. reason: ${reason || "none given"}`,
+    );
     throw new ProviderError(`Request failed with status ${response.status}${reason ? ` (${reason})` : ""}`, response.status, detail.code);
   }
   return (await response.json()) as Record<string, unknown>;

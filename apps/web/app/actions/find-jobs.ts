@@ -94,6 +94,8 @@ export async function findJobs(input: z.input<typeof searchSchema>): Promise<Res
 
 // the full text of one opening
 export async function readJob(id: string): Promise<Result<{ description: string }>> {
+  // what arrives is only as well shaped as whoever sent it
+  if (typeof id !== "string" || !id) return { ok: false, error: "We could not load this job's description. Open it on the job site instead." };
   const user = await getCurrentUser();
   if (!(await featureFlags()).findJobs) return OFF;
   if (!(await withinLimit(user.id, "find-jobs"))) return SLOW_DOWN;
