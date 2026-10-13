@@ -10,6 +10,7 @@ import { createJob } from "./jobs";
 import { saveResume } from "./resumes";
 import { createScan } from "./scans";
 import { dailyCaps, featureFlags, saveDailyCaps, saveFeatureFlags } from "./settings";
+import { loadFile, saveFile } from "@/lib/storage";
 
 // makes a person with a resume, a scan and a job
 async function seedPerson(email: string) {
@@ -37,10 +38,31 @@ describe("account export and delete", () => {
     expect(await zip.file("files/My resume.pdf")?.async("string")).toBe("%PDF-fake");
   });
 
+  it("keeps both files when two resumes share a name, and lists the ai features that were used", async () => {
+    const pat = await seedPerson(`twice-${randomUUID()}@example.com`);
+    const second = await saveResume(pat.id, { name: "My resume", text: "Pat Doe\n\nWork Experience\nAnalyst, Acme\n• A second copy of the same resume\n", file: { bytes: new TextEncoder().encode("%PDF-second"), type: "pdf" } });
+    const db = await getDb();
+    await db.insert(schema.aiUsage).values({ userId: pat.id, feature: "cover-letter", provider: "groq", model: "test" });
+
+    const zip = await JSZip.loadAsync(await exportAccount(pat.id));
+    const files = Object.keys(zip.files).filter((name) => name.startsWith("files/") && !name.endsWith("/"));
+    expect(files).toHaveLength(2);
+    expect(files).toContain("files/My resume.pdf");
+    expect(files).toContain(`files/${second.id} My resume.pdf`);
+    const data = JSON.parse((await zip.file("data.json")?.async("string")) ?? "{}");
+    expect(data.aiUsage).toHaveLength(1);
+    expect(data.pendingLinkedin).toBeNull();
+  });
+
   it("deletes the person, everything of theirs, and nobody else's", async () => {
     const gone = await seedPerson("gone@example.com");
     const stays = await seedPerson("stays@example.com");
-    await deleteAccount(gone.id);
+    // a file left behind by a resume that no longer exists goes too
+    await saveFile(`${gone.id}/left-behind.pdf`, new TextEncoder().encode("%PDF-old"), "application/pdf");
+    expect(await deleteAccount(gone.id)).toEqual({ filesLeft: false });
+    expect(await loadFile(`${gone.id}/left-behind.pdf`)).toBeNull();
+    expect(await loadFile(gone.resume.filePath ?? "")).toBeNull();
+    expect(await loadFile(stays.resume.filePath ?? "")).not.toBeNull();
 
     const db = await getDb();
     for (const table of [schema.resumes, schema.scans, schema.jobs]) {

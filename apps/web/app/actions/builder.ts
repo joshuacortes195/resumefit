@@ -7,7 +7,7 @@ import { HARD_SKILLS, SOFT_SKILLS } from "@resumefit/skills-data";
 import { remainingToday } from "@/lib/ai/limits";
 import { BUILDER_BULLETS_SYSTEM, BUILDER_SKILLS_SYSTEM, BUILDER_SUMMARY_SYSTEM, builderBulletsPrompt, builderBulletsSchema, builderSkillsSchema, builderSummaryPrompt } from "@/lib/ai/prompts/builder";
 import { tidy } from "@/lib/ai/prompts/style";
-import { redact } from "@/lib/ai/redact";
+import { redact, redactor } from "@/lib/ai/redact";
 import { AiBusyError, AiLimitError, AiUnavailableError, aiAvailable, generateJSON, generateText } from "@/lib/ai/router";
 import { getCurrentUser } from "@/lib/auth";
 import { builderToText } from "@/lib/builder/layout";
@@ -50,8 +50,10 @@ export async function writeBullets(input: { title: string; company: string; desc
   if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? "Describe the job first." };
   try {
     const user = await getCurrentUser();
-    const reply = await generateJSON("builder", { system: BUILDER_BULLETS_SYSTEM, prompt: builderBulletsPrompt(parsed.data) }, builderBulletsSchema, { userId: user.id, fast: true });
-    return { ok: true, bullets: reply.bullets.map((bullet) => tidy(bullet).replace(/^[•\-*]\s*/, "")).filter(Boolean), remaining: await remainingToday(user.id, "builder") };
+    // what the person typed about the job can hold contact details, so those are hidden on the way out and put back after
+    const described = redact(parsed.data.description);
+    const reply = await generateJSON("builder", { system: BUILDER_BULLETS_SYSTEM, prompt: builderBulletsPrompt({ ...parsed.data, description: described.text }) }, builderBulletsSchema, { userId: user.id, fast: true });
+    return { ok: true, bullets: reply.bullets.map((bullet) => tidy(described.restore(bullet)).replace(/^[•\-*]\s*/, "")).filter(Boolean), remaining: await remainingToday(user.id, "builder") };
   } catch (error) {
     return problem(error);
   }
@@ -65,9 +67,10 @@ export async function writeSummary(data: unknown, jdText: string): Promise<Resul
   try {
     const user = await getCurrentUser();
     // the summary is written from everything except the old summary, with contact details hidden
-    const resume = redact(builderToText({ ...parsed.data, summary: "" }, "classic"), { name: parsed.data.profile.name, location: parsed.data.profile.location });
-    const summary = await generateText("builder", { system: BUILDER_SUMMARY_SYSTEM, prompt: builderSummaryPrompt({ resume: resume.text, years: parsed.data.profile.years, jdText: jdText.slice(0, 20_000) }) }, { userId: user.id });
-    return { ok: true, summary: resume.restore(tidy(summary)), remaining: await remainingToday(user.id, "builder") };
+    const hidden = redactor({ name: parsed.data.profile.name, location: parsed.data.profile.location });
+    const resume = hidden.hide(builderToText({ ...parsed.data, summary: "" }, "classic"));
+    const summary = await generateText("builder", { system: BUILDER_SUMMARY_SYSTEM, prompt: builderSummaryPrompt({ resume, years: parsed.data.profile.years, jdText: hidden.hide(jdText.slice(0, 20_000)) }) }, { userId: user.id });
+    return { ok: true, summary: hidden.restore(tidy(summary)), remaining: await remainingToday(user.id, "builder") };
   } catch (error) {
     return problem(error);
   }
@@ -124,7 +127,12 @@ export async function skillsForTitle(title: string): Promise<Result<{ skills: st
 export async function discardDraft(id: string): Promise<Result> {
   if (!z.uuid().safeParse(id).success) return { ok: false, error: "We could not find that resume." };
   const user = await getCurrentUser();
-  await deleteResume(user.id, id);
+  try {
+    await deleteResume(user.id, id);
+  } catch (error) {
+    console.error(safeErrorText(error, "could not delete a draft"));
+    return { ok: false, error: "We could not delete that resume just now, so it was kept. Try again in a moment." };
+  }
   revalidatePath("/resumes");
   return { ok: true };
 }

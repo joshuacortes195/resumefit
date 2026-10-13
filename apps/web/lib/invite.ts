@@ -36,6 +36,7 @@ export const SIGN_IN_ERRORS: Record<string, string> = {
   invite: "You need an invite code to join. Enter it below and sign in again.",
   google: "Google sign in did not work. Try again, or use an email link.",
   link: "That sign in link did not work or has expired. Ask for a new one.",
+  leftover: "Your account and its data were deleted, but a stored file or your sign in record could not be removed. Tell whoever runs this copy of ResumeFit so they can finish the job.",
   missing: INVITE_ERRORS.missing,
   not_found: INVITE_ERRORS.not_found,
   expired: INVITE_ERRORS.expired,

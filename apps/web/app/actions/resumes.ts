@@ -5,6 +5,7 @@ import { z } from "zod";
 import type { ActionResult } from "@/app/actions/scans";
 import { getCurrentUser } from "@/lib/auth";
 import { deleteResume, duplicateResume, renameResume, setBaseResume } from "@/lib/data/resumes";
+import { safeErrorText } from "@/lib/log";
 
 const id = z.uuid();
 const fail = (error: string): ActionResult => ({ ok: false, error });
@@ -41,7 +42,12 @@ export async function duplicateResumeAction(resumeId: string): Promise<ActionRes
 export async function deleteResumeAction(resumeId: string): Promise<ActionResult> {
   if (!id.safeParse(resumeId).success) return fail("We could not find that resume.");
   const user = await getCurrentUser();
-  await deleteResume(user.id, resumeId);
+  try {
+    await deleteResume(user.id, resumeId);
+  } catch (error) {
+    console.error(safeErrorText(error, "could not delete a resume"));
+    return fail("We could not delete that resume just now, so it was kept. Try again in a moment.");
+  }
   revalidatePath("/resumes");
   return { ok: true };
 }

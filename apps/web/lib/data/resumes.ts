@@ -144,9 +144,10 @@ export async function duplicateResume(userId: string, id: string): Promise<Resum
 export async function deleteResume(userId: string, id: string): Promise<void> {
   const resume = await getResume(userId, id);
   if (!resume) return;
+  // the stored file goes first. if that fails the resume stays, instead of leaving a file behind that nothing points at
+  if (resume.filePath) await deleteFile(resume.filePath);
   const db = await getDb();
   await db.delete(schema.resumes).where(and(eq(schema.resumes.userId, userId), eq(schema.resumes.id, id)));
-  if (resume.filePath) await deleteFile(resume.filePath);
   // when the base resume is deleted, the most recent one left takes its place
   if (resume.isBase) {
     const [next] = await db.select({ id: schema.resumes.id }).from(schema.resumes).where(eq(schema.resumes.userId, userId)).orderBy(desc(schema.resumes.updatedAt)).limit(1);

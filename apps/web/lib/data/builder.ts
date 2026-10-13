@@ -5,6 +5,7 @@ import { getDb, schema } from "@/db";
 import { builderFromParsed, builderLayoutMeta, builderToText } from "@/lib/builder/layout";
 import { builderDataSchema, defaultSettings, emptyBuilder, templateSettingsSchema, type BuilderData, type TemplateSettings } from "@/lib/builder/types";
 import { getResume, type ResumeRow } from "@/lib/data/resumes";
+import { safeErrorText } from "@/lib/log";
 import { deleteFile } from "@/lib/storage";
 
 // what the builder page needs to open a resume
@@ -60,6 +61,7 @@ export async function saveBuilderResume(userId: string, id: string, data: Builde
     .set({ name, rawText: text, parsed: parseResume(text), layoutMeta: builderLayoutMeta(data, settings), builderData: data, templateSettings: settings, filePath: null, fileType: null })
     .where(and(eq(schema.resumes.id, id), eq(schema.resumes.userId, userId)));
   // the uploaded original no longer matches what is in the builder
-  if (existing.filePath) await deleteFile(existing.filePath);
+  // the save itself worked, so a file that would not go is only noted. it is cleared with the rest if the account is ever deleted
+  if (existing.filePath) await deleteFile(existing.filePath).catch((error) => console.error(safeErrorText(error, "could not remove a replaced resume file")));
   return true;
 }
