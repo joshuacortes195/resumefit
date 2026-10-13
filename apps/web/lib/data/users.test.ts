@@ -7,7 +7,7 @@ import { deleteAccount } from "./account";
 import { admitUser, emailKnown, inviteProblem, noUsersYet } from "./users";
 
 // someone coming back from their email link or from google
-const person = (email: string) => ({ id: randomUUID(), email, name: "Test Person", avatar: null });
+const person = (email: string) => ({ id: randomUUID(), email, name: "Test Person", avatar: null, confirmed: true });
 
 describe("letting people in", () => {
   it("asks new people for a working invite code and uses it up", async () => {
@@ -100,5 +100,39 @@ describe("the admin spot", () => {
     const [row] = await db.select({ isAdmin: schema.users.isAdmin }).from(schema.users).where(eq(schema.users.id, owner.id));
     expect(row?.isAdmin).toBe(true);
     vi.unstubAllEnvs();
+  });
+
+  it("does not take the owner's email on trust", async () => {
+    vi.stubEnv("ADMIN_EMAIL", "boss@example.com");
+    const db = await getDb();
+    await db.insert(schema.inviteCodes).values({ code: "MEMBER01", maxUses: 1 });
+
+    // an email the provider has not confirmed is treated like anyone else's
+    expect(await admitUser({ ...person("boss@example.com"), confirmed: false }, null)).toEqual({ error: "Enter your invite code to sign up." });
+
+    // a member who later changes their email to the owner's stays a member
+    const member = person("member@example.com");
+    expect(await admitUser(member, "MEMBER01")).toMatchObject({ user: { isAdmin: false } });
+    expect(await admitUser({ ...member, email: "boss@example.com" }, null)).toMatchObject({ user: { email: "member@example.com", isAdmin: false } });
+    const [row] = await db.select({ isAdmin: schema.users.isAdmin }).from(schema.users).where(eq(schema.users.id, member.id));
+    expect(row?.isAdmin).toBe(false);
+    vi.unstubAllEnvs();
+  });
+
+  it("gives the first admin spot to one person only, and to nobody but the owner when an owner email is set", async () => {
+    const db = await getDb();
+    for (const user of await db.select({ id: schema.users.id }).from(schema.users)) await deleteAccount(user.id);
+    await db.delete(schema.appSettings).where(eq(schema.appSettings.key, "setup:claimed"));
+
+    // with an owner email set, a stranger who turns up first is not the admin
+    vi.stubEnv("ADMIN_EMAIL", "boss@example.com");
+    expect(await admitUser(person("early.bird@example.com"), null)).toEqual({ error: "Enter your invite code to sign up." });
+    vi.unstubAllEnvs();
+
+    // with none set, two people arriving at the same moment cannot both become the admin
+    const results = await Promise.all([admitUser(person("one@example.com"), null), admitUser(person("two@example.com"), null)]);
+    expect(results.filter((result) => "user" in result && result.user.isAdmin)).toHaveLength(1);
+    expect(results.filter((result) => "error" in result)).toEqual([{ error: "Enter your invite code to sign up." }]);
+    expect((await db.select().from(schema.users).where(eq(schema.users.isAdmin, true))).length).toBe(1);
   });
 });

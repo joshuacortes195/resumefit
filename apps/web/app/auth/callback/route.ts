@@ -18,7 +18,9 @@ export async function GET(request: Request): Promise<Response> {
   // new people need the invite code they typed before leaving for their email
   const store = await cookies();
   const meta = data.user.user_metadata as { full_name?: string; name?: string; avatar_url?: string };
-  const admitted = await admitUser({ id: data.user.id, email: data.user.email, name: meta.full_name ?? meta.name ?? null, avatar: meta.avatar_url ?? null }, store.get("rf_invite")?.value ?? null);
+  // whether the provider has seen proof that this person owns the email, which the owner rule depends on
+  const confirmed = Boolean(data.user.email_confirmed_at);
+  const admitted = await admitUser({ id: data.user.id, email: data.user.email, name: meta.full_name ?? meta.name ?? null, avatar: meta.avatar_url ?? null, confirmed }, store.get("rf_invite")?.value ?? null);
   store.delete("rf_invite");
   if ("error" in admitted) {
     // signed in with the provider but not allowed in, so do not leave a session behind

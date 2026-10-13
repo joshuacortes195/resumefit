@@ -49,6 +49,9 @@ export async function handOverAdmin(leavingId: string): Promise<void> {
 // thrown inside the sign up when someone else took the last use of a code a moment before
 class InviteSpent extends Error {}
 
+// thrown inside the sign up when someone else became the first admin a moment before
+class FirstSpotTaken extends Error {}
+
 // checks a code against the invite table, returns a message when it cannot be used
 export async function inviteProblem(code: string | null | undefined): Promise<string | null> {
   const normalized = normalizeInviteCode(code ?? "");
@@ -58,24 +61,30 @@ export async function inviteProblem(code: string | null | undefined): Promise<st
   return result.ok ? null : INVITE_ERRORS[result.reason];
 }
 
-// true for the owner's email from the environment. the sign in provider has already proved the person owns it
+// true for the owner's email from the environment
 export function isOwnerEmail(email: string): boolean {
   const owner = serverEnv().ADMIN_EMAIL;
   return owner !== undefined && owner.toLowerCase() === email.trim().toLowerCase();
 }
 
-// lets a newly signed in person into the app, using up their invite code. returns a message when they cannot come in
-export async function admitUser(person: { id: string; email: string; name: string | null; avatar: string | null }, inviteCode: string | null): Promise<{ user: CurrentUser } | { error: string }> {
-  const owner = isOwnerEmail(person.email);
+// lets a newly signed in person into the app, using up their invite code. returns a message when they cannot come in.
+// confirmed says whether the sign in provider has seen proof that the person owns the email
+export async function admitUser(person: { id: string; email: string; name: string | null; avatar: string | null; confirmed: boolean }, inviteCode: string | null): Promise<{ user: CurrentUser } | { error: string }> {
+  // the owner's email only counts once the provider has confirmed it, so typing it in somewhere is not enough
+  const owner = person.confirmed && isOwnerEmail(person.email);
   const existing = await findUser(person.id);
   if (existing) {
-    // the owner gets the admin spot back if it was handed on while they were away
-    if (owner && !existing.isAdmin) await (await getDb()).update(schema.users).set({ isAdmin: true }).where(eq(schema.users.id, existing.id));
-    return { user: { ...existing, isAdmin: existing.isAdmin || owner } };
+    // the owner gets the admin spot back if it was handed on while they were away.
+    // the email they joined with has to be the owner's too, so a member cannot get there by changing their email later
+    const back = owner && isOwnerEmail(existing.email);
+    if (back && !existing.isAdmin) await (await getDb()).update(schema.users).set({ isAdmin: true }).where(eq(schema.users.id, existing.id));
+    return { user: { ...existing, isAdmin: existing.isAdmin || back } };
   }
 
-  // the very first person ever, or the owner, comes in as an admin with no code
-  const first = (await noUsersYet()) || owner;
+  // the owner comes in as an admin with no code. so does the very first person ever, but only when no owner email is set:
+  // with one set, a stranger who finds the address before the owner does is just a stranger
+  const claiming = !owner && serverEnv().ADMIN_EMAIL === undefined && (await noUsersYet());
+  const first = owner || claiming;
   const needsInvite = serverEnv().INVITE_ONLY && !first;
   if (needsInvite) {
     const problem = await inviteProblem(inviteCode);
@@ -86,6 +95,11 @@ export async function admitUser(person: { id: string; email: string; name: strin
   const code = needsInvite ? normalizeInviteCode(inviteCode ?? "") : null;
   try {
     await db.transaction(async (tx) => {
+      if (claiming) {
+        // the first admin spot is taken by writing the note. two people arriving together cannot both write it
+        const taken = await tx.insert(schema.appSettings).values({ key: CLAIMED_KEY, value: true }).onConflictDoNothing({ target: schema.appSettings.key }).returning({ key: schema.appSettings.key });
+        if (taken.length === 0) throw new FirstSpotTaken();
+      }
       await tx.insert(schema.users).values({ id: person.id, email: person.email.toLowerCase(), name: person.name, avatar: person.avatar, inviteCodeUsed: code, isAdmin: first });
       if (!code) return;
       // the use is only counted while there is one left. two people signing up at the same moment cannot both take the last one
@@ -99,6 +113,8 @@ export async function admitUser(person: { id: string; email: string; name: strin
     });
   } catch (error) {
     if (error instanceof InviteSpent) return { error: INVITE_ERRORS.used_up };
+    // the other person is the admin now, so this one needs a code like everyone after them
+    if (error instanceof FirstSpotTaken) return { error: serverEnv().INVITE_ONLY ? INVITE_ERRORS.missing : "Something went wrong signing you in. Try again." };
     throw error;
   }
   if (first) await markClaimed();
