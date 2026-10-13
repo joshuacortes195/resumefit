@@ -15,13 +15,14 @@ import { getJob } from "@/lib/data/jobs";
 import { clearPendingLinkedin, createPracticeSession, getLinkedinReport, getPracticeSession, saveLinkedinReport, savePracticeAnswer, type PracticeAnswer } from "@/lib/data/practice";
 import { getResume, listResumes } from "@/lib/data/resumes";
 import { fallbackQuestions, measureAnswer } from "@/lib/interview";
+import { safeErrorText } from "@/lib/log";
 
 type Result<T = object> = ({ ok: true } & T) | { ok: false; error: string };
 
 // turns anything that went wrong with a writing request into a message
 function problem(error: unknown): { ok: false; error: string } {
   if (error instanceof AiBusyError || error instanceof AiLimitError || error instanceof AiUnavailableError) return { ok: false, error: error.message };
-  console.error(error instanceof Error ? error.message : "practice action failed");
+  console.error(safeErrorText(error, "practice action failed"));
   return { ok: false, error: "Something went wrong on our side. Try again in a moment." };
 }
 

@@ -10,6 +10,7 @@ import { LENGTHS, TONES } from "@/lib/ai/prompts/letters";
 import type { Suggestion } from "@/lib/ai/prompts/optimize";
 import { AiBusyError, AiLimitError, AiUnavailableError } from "@/lib/ai/router";
 import { parseTarget } from "@/lib/letter-target";
+import { safeErrorText } from "@/lib/log";
 import { getCurrentUser } from "@/lib/auth";
 import { getJob, listInterviews, saveCoverLetter, updateInterview } from "@/lib/data/jobs";
 import { finishOptimization, saveSuggestions } from "@/lib/data/optimizations";
@@ -24,7 +25,7 @@ const id = z.uuid();
 // turns anything that went wrong into a message for the person
 function problem(error: unknown): { ok: false; error: string } {
   if (error instanceof AiBusyError || error instanceof AiLimitError || error instanceof AiUnavailableError) return { ok: false, error: error.message };
-  console.error(error instanceof Error ? error.message : "writing action failed");
+  console.error(safeErrorText(error, "writing action failed"));
   return { ok: false, error: "Something went wrong on our side. Try again in a moment." };
 }
 

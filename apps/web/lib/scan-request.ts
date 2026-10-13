@@ -2,6 +2,7 @@ import { z } from "zod";
 import type { LayoutMeta } from "@resumefit/scoring";
 import { DAILY_RESUME_LIMIT, getResume, resumesToday, saveResume } from "@/lib/data/resumes";
 import { FileError, MAX_FILE_BYTES, readResumeFile, uploadBytes } from "@/lib/files";
+import { safeErrorText, withoutNulls } from "@/lib/log";
 import { rateLimit, RateLimitError } from "@/lib/rate-limit";
 
 // a problem with what was sent that we can explain to the user
@@ -32,8 +33,10 @@ export async function readForm(request: Request): Promise<FormData> {
 
 // a form field as trimmed text, empty fields come back as undefined
 export function field(form: FormData, name: string): string | undefined {
-  const value = form.get(name);
-  return typeof value === "string" && value.trim() ? value.trim() : undefined;
+  const raw = form.get(name);
+  // a paste can carry a character the database refuses to store
+  const value = typeof raw === "string" ? withoutNulls(raw).trim() : "";
+  return value || undefined;
 }
 
 const resumeTextSchema = z.string().min(50, "That resume looks too short. Paste the full text.").max(60_000, "That resume is too long to scan.");
@@ -81,7 +84,7 @@ export async function resolveResume(userId: string, form: FormData, linkedJobId?
 // turns anything thrown in a route into a json answer the form can show
 export function errorResponse(error: unknown): Response {
   if (error instanceof RequestError || error instanceof RateLimitError) return Response.json({ error: error.message }, { status: error.status });
-  console.error(error instanceof Error ? error.message : "request failed");
+  console.error(safeErrorText(error, "request failed"));
   return Response.json({ error: "Something went wrong on our side. Try again in a moment." }, { status: 500 });
 }
 

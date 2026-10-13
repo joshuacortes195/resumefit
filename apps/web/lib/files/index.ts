@@ -1,5 +1,6 @@
 import { readDocx } from "./docx";
 import { readPdf } from "./pdf";
+import { safeErrorText, withoutNulls } from "@/lib/log";
 import { FileError, MAX_FILE_BYTES, type ExtractedFile } from "./shared";
 
 export { FileError, MAX_FILE_BYTES, type ExtractedFile } from "./shared";
@@ -30,11 +31,13 @@ export async function readResumeFile(bytes: Uint8Array, fileName: string | null)
   const type = sniffFileType(bytes);
   if (!type) throw new FileError("We can only read PDF and DOCX files. Old .doc files need to be saved as .docx first.");
   try {
-    return await (type === "pdf" ? readPdf(bytes, fileName) : readDocx(bytes, fileName));
+    const read = await (type === "pdf" ? readPdf(bytes, fileName) : readDocx(bytes, fileName));
+    // a file can carry a character the database refuses to store
+    return { ...read, text: withoutNulls(read.text) };
   } catch (error) {
     if (error instanceof FileError) throw error;
     // a damaged or odd file can trip the readers in ways we did not plan for. the detail goes to the server log, the person gets a plain message
-    console.error(`could not read an uploaded ${type}: ${error instanceof Error ? error.message : "unknown error"}`);
+    console.error(`could not read an uploaded ${type}: ${safeErrorText(error, "unknown error")}`);
     throw new FileError("We could not read this file. It may be damaged. Save a fresh copy as PDF or DOCX and upload it again.");
   }
 }

@@ -15,13 +15,14 @@ import { builderDataSchema, templateSettingsSchema } from "@/lib/builder/types";
 import { createBuilderResume, saveBuilderResume } from "@/lib/data/builder";
 import { deleteResume } from "@/lib/data/resumes";
 import { savedJobs } from "@/lib/jobs-feed";
+import { safeErrorText } from "@/lib/log";
 
 type Result<T = object> = ({ ok: true } & T) | { ok: false; error: string };
 
 // turns anything that went wrong with a writing request into a message
 function problem(error: unknown): { ok: false; error: string } {
   if (error instanceof AiBusyError || error instanceof AiLimitError || error instanceof AiUnavailableError) return { ok: false, error: error.message };
-  console.error(error instanceof Error ? error.message : "builder action failed");
+  console.error(safeErrorText(error, "builder action failed"));
   return { ok: false, error: "Something went wrong on our side. Try again in a moment." };
 }
 

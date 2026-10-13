@@ -1,5 +1,6 @@
 import type { CurrentUser } from "@/lib/auth";
 import { userForToken } from "@/lib/data/extension";
+import { safeErrorText } from "@/lib/log";
 import { RateLimitError } from "@/lib/rate-limit";
 
 // headers that let the extension, and only an extension, call these endpoints from its own pages
@@ -37,7 +38,7 @@ export function extRoute(handler: (request: Request, user: CurrentUser, context:
     } catch (error) {
       // our own messages are safe to show, anything else gets a plain one
       const known = error instanceof ExtError || error instanceof RateLimitError;
-      if (!known) console.error(error instanceof Error ? error.message : "extension request failed");
+      if (!known) console.error(safeErrorText(error, "extension request failed"));
       return extJson(request, { error: known ? error.message : "Something went wrong on our side. Try again in a moment." }, known ? error.status : 500);
     }
   };
