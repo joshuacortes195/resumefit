@@ -19,7 +19,10 @@ const globalForAuth = globalThis as unknown as { localUser?: CurrentUser };
 
 // local means one built in account, hosted means real sign in
 export function authMode(): "local" | "hosted" {
-  return publicEnv.NEXT_PUBLIC_SUPABASE_URL && publicEnv.NEXT_PUBLIC_SUPABASE_ANON_KEY ? "hosted" : "local";
+  if (publicEnv.NEXT_PUBLIC_SUPABASE_URL && publicEnv.NEXT_PUBLIC_SUPABASE_ANON_KEY) return "hosted";
+  // on the live host a missing sign in setting is a mistake, and must never quietly turn into "everyone is the built in admin"
+  if (process.env.VERCEL) throw new Error("Sign in is not set up. Connect the Supabase integration, or add NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY in the project settings.");
+  return "local";
 }
 
 // finds the built in local account, making it the first time

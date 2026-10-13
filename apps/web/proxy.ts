@@ -1,6 +1,9 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
+// the same settings the server side sign in client uses, so the session cookies cannot be read by scripts in the page
+const SESSION_COOKIE = { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "lax" as const };
+
 // pages anyone can open without signing in
 const PUBLIC = /^\/(sign-in|auth\/|privacy|terms|api\/ext\/|api\/health$|api\/cron\/feed$|scans\/sample)/;
 
@@ -57,6 +60,7 @@ export async function proxy(request: NextRequest) {
 
   let response = NextResponse.next({ request });
   const supabase = createServerClient(url, key, {
+    cookieOptions: SESSION_COOKIE,
     cookies: {
       getAll: () => request.cookies.getAll(),
       setAll: (items) => {

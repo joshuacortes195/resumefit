@@ -39,8 +39,9 @@ export function cleanDatabaseUrl(raw: string): string {
 async function connect(): Promise<Db> {
   const { DATABASE_URL } = serverEnv();
   if (DATABASE_URL) {
-    // prepare is off because the supabase pooler does not support it
-    return drizzle(postgres(cleanDatabaseUrl(DATABASE_URL), { prepare: false }), { schema });
+    // prepare is off because the supabase pooler does not support it.
+    // the connection is always encrypted, whatever the address says, unless it turns that off itself for a database on the same machine
+    return drizzle(postgres(cleanDatabaseUrl(DATABASE_URL), { prepare: false, ssl: /[?&]sslmode=disable\b/.test(DATABASE_URL) ? false : "require" }), { schema });
   }
   if (process.env.VERCEL) throw new Error("No database address is set. Connect the Supabase integration, or add DATABASE_URL in the project settings.");
 
