@@ -109,11 +109,11 @@ export function detectSections(text: string): ResumeSection[] {
   return sections;
 }
 
-// patterns for the contact details
-const EMAIL = /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/;
+// patterns for the contact details. every repeat has an upper limit, so one endless run of letters or digits cannot make them crawl
+const EMAIL = /[A-Za-z0-9._%+-]{1,64}@[A-Za-z0-9.-]{1,255}\.[A-Za-z]{2,}/;
 const PHONE = /(?:\+?\d{1,2}[\s.-]?)?\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}(?!\d)/;
 const LOCATION = /\b([A-Z][A-Za-z.]+(?: [A-Z][A-Za-z.]+){0,2}, [A-Z]{2})\b(?: \d{5})?/;
-const URL = /(?:https?:\/\/)?(?:www\.)?[a-z0-9-]+(?:\.[a-z0-9-]+)*\.[a-z]{2,}(?:\/[^\s,;|)]*)?/gi;
+const URL = /(?:https?:\/\/)?(?:www\.)?[a-z0-9-]{1,63}(?:\.[a-z0-9-]{1,63}){0,8}\.[a-z]{2,24}(?:\/[^\s,;|)]{0,2000})?/gi;
 
 // finds name, email, phone, location and links, mostly from the top of the resume
 export function extractContact(text: string): ResumeContact {

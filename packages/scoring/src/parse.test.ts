@@ -207,4 +207,12 @@ describe("parseResume", () => {
   it("leaves years empty when there are no dates", () => {
     expect(parseResume("Work Experience\nBarista, Corner Cafe\n• Made drinks", TODAY).yearsExperience).toBeNull();
   });
+
+  it("stays quick on one endless run of letters, digits or dots", () => {
+    for (const awkward of ["a".repeat(60_000), "1".repeat(60_000), "a.".repeat(30_000), "a-".repeat(30_000), "@".repeat(60_000)]) {
+      const started = Date.now();
+      parseResume(awkward, TODAY);
+      expect(Date.now() - started, awkward.slice(0, 4)).toBeLessThan(1500);
+    }
+  });
 });

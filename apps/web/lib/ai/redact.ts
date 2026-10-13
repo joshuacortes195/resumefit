@@ -1,4 +1,5 @@
 import type { ResumeContact } from "@resumefit/scoring";
+import { HARD_SKILLS } from "@resumefit/skills-data";
 
 // text with the personal details swapped out, and a way to put them back
 export type Redacted = {
@@ -31,6 +32,23 @@ const STREET = new RegExp(`\\b\\d{1,5}[A-Za-z]? (?:[NSEW]\\.? )?[A-Z][A-Za-z']{0
 // these endings only ever mean an address, so they are found in any case
 const STREET_ANY_CASE = new RegExp(`\\b\\d{1,5}[a-z]? (?:[nsew]\\.? )?[a-z][a-z']{0,30}(?: [a-z][a-z']{0,30}){0,3} (?:street|avenue|boulevard|terrace)\\b\\.?${UNIT}`, "gi");
 const PO_BOX = /\bP\.? ?O\.? Box \d{1,8}\b/gi;
+
+// the endings a person's own site usually has. "Node.js" and "B.Sc" look like addresses too, and must stay readable
+const SITE_ENDINGS = new Set(["com", "dev", "io", "me", "net", "org", "co", "app", "xyz", "tech", "site", "page", "info", "ai", "us", "uk", "ca", "de", "fr", "in", "au", "design", "codes", "blog", "website", "online", "works", "studio", "cv", "link", "bio", "edu"]);
+
+// every skill name in lower case, made the first time it is needed. a skill like "ASP.NET" or "socket.io" is never hidden as a link
+let skillNames: Set<string> | null = null;
+function isSkill(text: string): boolean {
+  skillNames ??= new Set(HARD_SKILLS.flatMap((skill) => [skill.name, ...(skill.aliases ?? [])]).map((name) => name.toLowerCase()));
+  return skillNames.has(text.toLowerCase());
+}
+
+// true when something the resume reader took for a link really is one of the person's own, and not a skill with a dot in it
+function isOwnLink(link: string): boolean {
+  const bare = link.trim().replace(/^https?:\/\//i, "").replace(/^www\./i, "");
+  const site = bare.split("/")[0] ?? "";
+  return SITE_ENDINGS.has(site.split(".").pop()?.toLowerCase() ?? "") && !isSkill(site) && !isSkill(bare);
+}
 
 // words that sit next to a name without being part of it
 const NOT_A_NAME = new Set(["jr", "sr", "ii", "iii", "iv", "phd", "mba", "md", "cpa", "the", "and", "van", "von", "der", "del", "des"]);
@@ -83,13 +101,20 @@ export function redactor(contact?: Partial<ResumeContact> | null): Redactor {
 
   const name = contact?.name?.trim() ?? "";
   // the person's own links, which can be a bare address like someone.dev that no pattern would spot
-  const links = [contact?.linkedin, contact?.github, ...(contact?.links ?? [])].filter((link): link is string => !!link && link.trim().length > 3);
+  const profiles = [contact?.linkedin, contact?.github].filter((link): link is string => !!link && link.trim().length > 3);
+  // other addresses the resume reader found. one only counts as the person's own once it is seen in the contact lines
+  // at the top of a text, or has part of their name in it. after that it is hidden everywhere
+  const maybeLinks = (contact?.links ?? []).filter((link) => link.trim().length > 3 && isOwnLink(link)).map((link) => link.trim());
+  const nameParts = name.toLowerCase().split(/[^\p{L}]+/u).filter((part) => part.length >= 3 && !NOT_A_NAME.has(part));
+  const ownLinks = new Set(maybeLinks.filter((link) => nameParts.some((part) => link.toLowerCase().includes(part))));
 
   const hide = (text: string): string => {
     let result = text;
     // links first, so the email and phone patterns do not chew pieces out of them
     result = swap(result, URL, "LINK");
-    for (const link of links) result = swap(result, new RegExp(escaped(link.trim()), "gi"), "LINK");
+    const top = text.split(/\r?\n/).filter((line) => line.trim()).slice(0, 8).join("\n").toLowerCase();
+    for (const link of maybeLinks) if (top.includes(link.toLowerCase())) ownLinks.add(link);
+    for (const link of [...profiles, ...ownLinks]) result = swap(result, new RegExp(escaped(link.trim()), "gi"), "LINK");
     result = swap(result, HANDLE, "LINK");
     result = swap(result, EMAIL, "EMAIL");
     result = swap(result, BIRTH, "BIRTH");
