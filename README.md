@@ -108,7 +108,7 @@ The migrations switch on row level security for every table with no policies, wh
 
 ### 3. First sign in and inviting friends
 
-The first person to sign in becomes the admin and needs no invite code, so sign in yourself first. Then open Settings, follow the link to the admin page and create invite codes. While invites are needed, the sign in form never shows whether an email has an account: with no code it always answers "check your email", and a code that does not work says so to everyone. Copy link gives you a sign in link with the code already filled in.
+The first person to sign in becomes the admin and needs no invite code, so sign in yourself first. If you set `ADMIN_EMAIL`, only that address can take the admin spot, so a stranger who finds the site before you do stays a stranger. Then open Settings, follow the link to the admin page and create invite codes. While invites are needed, the sign in form never shows whether an email has an account: with no code it always answers "check your email", and a code that does not work says so to everyone. Copy link gives you a sign in link with the code already filled in.
 
 Keep `ENCRYPTION_KEY` safe and do not change it later. It locks the API keys people save, and a new one would make those unreadable.
 
@@ -151,11 +151,12 @@ This project includes information from the [O*NET 30.0 Database](https://www.one
 ## Limits and safety
 
 - **Scores on the tracker**: a card shows the score of the newest scan of its own job, or "Not scanned yet". A scan and a card count as the same job only when the titles agree and the company or the link agrees too.
-- **Rate limits**, per person per minute: 20 scans, 20 uploads, 20 AI requests, 30 job searches, 15 link imports, 30 saved jobs and 30 downloads. On top of the daily caps per feature, one person can make 150 AI requests a day in total and everyone together 1,200. The numbers are in `apps/web/lib/rate-limit.ts` and `apps/web/lib/ai/limits.ts`.
-- **Uploads**: PDF or DOCX up to 4 MB (Vercel refuses any request over 4.5 MB), told apart by the file's own bytes and not its name. A PDF can have 15 pages. A DOCX can hold 1,000 parts and unpack to 25 MB, counted while it unpacks.
+- **Rate limits**, per person per minute: 20 scans, 20 uploads, 20 AI requests, 30 job searches, 15 link imports, 30 saved jobs and 30 downloads. On top of the daily caps per feature, one person can make 150 AI requests a day in total and everyone together 1,200. A request that every provider failed still counts toward those two totals, though not against the feature's own daily uses. Sign in allows 20 tries per connection and 5 emails per address every 15 minutes. The numbers are in `apps/web/lib/rate-limit.ts` and `apps/web/lib/ai/limits.ts`.
+- **Uploads**: PDF or DOCX up to 4 MB (Vercel refuses any request over 4.5 MB), told apart by the file's own bytes and not its name. A PDF can have 15 pages, and is read in a side thread that is stopped after 10 seconds or 512 MB, so a file built to take minutes is turned away without slowing anyone else down. A DOCX can hold 1,000 parts, and its text can unpack to 5 MB and 250,000 tags per part, counted while it unpacks.
 - **Content policy**: scripts only run with a code that is new on every request, set in `apps/web/proxy.ts`. This is why pages are not built ahead of time.
-- **Job links**: a pasted link is only read over https from a public address, and that is checked again at the moment of connecting and on every redirect.
-- **The admin**: the first person ever to sign in is the admin. If the only admin deletes their account, whoever has been a member longest takes over. If everyone leaves, the next person still needs an invite code, unless they sign in with the `ADMIN_EMAIL` address.
+- **Job links**: a pasted link is only read over https from a public address, and that is checked again at the moment of connecting and on every redirect. A page is cut off at 2 MB counted after unpacking, and read in single passes so a page built to be slow costs no more than any other.
+- **Server logs**: a failed database query is logged with the database's own short reason only, never the query's values, so resume text does not end up in the logs.
+- **The admin**: the first person ever to sign in is the admin, and only one person can be. With `ADMIN_EMAIL` set, only that address can be, and only once the sign in provider has confirmed it. If the only admin deletes their account, whoever has been a member longest takes over. If everyone leaves, the next person still needs an invite code, unless they sign in with the `ADMIN_EMAIL` address.
 - **Caching**: anything that depends on who is signed in is sent as `private, no-store`.
 - **Addresses that point at nothing** answer with a real 404 and the app's own not found page.
 
