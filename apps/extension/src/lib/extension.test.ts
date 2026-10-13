@@ -2,6 +2,7 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
+import { parseConnectionCode } from "./api";
 import { readJob } from "./job-page";
 import { isLinkedinProfile, readLinkedinProfile } from "./linkedin-page";
 
@@ -52,5 +53,20 @@ describe("importing a linkedin profile", () => {
   it("comes back empty on a page that is not a profile", () => {
     document.documentElement.innerHTML = "<main><p>Nothing to see</p></main>";
     expect(readLinkedinProfile(document, "https://www.linkedin.com/feed/")).toMatchObject({ headline: "", about: "", experience: "", skills: [] });
+  });
+});
+
+describe("connection codes", () => {
+  const code = (apiBase: string) => btoa(JSON.stringify({ apiBase, token: "rf_key" }));
+  const trusted = ["https://resumefit-three.vercel.app"];
+
+  it("takes a code for a copy of the app the extension trusts, or one on this machine", () => {
+    expect(parseConnectionCode(code("https://resumefit-three.vercel.app/extension"), trusted)).toEqual({ apiBase: "https://resumefit-three.vercel.app", token: "rf_key" });
+    expect(parseConnectionCode(code("http://localhost:3000"), trusted)).toEqual({ apiBase: "http://localhost:3000", token: "rf_key" });
+  });
+
+  it("turns away a code that points anywhere else", () => {
+    for (const address of ["https://evil.example", "http://resumefit-three.vercel.app", "https://resumefit-three.vercel.app.evil.example", "https://localhost.evil.example"]) expect(parseConnectionCode(code(address), trusted), address).toBeNull();
+    expect(parseConnectionCode("not a code", trusted)).toBeNull();
   });
 });

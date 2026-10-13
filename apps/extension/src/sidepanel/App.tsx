@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { api, ApiError, getConnection, parseConnectionCode, saveConnection, type Connection } from "../lib/api";
+import { accountBehind, api, ApiError, getConnection, parseConnectionCode, saveConnection, type Connection } from "../lib/api";
 import type { Account, LinkedinImport, PageInfo } from "../lib/types";
 import { askPage, NeedsAccess, readPage, SITE_ACCESS } from "./page";
 
@@ -15,6 +15,8 @@ export function App() {
   const [account, setAccount] = useState<Account | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [offer, setOffer] = useState<Connection | null>(null);
+  // whose account the offer is for: undefined while we ask, null when the key did not work
+  const [offerEmail, setOfferEmail] = useState<string | null | undefined>(undefined);
 
   // loads the saved connection and the account behind it
   const load = useCallback(async () => {
@@ -50,18 +52,35 @@ export function App() {
     };
   }, [load]);
 
-  // a connection the web app offered, waiting for a yes
+  // look up whose account an offer is for, so the person sees it before saying yes
+  useEffect(() => {
+    if (!offer) return;
+    let current = true;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setOfferEmail(undefined);
+    void accountBehind(offer).then((email) => current && setOfferEmail(email));
+    return () => {
+      current = false;
+    };
+  }, [offer]);
+
+  // a connection that was offered by the web app or pasted in as a code, waiting for a yes
   if (offer) {
     return (
       <div className="panel">
         <div className="card">
           <h1>Connect to this account?</h1>
           <p className="muted" style={{ marginTop: 6 }}>
-            <strong style={{ color: "var(--foreground)" }}>{offer.apiBase}</strong> wants to connect this extension to your ResumeFit account there. Only say yes if you just pressed Connect extension on that site.
+            <strong style={{ color: "var(--foreground)" }}>{offer.apiBase}</strong> wants to connect this extension to a ResumeFit account there. Only say yes if you just pressed Connect extension on that site, or pasted a code you copied from it yourself.
+          </p>
+          {/* the account the key belongs to, so a code from someone else is easy to spot */}
+          <p style={{ marginTop: 8 }}>
+            {offerEmail === undefined ? <span className="muted">Checking which account this is...</span> : offerEmail ? <>Account: <strong>{offerEmail}</strong></> : <span role="alert" className="error small">This connection did not work. Get a new one from the Chrome Extension page.</span>}
           </p>
           <div className="row" style={{ marginTop: 10 }}>
             <button
               className="primary"
+              disabled={!offerEmail}
               onClick={async () => {
                 // chrome asks about reading job pages in the same click
                 await askAccess();
@@ -86,13 +105,13 @@ export function App() {
     );
   }
   if (connection === undefined) return <div className="panel muted">Loading...</div>;
-  if (!connection) return <Connect error={error} onConnected={load} />;
+  if (!connection) return <Connect error={error} />;
   if (!account) return <div className="panel">{error ? <p className="error">{error}</p> : <p className="muted">Loading your account...</p>}</div>;
   return <Workspace connection={connection} account={account} onDisconnect={() => saveConnection(null).then(load)} />;
 }
 
 // first run: paste the code from the web app
-function Connect({ error, onConnected }: { error: string | null; onConnected: () => void }) {
+function Connect({ error }: { error: string | null }) {
   const [code, setCode] = useState("");
   const [problem, setProblem] = useState<string | null>(error);
   return (
@@ -118,10 +137,8 @@ function Connect({ error, onConnected }: { error: string | null; onConnected: ()
               setProblem("That does not look like a connection code. Copy it again from the Chrome Extension page.");
               return;
             }
-            // chrome asks about reading job pages in the same click
-            await askAccess();
-            await saveConnection(parsed);
-            onConnected();
+            // a pasted code is only an offer too. the next screen shows whose account it is before anything is saved
+            await chrome.storage.session.set({ connectionOffer: parsed });
           }}
         >
           Connect

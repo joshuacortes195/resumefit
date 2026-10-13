@@ -27,11 +27,27 @@ test("the built extension loads and connects with a pasted code", async () => {
     await panel.getByRole("button", { name: "Connect" }).click();
     await expect(panel.getByRole("alert")).toContainText("does not look like a connection code");
 
+    // and so is a secure address that is not a copy of the app this extension trusts
+    await panel.getByLabel("Connection code").fill(btoa(JSON.stringify({ apiBase: "https://evil.example", token: "rf_x" })));
+    await panel.getByRole("button", { name: "Connect" }).click();
+    await expect(panel.getByRole("alert")).toContainText("does not look like a connection code");
+
+    // a code for a copy on this machine is taken as an offer, and one whose key does not work cannot be accepted
+    await panel.getByLabel("Connection code").fill(btoa(JSON.stringify({ apiBase: "http://localhost:3210", token: "rf_not_a_real_key" })));
+    await panel.getByRole("button", { name: "Connect" }).click();
+    await expect(panel.getByRole("heading", { name: "Connect to this account?" })).toBeVisible();
+    await expect(panel.getByRole("alert")).toContainText("This connection did not work");
+    await expect(panel.getByRole("button", { name: "Connect" })).toBeDisabled();
+    await panel.getByRole("button", { name: "No thanks" }).click();
+    await expect(panel.getByRole("heading", { name: "Connect to ResumeFit" })).toBeVisible();
+
     // only the permissions it needs up front, sites are asked for one at a time
     const manifest = await worker.evaluate(() => chrome.runtime.getManifest());
     expect(manifest.host_permissions ?? []).toEqual([]);
     expect(manifest.permissions).not.toContain("<all_urls>");
     expect(manifest.optional_host_permissions).toContain("https://*/*");
+    // the copy people download only takes a connection from the live app, not from whatever runs on this machine
+    expect(manifest.externally_connectable?.matches).toEqual(["https://resumefit-three.vercel.app/*"]);
   } finally {
     await context.close();
   }

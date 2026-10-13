@@ -120,7 +120,7 @@ It is not in the Chrome Web Store, so it is loaded by hand. The Chrome Extension
 2. Open `chrome://extensions`, turn on **Developer mode**, press **Load unpacked** and pick the unzipped `resumefit-extension` folder.
 3. Back on the Chrome Extension page, press **Connect extension**. Paste the code it shows into the extension's side panel.
 
-If you change the extension, run `pnpm build:extension` and commit `apps/web/public/resumefit-extension.zip`, which is the file that button downloads. Only the live app's own address is allowed to hand the extension a connection. If you host your own copy, put its address in `externally_connectable` in `apps/extension/public/manifest.json` and rebuild. The paste a code way of connecting works on any address.
+If you change the extension, run `pnpm build:extension` and commit `apps/web/public/resumefit-extension.zip`, which is the file that button downloads. Only the live app's own address is allowed to hand the extension a connection, and a pasted code only works for that address too. Either way the side panel shows which account it is before anything is saved. If you host your own copy, put its address in `externally_connectable` in `apps/extension/public/manifest.json` and rebuild. The build takes `http://localhost:3000` out of that list for the zip people download. To keep it while working on the extension, build with `EXTENSION_DEV=1 pnpm build:extension` and do not commit that zip. A pasted code for a copy on your own machine always works.
 
 What it will and will not do is spelled out on the Chrome Extension page in the app. The short version: it reads job postings so you can scan and save them, and never fills in or sends anything.
 

@@ -24,6 +24,15 @@ for (const [name, format] of [
     logLevel: "warn",
   });
 }
+// the copy people download only takes a connection from the live app. the address of a copy running on your own machine
+// is taken out, unless this is a build for working on the extension itself (EXTENSION_DEV=1)
+if (!process.env.EXTENSION_DEV) {
+  const manifestPath = path.join(outDir, "manifest.json");
+  const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
+  manifest.externally_connectable.matches = manifest.externally_connectable.matches.filter((match) => !match.startsWith("http://localhost"));
+  writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
+}
+
 // zip it up for the download button on the web app's Chrome Extension page.
 // everything sits in one folder inside the zip, so unzipping gives a folder that Chrome can load as is
 const files = {};

@@ -14,15 +14,36 @@ export async function saveConnection(connection: Connection | null): Promise<voi
   else await chrome.storage.local.remove(["connection", "account"]);
 }
 
-// reads a connection code pasted from the web app. the code is the address and the key, packed together
-export function parseConnectionCode(code: string): Connection | null {
+// the copies of the web app this extension was built to talk to, taken from its own manifest.
+// someone who hosts their own copy puts its address there and rebuilds
+export function trustedApps(): string[] {
+  const matches = (chrome.runtime.getManifest() as { externally_connectable?: { matches?: string[] } }).externally_connectable?.matches ?? [];
+  return matches.map((match) => match.replace(/\/\*$/, ""));
+}
+
+// reads a connection code pasted from the web app. the code is the address and the key, packed together.
+// the address has to be one this extension trusts, so a code from a stranger cannot point it at their server
+export function parseConnectionCode(code: string, trusted: string[] = trustedApps()): Connection | null {
   try {
     const parsed = JSON.parse(atob(code.trim())) as Partial<Connection>;
     if (typeof parsed.apiBase !== "string" || typeof parsed.token !== "string") return null;
     const url = new URL(parsed.apiBase);
-    // only secure addresses, or your own machine while developing
-    if (url.protocol !== "https:" && url.hostname !== "localhost") return null;
+    // a trusted copy of the app over https, or your own machine while developing
+    const ownMachine = url.hostname === "localhost";
+    if (!ownMachine && (url.protocol !== "https:" || !trusted.includes(url.origin))) return null;
     return { apiBase: url.origin, token: parsed.token };
+  } catch {
+    return null;
+  }
+}
+
+// asks the web app whose account a connection is for, without saving anything. null when the key does not work
+export async function accountBehind(connection: Connection): Promise<string | null> {
+  try {
+    const response = await fetch(`${connection.apiBase}/api/ext/me`, { headers: { Authorization: `Bearer ${connection.token}` } });
+    if (!response.ok) return null;
+    const account = (await response.json()) as Partial<Account>;
+    return typeof account.user?.email === "string" ? account.user.email : null;
   } catch {
     return null;
   }
