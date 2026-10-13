@@ -52,6 +52,8 @@ export async function signInWithEmail(_previous: SignInState, form: FormData): P
 // starts sign in with google
 export async function signInWithGoogle(form: FormData): Promise<void> {
   if (authMode() === "local") redirect("/dashboard");
+  // with google switched off there is no button, and the action says no as well
+  if (!serverEnv().GOOGLE_SIGN_IN) redirect("/sign-in?error=google");
   const invite = String(form.get("invite") ?? "").trim().slice(0, 60);
   // with google we do not know the email yet, so a code is only checked when one was typed
   const problem = invite && serverEnv().INVITE_ONLY && !(await noUsersYet()) ? await inviteProblem(invite) : null;

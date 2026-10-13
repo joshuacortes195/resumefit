@@ -75,7 +75,7 @@ You need a GitHub account (the code is already there), a Supabase account and a 
    Run it again whenever you pull changes that add a migration.
 4. **Keys**: under Project Settings, API, copy the project URL (`NEXT_PUBLIC_SUPABASE_URL`), the anon public key (`NEXT_PUBLIC_SUPABASE_ANON_KEY`) and the service role key (`SUPABASE_SERVICE_ROLE_KEY`). The service role key is a secret. It only ever goes into Vercel.
 5. **Storage**: under Storage, create a bucket called `resumes` and leave **Public bucket** switched off.
-6. **Sign in**: under Authentication, URL Configuration, set the Site URL to your Vercel address (you get it in the next step, so come back here) and add `https://your-app.vercel.app/auth/callback` to the Redirect URLs. Email sign in links work out of the box. Google is optional: turn it on under Authentication, Providers and follow Supabase's steps.
+6. **Sign in**: under Authentication, URL Configuration, set the Site URL to your Vercel address (you get it in the next step, so come back here) and add `https://your-app.vercel.app/auth/callback` to the Redirect URLs. Email sign in links work out of the box. Google is optional: turn it on under Authentication, Providers and follow Supabase's steps, then set `GOOGLE_SIGN_IN` to `true` in Vercel. The Google button stays hidden until you do.
 
 The migrations switch on row level security for every table with no policies, which means the public key cannot read anything. Only the app's own database connection can.
 
@@ -94,6 +94,7 @@ The migrations switch on row level security for every table with no policies, wh
    | `NEXT_PUBLIC_APP_URL` | your Vercel address, like `https://your-app.vercel.app` |
    | `ENCRYPTION_KEY` | 64 random characters, from `openssl rand -hex 32` |
    | `INVITE_ONLY` | optional. Left out, new people need an invite code. Set it to `false` to let anyone sign up |
+   | `GOOGLE_SIGN_IN` | optional. Set it to `true` to show the Google button on the sign in page, once Google is switched on in Supabase |
    | `ADMIN_EMAIL` | optional, your own email. Whoever signs in with it needs no invite code and is always an admin. It is the way back in if the admin account is ever deleted |
    | `CRON_SECRET` | optional, 16 or more random characters. Vercel sends it with its scheduled visits, and with it set nobody else can set off the daily job refresh. Without it that address answers one visit every ten minutes |
    | `GEMINI_API_KEY` | optional, a free key from Google AI Studio that everyone shares |

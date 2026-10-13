@@ -52,11 +52,11 @@ async function SignInBody({ searchParams }: { searchParams: Promise<{ error?: st
       </>
     );
   }
-  const inviteOnly = serverEnv().INVITE_ONLY;
+  const { INVITE_ONLY: inviteOnly, GOOGLE_SIGN_IN: google } = serverEnv();
   return (
     <>
       <p className="mt-1 text-sm text-muted">{inviteOnly ? "ResumeFit is invite only for now. New here? Enter the code you were given." : "No password needed. We email you a link."}</p>
-      <SignInForm inviteOnly={inviteOnly} invite={(invite ?? "").slice(0, 60)} error={error ? (SIGN_IN_ERRORS[error] ?? SIGN_IN_ERRORS.link ?? null) : null} />
+      <SignInForm inviteOnly={inviteOnly} google={google} invite={(invite ?? "").slice(0, 60)} error={error ? (SIGN_IN_ERRORS[error] ?? SIGN_IN_ERRORS.link ?? null) : null} />
     </>
   );
 }

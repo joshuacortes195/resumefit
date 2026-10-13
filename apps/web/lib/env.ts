@@ -14,6 +14,8 @@ const serverSchema = z.object({
   // the newer name for the same secret
   SUPABASE_SECRET_KEY: z.string().min(1).optional(),
   INVITE_ONLY: flag(true),
+  // shows the google button on the sign in page. only turn it on once google is set up as a provider in supabase
+  GOOGLE_SIGN_IN: flag(false),
   ENCRYPTION_KEY: z.string().min(32).optional(),
   // the owner's email. whoever signs in with it needs no invite code and is always an admin, which is the way back in if the admin account is ever lost
   ADMIN_EMAIL: z.email().optional(),
