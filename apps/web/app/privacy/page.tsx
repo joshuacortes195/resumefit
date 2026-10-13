@@ -18,7 +18,7 @@ export default function PrivacyPage() {
         <p className="mt-2">Only you can see your resumes, scans, tracker and everything you write here. Uploaded files are kept in private storage and are never public.</p>
         <p className="mt-2">
           The person who runs this copy of ResumeFit can see a list of members: each email address and name, the day they joined, the invite code they used and how many scans they have run. They cannot
-          open anyone's resumes, scans or tracker.
+          open the resumes, scans or tracker of anyone else.
         </p>
       </section>
 
@@ -27,7 +27,7 @@ export default function PrivacyPage() {
         <p>
           AI features send redacted resume and job text to a free AI provider: Groq, Google Gemini or Cloudflare Workers AI, whichever is set up and answering. Free tiers may use what they are sent to
           improve their models. Before anything is sent, the app looks for your name, email, phone number, street address, links and date of birth and swaps them for placeholders, then puts them
-          back when the answer arrives. A hiring manager's name you type for a cover letter is swapped out the same way.
+          back when the answer arrives. The name of a hiring manager you type for a cover letter is swapped out the same way.
         </p>
         <p className="mt-2">
           This is a best effort. It works from the usual ways these details are written and from what the app read off the top of your resume, so something written in an unusual way can slip through.
@@ -44,7 +44,7 @@ export default function PrivacyPage() {
       <section>
         <h2>Company logos</h2>
         <p>
-          Find Jobs shows a small logo next to each company. Your browser loads it from DuckDuckGo's icon service using the company's web address, so DuckDuckGo sees that address and, like any site
+          Find Jobs shows a small logo next to each company. Your browser loads it from the DuckDuckGo icon service using the web address of the company, so DuckDuckGo sees that address and, like any site
           you load an image from, your IP address. Nothing about your account or your resume goes with it.
         </p>
       </section>
