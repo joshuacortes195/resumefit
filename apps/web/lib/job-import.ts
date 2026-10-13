@@ -18,12 +18,19 @@ const text = (value: unknown) => (typeof value === "string" ? value.trim() : "")
 
 // true for addresses that point back at this machine or a private network
 export function isPrivateAddress(address: string): boolean {
-  const mapped = address.toLowerCase().replace(/^::ffff:/, "");
+  // an ipv4 address can ride inside an ipv6 one written as ::ffff:1.2.3.4 or ::1.2.3.4, it is judged as the ipv4 address it is
+  const mapped = address.toLowerCase().replace(/^::(?:ffff:)?(?=\d+\.\d+\.\d+\.\d+$)/, "");
   if (isIP(mapped) === 4) {
-    const [a = 0, b = 0] = mapped.split(".").map(Number);
-    return a === 0 || a === 10 || a === 127 || a >= 224 || (a === 100 && b >= 64 && b <= 127) || (a === 169 && b === 254) || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168) || (a === 192 && b === 0) || (a === 198 && (b === 18 || b === 19));
+    const [a = 0, b = 0, c = 0] = mapped.split(".").map(Number);
+    return (
+      a === 0 || a === 10 || a === 127 || a >= 224 || (a === 100 && b >= 64 && b <= 127) || (a === 169 && b === 254) || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168) || (a === 192 && b === 0) || (a === 198 && (b === 18 || b === 19)) ||
+      // ranges set aside for examples in documents, nothing real lives there
+      (a === 198 && b === 51 && c === 100) || (a === 203 && b === 0 && c === 113)
+    );
   }
-  return mapped === "::" || mapped === "::1" || /^f[cd]/.test(mapped) || /^fe[89ab]/.test(mapped) || /^ff/.test(mapped);
+  // local, private and broadcast ipv6, plus the ranges that carry an ipv4 address inside them and could be pointed at a private one:
+  // 64:ff9b::/96, 2002::/16, the old site local fec0::/10, and ipv4 written in hex after ::ffff:
+  return mapped === "::" || mapped === "::1" || /^f[cd]/.test(mapped) || /^fe[89a-f]/.test(mapped) || /^ff/.test(mapped) || /^64:ff9b:/.test(mapped) || /^2002:/.test(mapped) || /^::ffff:/.test(mapped) || /^2001:db8:/.test(mapped);
 }
 
 // only ordinary public https pages get fetched, never something inside our own network
