@@ -19,7 +19,12 @@ export function SignInForm({ inviteOnly, google, error, invite }: { inviteOnly: 
         <p className="mt-3 font-semibold">Check your email</p>
         <p className="mt-1 text-sm text-muted">We sent a sign in link to {state.sent}. It works once and expires in an hour.</p>
         {/* shown to everyone, since the form never says whether an email already has an account */}
-        {inviteOnly && <p className="mt-3 text-sm text-muted">Nothing after a minute or two? If this is your first time here you need an invite code. Reload this page and enter it with your email.</p>}
+        {inviteOnly && (
+          <p className="mt-3 text-sm text-muted">
+            Nothing after a minute or two? If this is your first time here you need an invite code. Reload this page and enter it with your email. If you have signed in before, wait a few minutes and
+            try again.
+          </p>
+        )}
       </div>
     );
   }

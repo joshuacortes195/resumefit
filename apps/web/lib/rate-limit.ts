@@ -13,6 +13,9 @@ export const RATE_LIMITS = {
   export: 30,
   // shared by everyone, for the job refresh address when it has no secret. this one is per ten minutes
   "feed-refresh": 1,
+  // sign in emails one address can ask for, and sign in tries from one connection. these two are per quarter of an hour
+  "sign-in-email": 5,
+  "sign-in-ip": 20,
 } as const;
 export type RateBucket = keyof typeof RATE_LIMITS;
 
