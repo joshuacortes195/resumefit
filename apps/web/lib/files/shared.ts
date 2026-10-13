@@ -51,8 +51,15 @@ export function mostCommon<T>(values: T[]): T | null {
 // more pages than any resume has. past this we stop reading, so a huge file cannot tie the server up
 export const MAX_PDF_PAGES = 15;
 
-// the most a word file may unpack to. a tiny zip can hide gigabytes
+// the most a word file may say it unpacks to, pictures and all. a tiny zip can hide gigabytes
 export const MAX_UNPACKED_BYTES = 25 * 1024 * 1024;
+
+// the most text we will unpack and read out of a word file. the text of a long resume is a few hundred KB,
+// and reading it takes many times its size in memory
+export const MAX_XML_BYTES = 5 * 1024 * 1024;
+
+// the most tags one part of a word file may have. a two page resume has a few thousand
+export const MAX_XML_TAGS = 250_000;
 
 // a resume saved from word has a few dozen parts inside. thousands means it was built to waste memory
 export const MAX_ZIP_ENTRIES = 1000;

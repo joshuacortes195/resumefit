@@ -1,7 +1,7 @@
 import type { LayoutMeta } from "@resumefit/scoring";
 import { XMLParser } from "fast-xml-parser";
 import JSZip from "jszip";
-import { FileError, isLightColor, MAX_UNPACKED_BYTES, MAX_ZIP_ENTRIES, type ExtractedFile } from "./shared";
+import { FileError, isLightColor, MAX_UNPACKED_BYTES, MAX_XML_BYTES, MAX_XML_TAGS, MAX_ZIP_ENTRIES, type ExtractedFile } from "./shared";
 
 // one xml element the way the parser hands it to us, children stay in document order
 type XmlNode = Record<string, unknown>;
@@ -100,7 +100,7 @@ export async function readDocx(bytes: Uint8Array, fileName: string | null): Prom
 
   // the sizes written in an archive can lie, so each part is also counted as it unpacks, and we stop the moment
   // the whole file has given more than it is allowed. this is the check that actually protects memory
-  let budget = MAX_UNPACKED_BYTES;
+  let budget = MAX_XML_BYTES;
   const read = async (path: string): Promise<string | null> => {
     const entry = zip.file(path);
     if (!entry) return null;
@@ -121,6 +121,9 @@ export async function readDocx(bytes: Uint8Array, fileName: string | null): Prom
     const xml = Buffer.concat(chunks).toString("utf8");
     // word never writes its own entity definitions. a file that has them is trying to make a few bytes expand into millions
     if (/<!(DOCTYPE|ENTITY)/i.test(xml)) throw new FileError("This does not look like a Word document. Save it as .docx and try again.");
+    // millions of empty tags fit in very little space and take a lot of memory to read, so they are counted first
+    let tags = 0;
+    for (let at = xml.indexOf("<"); at !== -1; at = xml.indexOf("<", at + 1)) if (++tags > MAX_XML_TAGS) throw tooBig;
     return xml;
   };
   const documentXml = await read("word/document.xml");

@@ -203,6 +203,17 @@ describe("limits on what a file can hold", () => {
     await expect(readResumeFile(bomb, "resume.docx")).rejects.toThrow(/far bigger inside/);
   });
 
+  it("turns away a word file made of far more tags than a resume has", async () => {
+    const JSZip = (await import("jszip")).default;
+    const zip = new JSZip();
+    // four megabytes of empty tags fit under the size limit, but take hundreds of megabytes to read
+    zip.file("word/document.xml", `<w:document>${"<a/>".repeat(1_000_000)}</w:document>`);
+    const crowded = await zip.generateAsync({ type: "uint8array", compression: "DEFLATE" });
+    const started = Date.now();
+    await expect(readResumeFile(crowded, "resume.docx")).rejects.toThrow(/far bigger inside/);
+    expect(Date.now() - started).toBeLessThan(1500);
+  });
+
   it("turns away an archive with thousands of parts, and one that defines its own entities", async () => {
     const JSZip = (await import("jszip")).default;
     const crowded = new JSZip();
