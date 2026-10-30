@@ -1,0 +1,50 @@
+Alex Rivera
+alex.rivera@example.com | GitHub | LinkedIn | Portfolio | (555) 555-0100
+EDUCATION
+Example University | Riverside, CA | Expected 2027
+B.S. Computer Science, Specialization in Machine Learning and Artificial Intelligence
+Example State University | Pomona, CA | Aug 2023 - Dec 2025
+Coursework in Computer Information Systems
+EXPERIENCE
+Software Engineering Intern Dec 2025 - Present
+Acme Dental (Acme Group) Pomona, CA
+• Barmold AQI: Led development of a computer vision pipeline (Basler cameras, Pylon SDK) that finds molds on trays and drives a
+Universal Robots arm through a custom C# Modbus TCP layer, automating inspection of 200+ trays/hr
+• Paperless: Moved the full work-order process off paper using .NET, MSSQL, and AWS S3, removing hundreds of printed pages a
+day and cutting order processing time by over 50%
+• Trained and integrated an OCR model that reads engravings on resin molds and checks tray condition (present/absent, full/empty),
+moving QC checks onto the line and cutting inspection time by 80%
+• Shipped a cassette damage tracker and label generator (backed by AWS S3) to production at an overseas plant
+• Rewrote an unstable RFID read/write tool from scratch as a multithreaded app, speeding up tag reads/writes and stopping up to 5
+crashes a day under heavy load
+• Build and deploy production .NET WPF applications (C#, XAML, MVVM) used daily by manufacturing line operators worldwide
+IT Technician May 2025 - Dec 2025
+Beta IT Services Riverside, CA
+• Provided Tier 1 to 3 support for hardware, networking, and software for 200+ users on Windows and macOS
+• Managed Office 365 and Azure AD for 10+ companies, handling user setup plus onboarding and offboarding
+• Wrote Bash, PowerShell, and Java scripts to automate antivirus detection, system and SQL Server monitoring, and firewall setup
+PROJECTS
+Stock Movement Predictor | Python, scikit-learn, Flask, PostgreSQL, React, Docker, AWS Live Demo
+• Built an ML pipeline over 1.27M rows of S&P 500 market data with time series cross-validation. Found and fixed a data leakage
+bug that was inflating accuracy, then added regression tests so it stays fixed
+• Built a Flask REST API on PostgreSQL that serves live predictions, with password hashing, rate limiting, and SQL injection
+protection, deployed as one Docker image to Render and AWS Lambda
+Bird Identifier | Python, PyTorch, ONNX, FastAPI, React, TypeScript, Docker Live Demo
+• Fine-tuned a ConvNeXt-V2 model to classify 555 North American bird species, reaching 89% top-1 and 98.8% top-5 accuracy on a
+24,000 image test set
+• Converted the model to ONNX for 1.4x faster CPU inference and shipped it as a live web app with a FastAPI backend,
+React/TypeScript frontend, and Docker
+Book App | React, TypeScript, Tailwind CSS, SQL, ESV API Live Demo
+• Built a full-stack Bible app with login, verse highlighting, notes, and daily streaks, using the ESV API and shipping to desktop, iOS,
+and Android from one codebase
+Asteroids Game | Java, Swing, AWT Live Demo
+• Built a multiplayer space shooter with three game modes and a 9-thread engine handling collisions, physics, player input, and
+enemy AI
+TECHNICAL SKILLS
+Languages: Python, Java, C#, TypeScript, JavaScript, SQL, Bash, PowerShell, HTML/CSS, XAML
+Cloud, Data & Tools: AWS (S3, Lambda), Docker, Git, PostgreSQL, Microsoft SQL Server, REST APIs, Azure AD, Office 365, Basler Pylon
+SDK, Modbus TCP, Google Colab, Atlassian
+Frameworks & Libraries: .NET, WPF, MAUI, React, PyTorch, ONNX, scikit-learn, Pandas, NumPy, FastAPI, Flask, Tailwind CSS,
+Swing/AWT
+Concepts: Data Structures & Algorithms, Object-Oriented Programming (OOP), Machine Learning (ML), Computer Vision (CV), Optical
+Character Recognition (OCR), Multithreading, MVVM

@@ -72,6 +72,15 @@ describe("extractContact", () => {
     expect(contact.links).toEqual(["jordanlee.dev"]);
   });
 
+  it("only reads a location from the contact lines above the first heading", () => {
+    expect(extractContact("Sam Rivera\nsam@example.com | (555) 555-0100\nEducation\nState University | Riverside, CA | 2027").location).toBeNull();
+    expect(extractContact("Sam Rivera\nRiverside, California | sam@example.com\nEducation").location).toBe("Riverside, California");
+  });
+
+  it("does not take a skill list for a city and state", () => {
+    expect(extractContact("Sam Rivera\nsam@example.com\nTypeScript, JS and React, TS").location).toBeNull();
+  });
+
   it("returns nulls when nothing is there", () => {
     expect(extractContact("just some text\nwith no details")).toMatchObject({ email: null, phone: null, location: null, linkedin: null });
   });
@@ -86,9 +95,21 @@ describe("measurable results", () => {
 
   it("only counts bullets with a real result", () => {
     expect(measurableResults(detectSections(RESUME))).toEqual([
-      "• Cut page load time by 40% by splitting the bundle",
-      "- Shipped 12 features across 3 product areas",
+      "Cut page load time by 40% by splitting the bundle",
+      "Shipped 12 features across 3 product areas",
     ]);
+  });
+
+  it("counts plain lines as bullets when pasted text lost its bullet marks", () => {
+    const pasted = detectSections(
+      "Experience\nSoftware Engineering Intern Dec 2025 - Present\nAcme Pomona, CA\nCut RFID read time from 10 seconds to under 1 for 15 operators\nLed a vision pipeline that inspects 200 trays an hour\nMoved orders off paper, cutting processing time by 50%\nWrote internal tools that the line team uses every day",
+    );
+    expect(measurableResults(pasted, TODAY)).toHaveLength(3);
+  });
+
+  it("does not count the second half of a wrapped bullet twice", () => {
+    const wrapped = detectSections("Experience\nEngineer, Acme\nJan 2024 - Present\n• Cut read time by 90% by rewriting the tool as a\nmultithreaded C# app, ending 5 freezes a day");
+    expect(measurableResults(wrapped, TODAY)).toEqual(["Cut read time by 90% by rewriting the tool as a multithreaded C# app, ending 5 freezes a day"]);
   });
 });
 
@@ -151,6 +172,35 @@ describe("parseExperience", () => {
       ["IT Technician", "Alta Business", "Riverside, CA"],
     ]);
     expect(jobs.map((job) => job.bullets.length)).toEqual([1, 1]);
+  });
+
+  it("joins a wrapped bullet's second line to the bullet instead of starting a job", () => {
+    // pasted text where the title, dates, company and city each sit on their own line. this used to read as 6 jobs, 4 of them with no dates
+    const jobs = parseExperience(
+      [
+        "Software Engineering Intern",
+        "Dec 2025 - Present",
+        "Ormond (Envira)",
+        "Pomona, CA",
+        "• Cut RFID read time from 10 seconds to under 1 by rewriting the tool as a",
+        "multithreaded C# app, ending the freezes on the line",
+        "• Trained an OCR model that checks tray condition (present/absent, full/empty),",
+        "moving QC checks onto the line and cutting inspection time by 80%",
+        "• Shipped a damage tracker to production",
+        "IT Technician",
+        "May 2025 - Dec 2025",
+        "Alta Business",
+        "Riverside, CA",
+        "• Provided support for 200+ users on Windows and macOS",
+      ],
+      TODAY,
+    );
+    expect(jobs.map((job) => [job.title, job.company, job.dates?.text])).toEqual([
+      ["Software Engineering Intern", "Ormond (Envira)", "Dec 2025 - Present"],
+      ["IT Technician", "Alta Business", "May 2025 - Dec 2025"],
+    ]);
+    expect(jobs[0]?.bullets).toHaveLength(3);
+    expect(jobs[0]?.bullets[0]).toContain("as a multithreaded C# app");
   });
 
   it("keeps a job even when it has no dates", () => {

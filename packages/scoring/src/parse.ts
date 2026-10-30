@@ -112,7 +112,11 @@ export function detectSections(text: string): ResumeSection[] {
 // patterns for the contact details. every repeat has an upper limit, so one endless run of letters or digits cannot make them crawl
 const EMAIL = /[A-Za-z0-9._%+-]{1,64}@[A-Za-z0-9.-]{1,255}\.[A-Za-z]{2,}/;
 const PHONE = /(?:\+?\d{1,2}[\s.-]?)?\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}(?!\d)/;
-const LOCATION = /\b([A-Z][A-Za-z.]+(?: [A-Z][A-Za-z.]+){0,2}, [A-Z]{2})\b(?: \d{5})?/;
+// state codes and names, so "React, TS" in a skills line is never read as a city and state
+const STATE_CODES = "AL|AK|AZ|AR|CA|CO|CT|DE|DC|FL|GA|HI|ID|IL|IN|IA|KS|KY|LA|ME|MD|MA|MI|MN|MS|MO|MT|NE|NV|NH|NJ|NM|NY|NC|ND|OH|OK|OR|PA|PR|RI|SC|SD|TN|TX|UT|VT|VA|WA|WV|WI|WY";
+const STATE_NAMES =
+  "Alabama|Alaska|Arizona|Arkansas|California|Colorado|Connecticut|Delaware|Florida|Georgia|Hawaii|Idaho|Illinois|Indiana|Iowa|Kansas|Kentucky|Louisiana|Maine|Maryland|Massachusetts|Michigan|Minnesota|Mississippi|Missouri|Montana|Nebraska|Nevada|New Hampshire|New Jersey|New Mexico|New York|North Carolina|North Dakota|Ohio|Oklahoma|Oregon|Pennsylvania|Rhode Island|South Carolina|South Dakota|Tennessee|Texas|Utah|Vermont|Virginia|Washington|West Virginia|Wisconsin|Wyoming";
+const LOCATION = new RegExp(`\\b([A-Z][A-Za-z.]+(?: [A-Z][A-Za-z.]+){0,2}, (?:(?:${STATE_CODES})(?![A-Za-z])|(?:${STATE_NAMES})\\b))(?: \\d{5})?`);
 const URL = /(?:https?:\/\/)?(?:www\.)?[a-z0-9-]{1,63}(?:\.[a-z0-9-]{1,63}){0,8}\.[a-z]{2,24}(?:\/[^\s,;|)]{0,2000})?/gi;
 
 // finds name, email, phone, location and links, mostly from the top of the resume
@@ -121,8 +125,9 @@ export function extractContact(text: string): ResumeContact {
     .split(/\r?\n/)
     .map((line) => line.trim())
     .filter(Boolean);
-  // contact details sit in the first few lines, so only look there for the name and location
-  const top = lines.slice(0, 8).join("\n");
+  // contact details sit in the first few lines, above the first heading. a city on a school or job line further down is not where you live
+  const firstHeading = lines.findIndex((line) => line.length <= 40 && HEADING_LOOKUP.has(cleanHeading(line)));
+  const top = lines.slice(0, firstHeading > 0 ? Math.min(firstHeading, 8) : 8).join("\n");
 
   // the name is the first line that looks like two to four plain words
   const name = lines.slice(0, 3).find((line) => /^[A-Za-z][A-Za-z.'-]*(?: [A-Za-z][A-Za-z.'-]*){1,3}$/.test(line)) ?? null;
@@ -167,13 +172,66 @@ export function isMeasurable(line: string): boolean {
   return /\d/.test(line) || /[%$]/.test(line) || QUANTITY_WORDS.test(line);
 }
 
-// the experience and project bullets that show a measured result
-export function measurableResults(sections: ResumeSection[]): string[] {
+// small words a wrapped bullet line tends to break after, like "... as a" / "multithreaded C# app"
+const DANGLING_END = /(?:[,;&/+-]|\b(?:a|an|the|and|or|to|of|for|with|in|on|by|from|as|at|into|onto|that|which|while|plus|per|via|across|over|under|using))$/i;
+
+// true when a plain line is the second half of the bullet above it, not the heading of the next job.
+// a new job always has its dates within the next few lines, a wrapped bullet does not
+function continuesBullet(line: string, previous: string, after: string[], today: Date): boolean {
+  if (findDateRange(line, today)) return false;
+  if (/^[a-z0-9(&%$]/.test(line) || DANGLING_END.test(previous.trim())) return true;
+  if (looksLikeTitle(line) || HEADING_LOOKUP.has(cleanHeading(line))) return false;
+  return !after.slice(0, 3).some((next) => findDateRange(next, today));
+}
+
+// glues the wrapped second line of a bullet back onto it, so "• Cut read time ... as a" + "multithreaded C# app ..." is one bullet again
+export function joinWrappedLines(lines: string[], today: Date = new Date()): string[] {
+  const joined: string[] = [];
+  lines.forEach((line, index) => {
+    const previous = joined.at(-1);
+    if (previous !== undefined && isBullet(previous) && !isBullet(line) && continuesBullet(line, previous, lines.slice(index + 1), today)) {
+      joined[joined.length - 1] = `${previous} ${line.trim()}`;
+    } else {
+      joined.push(line);
+    }
+  });
+  return joined;
+}
+
+// lines that are a job or project heading, not something you did: they hold dates, or are short with no verb sentence in them
+function isPlainHeading(line: string, today: Date): boolean {
+  return findDateRange(line, today) !== null || line.split(/\s+/).length < 6;
+}
+
+// the experience and project bullets, with their marks taken off.
+// pasted text from some PDFs has no bullet marks at all, so when a section has none every line that reads like a sentence counts
+export function bulletLines(sections: ResumeSection[], today: Date = new Date()): string[] {
   return sections
     .filter((section) => section.kind === "experience" || section.kind === "projects")
-    .flatMap((section) => section.lines)
-    // lines that are only dates like "Jan 2024 - Present" do not count
-    .filter((line) => isBullet(line) && isMeasurable(line.replace(/\b(19|20)\d{2}\b/g, "")));
+    .flatMap((section) => {
+      const lines = joinWrappedLines(section.lines, today);
+      if (lines.some(isBullet)) return lines.filter(isBullet).map(stripBullet);
+      // no marks: a line starting in lowercase finishes the one above it
+      const candidates: string[] = [];
+      for (const line of lines) {
+        const last = candidates.at(-1);
+        if (last !== undefined && /^[a-z0-9(&%$]/.test(line)) candidates[candidates.length - 1] = `${last} ${line}`;
+        else if (!isPlainHeading(line, today)) candidates.push(line);
+      }
+      return candidates;
+    });
+}
+
+// true when the experience and project parts have lines but not one bullet mark between them
+export function hasNoBulletMarks(sections: ResumeSection[]): boolean {
+  const lines = sections.filter((section) => section.kind === "experience" || section.kind === "projects").flatMap((section) => section.lines);
+  return lines.length >= 3 && !lines.some(isBullet);
+}
+
+// the experience and project bullets that show a measured result
+export function measurableResults(sections: ResumeSection[], today: Date = new Date()): string[] {
+  // years and date ranges like "Jan 2024 - Present" do not count as a number
+  return bulletLines(sections, today).filter((line) => isMeasurable(line.replace(findDateRange(line, today)?.text ?? "", " ").replace(/\b(19|20)\d{2}\b/g, "")));
 }
 
 // number of words in the resume
@@ -290,7 +348,8 @@ export function parseExperience(lines: string[], today: Date = new Date()): Expe
     header = [];
   };
 
-  for (const line of lines) {
+  // a wrapped bullet's second line would otherwise read as the next job's title
+  for (const line of joinWrappedLines(lines, today)) {
     if (!isBullet(line) && isHeaderLine(line, today)) {
       // a second heading that already has its dates means the next job has started
       const hasDates = header.some((entry) => findDateRange(entry, today));
@@ -422,7 +481,7 @@ export function parseResume(text: string, today: Date = new Date()): ParsedResum
     experience,
     education: parseEducation(linesOf("education")),
     yearsExperience: ranges.length > 0 ? yearsOfExperience(ranges) : null,
-    measurableResults: measurableResults(sections),
+    measurableResults: measurableResults(sections, today),
     wordCount: wordCount(text),
   };
 }

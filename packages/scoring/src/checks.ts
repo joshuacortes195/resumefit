@@ -1,7 +1,7 @@
 import { CHECK_CONFIG } from "./config";
 import type { JdAnalysis } from "./jd";
 import { fontFamily, isStandardFont, type LayoutMeta } from "./layout";
-import { degreeAtLeast, highestDegree, isBullet, stripBullet, type DegreeLevel, type ParsedResume } from "./parse";
+import { bulletLines, degreeAtLeast, hasNoBulletMarks, highestDegree, stripBullet, type DegreeLevel, type ParsedResume } from "./parse";
 
 // the rows a finding can sit under in the report
 export type CheckGroup =
@@ -197,14 +197,18 @@ export function searchabilityChecks({ text, parsed, jd, jobTitle, educationOverr
 
   // only worth checking the heading name when the section exists
   if (experienceSection) {
+    // a heading of just "Experience" is read fine by most scanners, but some want it to say what kind
+    const bare = experienceSection.standard && /^experience:?$/i.test(experienceSection.heading.trim());
     checks.push(
       check(
         "experience-heading",
         "searchability",
         "headings",
-        experienceSection.standard,
+        experienceSection.standard && !bare,
         "Your work experience heading is a standard name.",
-        `Rename "${experienceSection.heading}" to Work Experience or Professional Experience so scanners recognize it.`,
+        bare
+          ? `Some scanners look for a more specific heading than "${experienceSection.heading}". Rename it to Professional Experience or Work History.`
+          : `Rename "${experienceSection.heading}" to Work Experience or Professional Experience so scanners recognize it.`,
       ),
     );
   }
@@ -326,11 +330,7 @@ export function recruiterTipChecks({ text, parsed, jd }: CheckInput): Check[] {
   const hasLink = contact.linkedin !== null || contact.github !== null || contact.links.length > 0;
 
   // bullets from the jobs and projects, used by a few checks below
-  const bullets = sections
-    .filter((section) => section.kind === "experience" || section.kind === "projects")
-    .flatMap((section) => section.lines)
-    .filter(isBullet)
-    .map(stripBullet);
+  const bullets = bulletLines(sections);
 
   const checks = [
     check(
@@ -493,8 +493,16 @@ export function formattingChecks({ text, parsed, layout }: CheckInput): Check[] 
     `We found ${special.length} decorative symbols or emoji (${[...new Set(special)].slice(0, 8).join(" ")}). Scanners often turn these into junk, so stick to plain bullets.`,
   );
 
+  // bullets with no real mark in the text, which happens with list markers some editors draw instead of a • character
+  const noMarks = hasNoBulletMarks(parsed.sections);
+  const bulletMarks = noMarks
+    ? layout?.fileType === "pdf"
+      ? check("bullet-marks", "formatting", "layout", false, "", "Your PDF's text has no bullet characters, so your bullets read as plain lines. Some scanners merge them into one paragraph. Use a real • for each bullet.")
+      : note("bullet-marks", "formatting", "layout", "This text has no bullet characters. If your file has bullets, check that they come through as • when you copy it, since some scanners merge bullets without one.")
+    : null;
+
   // pasted text has no layout to check
-  if (!layout) return [paragraphs, specialChars];
+  if (!layout) return bulletMarks ? [paragraphs, bulletMarks, specialChars] : [paragraphs, specialChars];
 
   const checks: Check[] = [
     check(
@@ -506,6 +514,7 @@ export function formattingChecks({ text, parsed, layout }: CheckInput): Check[] 
       `Your resume uses ${layout.columns} columns. Many scanners read straight across the page and mix the columns together. A single column is safest.`,
     ),
     paragraphs,
+    ...(bulletMarks ? [bulletMarks] : []),
     check(
       "images",
       "formatting",

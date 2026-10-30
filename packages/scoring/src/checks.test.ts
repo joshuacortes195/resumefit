@@ -67,6 +67,19 @@ describe("searchability checks", () => {
     expect(dates.details).toEqual(["Analyst Intern"]);
   });
 
+  it("fails the location check when the resume has no city and state up top", () => {
+    const noCity = RESUME.replace("Austin, TX | ", "");
+    expect(byId(searchabilityChecks(input(noCity)), "location").passed).toBe(false);
+    expect(byId(searchabilityChecks(input()), "location").passed).toBe(true);
+  });
+
+  it("asks for a more specific heading than just Experience", () => {
+    const bare = byId(searchabilityChecks(input(RESUME.replace("Work Experience", "EXPERIENCE"))), "experience-heading");
+    expect(bare.passed).toBe(false);
+    expect(bare.message).toContain("Professional Experience");
+    expect(byId(searchabilityChecks(input()), "experience-heading").passed).toBe(true);
+  });
+
   it("compares the degree to what the job asks for", () => {
     const education = byId(searchabilityChecks(input()), "education-match");
     expect(education.passed).toBe(false);
@@ -219,6 +232,14 @@ describe("formatting checks", () => {
     const short = RESUME.replace("Jan 2022 - Present", "Jan 2025 - Present");
     const checks = formattingChecks(input(short, JD, { layout: { ...LAYOUT, pageCount: 2 } }));
     expect(byId(checks, "page-count").passed).toBe(false);
+  });
+
+  it("warns when a PDF's text has no bullet characters at all", () => {
+    const plain = RESUME.replace(/• /g, "");
+    expect(byId(formattingChecks(input(plain, JD, { layout: LAYOUT })), "bullet-marks").passed).toBe(false);
+    // pasted text only gets a note, since the marks may have been lost in the copy
+    expect(byId(formattingChecks(input(plain)), "bullet-marks").info).toBe(true);
+    expect(formattingChecks(input(RESUME, JD, { layout: LAYOUT })).some((check) => check.id === "bullet-marks")).toBe(false);
   });
 
   it("flags long paragraphs and decorative symbols", () => {
