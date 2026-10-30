@@ -1,7 +1,7 @@
 import type { SkillMatch } from "@resumefit/shared";
 import { formattingChecks, recruiterTipChecks, searchabilityChecks, type Check } from "./checks";
 import { SCORE_CAPS } from "./config";
-import { analyzeJd, stripIgnoredSections, yearsWanted, type JdAnalysis } from "./jd";
+import { analyzeJd, cleanTitle, stripIgnoredSections, yearsWanted, type JdAnalysis } from "./jd";
 import type { LayoutMeta } from "./layout";
 import { countSkills, matchSkills, type SkillTerm } from "./match";
 import { DEGREE_LEVELS, parseResume, type DegreeLevel, type ParsedResume } from "./parse";
@@ -118,7 +118,8 @@ export function scanResume(input: ScanInput): ScanResult {
     educationRequired: own.educationRequired ?? asDegree(hints.educationRequired),
     educationPreferred: own.educationPreferred ?? asDegree(hints.educationPreferred),
   };
-  const jobTitle = input.jobTitle?.trim() || jd.jobTitle;
+  // a guessed title loses the company name once we know it, typed ones are left alone
+  const jobTitle = input.jobTitle?.trim() || (jd.jobTitle ? cleanTitle(jd.jobTitle, jd.company) : null);
   // an internship does not ask for years of experience. a number that turns up in one is about the degree, the program or the company
   if (jobTitle && /\b(intern|internship|co-?op|apprentice(?:ship)?)\b/i.test(jobTitle) && (jd.yearsRequired ?? 0) > 1) jd.yearsRequired = null;
   // a title like Staff or Director says how senior the job is, even when the posting never gives a number of years

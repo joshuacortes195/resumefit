@@ -22,7 +22,7 @@ const IGNORED_HEADING =
 const JOB_HEADING =
   /^(?:requirements?|qualifications?|basic qualifications|minimum qualifications|preferred qualifications|responsibilities|what you.ll do|what you will do|what you.ll bring|what we.re looking for|who you are|about the role|about you|the role|skills|nice to have|must have|duties|your impact|key responsibilities)\b/i;
 // single lines of legal text that show up anywhere
-const LEGAL_LINE = /equal opportunity employer|without regard to race|reasonable accommodation|e-verify|background check|protected veteran/i;
+const LEGAL_LINE = /equal opportunit(?:y|ies) employer|without regard to race|workplace accommodation|reasonable accommodation|e-verify|background check|protected veteran|recruiting (?:partner|decisions)|privacy notice/i;
 
 // drops benefits, perks and legal text so their words are not counted as skills
 export function stripIgnoredSections(jdText: string): string {
@@ -120,13 +120,25 @@ export function findEducation(jdText: string): { required: DegreeLevel | null; p
   return { required, preferred };
 }
 
-// tidies a title like "Senior Engineer (Remote) - Austin" down to the title itself
-function cleanTitle(raw: string): string {
-  return raw
+// endings that make a name a company, like "Anduril Industries" or "Acme, Inc."
+const COMPANY_SUFFIX = /\b(?:inc|llc|ltd|corp|corporation|co|company|industries|technologies|labs|group|holdings|gmbh|plc|international)\.?$/i;
+
+// tidies a title like "Senior Engineer (Remote) - Austin" or "2027 Software Engineer Intern, Anduril Industries" down to the title itself
+export function cleanTitle(raw: string, company?: string | null): string {
+  let title = raw
     .replace(/\([^)]*\)/g, " ")
     .replace(/\s+[-–—|]\s+.*$/, "")
+    // a year up front, like "2027" or "Summer 2027", is about when the job starts
+    .replace(/^(?:(?:summer|fall|autumn|winter|spring)\s+)?(?:19|20)\d{2}\s+/i, "")
     .replace(/\s+/g, " ")
     .trim();
+  // a company name after a comma, but not a specialty like "Software Engineer, Backend"
+  const tail = title.match(/,\s+([^,]+)$/)?.[1]?.trim();
+  const companyWord = company?.split(/\s+/)[0]?.toLowerCase();
+  if (tail && !looksLikeTitle(tail) && (COMPANY_SUFFIX.test(tail) || (companyWord && tail.toLowerCase().startsWith(companyWord)))) {
+    title = title.slice(0, title.length - tail.length).replace(/,\s*$/, "");
+  }
+  return title;
 }
 
 // guesses the job title and company from the top of the posting
@@ -151,7 +163,10 @@ export function findJobTitle(jdText: string): { jobTitle: string | null; company
       company ??= cleanTitle(at[2]);
       return { jobTitle: cleanTitle(at[1]), company };
     }
-    return { jobTitle: cleanTitle(line), company };
+    // "Software Engineer Intern, Anduril Industries" names the company too
+    const tail = line.match(/,\s+([^,]+)$/)?.[1]?.trim();
+    if (tail && COMPANY_SUFFIX.test(tail) && !looksLikeTitle(tail)) company ??= tail;
+    return { jobTitle: cleanTitle(line, company), company };
   }
 
   // last try, a sentence like "we are looking for a Frontend Engineer to ..."

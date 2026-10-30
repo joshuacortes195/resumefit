@@ -37,6 +37,13 @@ describe("findJobTitle", () => {
     expect(findJobTitle("Frontend Engineer at Brightside Labs\nBuild things.")).toEqual({ jobTitle: "Frontend Engineer", company: "Brightside Labs" });
   });
 
+  it("drops a leading year and a trailing company name from the title", () => {
+    expect(findJobTitle("2027 Software Engineer Intern, Anduril Industries\nBuild things.")).toEqual({ jobTitle: "Software Engineer Intern", company: "Anduril Industries" });
+    expect(findJobTitle("Summer 2027 Data Analyst Intern\nCrunch numbers.").jobTitle).toBe("Data Analyst Intern");
+    // a specialty after the comma is part of the title
+    expect(findJobTitle("Software Engineer, Backend\nBuild things.").jobTitle).toBe("Software Engineer, Backend");
+  });
+
   it("falls back to a looking for sentence", () => {
     expect(findJobTitle("About us\nWe make maps for everyone on the planet.\nWe are looking for a Product Designer to join us.").jobTitle).toBe("Product Designer");
   });
@@ -101,6 +108,12 @@ describe("stripIgnoredSections", () => {
     expect(kept).toContain("Strong SQL and Tableau skills");
     expect(kept).not.toContain("learning budget");
     expect(kept).not.toContain("equal opportunity");
+  });
+
+  it("drops hiring process lines that name recruiting", () => {
+    const kept = stripIgnoredSections("Responsibilities\nWrite Python. We make recruiting decisions based on your experience and skills.\nAmazon is an equal opportunities employer. Please contact your Recruiting Partner.");
+    expect(kept).toContain("Write Python");
+    expect(kept).not.toMatch(/recruiting/i);
   });
 
   it("starts keeping lines again at the next job heading", () => {
