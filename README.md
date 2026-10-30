@@ -142,6 +142,16 @@ matchRate = round(100 * (
 
 Skills the job description repeats count more, required skills get a 1.5x boost, and a similar term gets half credit. The weights and every threshold live in `packages/scoring/src/config.ts`. Aim for 75%+.
 
+A few rules keep the skills lists close to how a person reads a posting:
+
+- **Any one of**: a list like "Java, Python, C++, Go, or TypeScript", "one or more of the following" or a list of accepted degree fields is met by any one of its skills. The rest are not counted as missing, and a list with no match yet weighs the same as one skill (`packages/scoring/src/groups.ts`).
+- **Word endings**: "Owned" counts for Ownership and "Data Structures and Algorithms" for "algorithm development".
+- **Broad phrases**: "cloud infrastructure", "front-end frameworks", "storage systems" and "databases" pass when the resume names a tool under them, like AWS or React.
+- **Left out**: posting filler like "general-purpose programming language", culture lines like "bias for action", and the hiring company's own products (`packages/scoring/src/wording.ts`).
+- **Soft skills**: one that is only a nice to have, or only shows up in filler like "strong problem-solving skills" or in the company pitch at the top, counts for a quarter.
+
+The hard skills table shows the required skills first, then the preferred ones, each with how many times the resume and the posting say it, like 5/3.
+
 ## Skills data
 
 The hard skills list is a hand picked core of about 190 skills with aliases and related terms (`packages/skills-data/src/curated.ts`), plus about 6,500 tools and technologies from the O*NET database (`onet-skills.json`, built by `scripts/build-skills.ts`). Product names that are also everyday words are left out so they do not match ordinary sentences.
