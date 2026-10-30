@@ -1,4 +1,5 @@
 import type { SkillMatch } from "@resumefit/shared";
+import { categoryTools, isNoise, stemCount, stemWords } from "./wording";
 
 // one skill from the skill lists
 export type SkillTerm = {
@@ -150,6 +151,37 @@ export function requiredText(jdText: string): string {
   return kept.join("\n");
 }
 
+// filler around a soft skill, like "strong problem-solving and analytical skills" or "excellent written and verbal communication skills"
+const FILLER_SKILLS = /\b(?:strong|excellent|good|great|solid|exceptional|effective|outstanding|superb|proven|demonstrated)\b[^.;:!?\n]{0,60}\bskills?\b/i;
+
+// where the company pitch at the top of a posting ends: the first responsibilities, requirements or nice to have heading. 0 when there is none
+function introEnd(jdText: string): number {
+  let at = 0;
+  for (const line of jdText.split("\n")) {
+    const trimmed = line.trim();
+    if (trimmed.length > 0 && trimmed.length <= 60 && (REQUIRED_HEADING.test(trimmed) || PREFERRED_HEADING.test(trimmed))) return at;
+    at += line.length + 1;
+  }
+  return 0;
+}
+
+// how many of each skill's mentions sit in filler: a "strong ... skills" phrase, or the company pitch that opens a posting.
+// mentions in the responsibilities and requirements are the ones that count
+function genericMentions(jdText: string, skills: SkillTerm[]): Map<string, number> {
+  const counts = new Map<string, number>();
+  const intro = introEnd(jdText);
+  for (const span of findSkillSpans(jdText, skills)) {
+    const lineStart = jdText.lastIndexOf("\n", span.start - 1) + 1;
+    const lineEnd = jdText.indexOf("\n", span.end);
+    const line = jdText.slice(lineStart, lineEnd === -1 ? undefined : lineEnd);
+    const sentenceStart = Math.max(line.lastIndexOf(". ", span.start - lineStart), 0);
+    const sentence = line.slice(sentenceStart, line.indexOf(".", span.end - lineStart) + 1 || undefined);
+    const pitch = span.start < intro || (line.length > 200 && line.split(/(?<=[.!?])\s+/).length > 2 && !/^\s*[-–—•▪◦●○■·*]/.test(line));
+    if (pitch || FILLER_SKILLS.test(sentence)) counts.set(span.name, (counts.get(span.name) ?? 0) + 1);
+  }
+  return counts;
+}
+
 // builds the skill rows for the report, one row per skill the job description asks for
 export function matchSkills(
   jdText: string,
@@ -164,21 +196,37 @@ export function matchSkills(
   // skills that only show up in the optional parts count as preferred
   const requiredCounts = countSkills(requiredText(jdText), skills);
 
+  // only worked out when a skill needs it, most scans never get that far
+  let resumeStems: string[] | null = null;
+  let generic: Map<string, number> | null = null;
+
   const rows: SkillMatch[] = [];
   for (const skill of skills) {
     const isForced = forced.has(skill.name);
     const jdCount = Math.max(jdCounts.get(skill.name) ?? 0, isForced ? 1 : 0);
-    // skills the job never mentions are not part of the report
-    if (jdCount === 0) continue;
+    // skills the job never mentions are not part of the report, and neither is posting filler like "general-purpose programming language"
+    if (jdCount === 0 || (!isForced && isNoise(skill.name))) continue;
 
-    const resumeCount = resumeCounts.get(skill.name) ?? 0;
+    let resumeCount = resumeCounts.get(skill.name) ?? 0;
+    // a different word ending still counts, like "Owned" for Ownership or "algorithms" for "algorithm development"
+    if (resumeCount === 0) resumeCount = stemCount(skill, (resumeStems ??= stemWords(resumeText)));
+    // a broad phrase like "cloud infrastructure" is covered by the tools under it, like AWS
+    const tools = resumeCount === 0 ? categoryTools(skill.name) : null;
+    if (tools) resumeCount = [...countSkills(resumeText, tools).values()].reduce((sum, count) => sum + count, 0);
+
     // exact if the resume has it, related if it only has a similar term, otherwise missing
     let match: SkillMatch["match"] = "missing";
     if (resumeCount > 0) match = "exact";
     else if (hasAny(resumeText, skill.related ?? [])) match = "related";
 
     const importance = requiredCounts.has(skill.name) || isForced ? "required" : "preferred";
-    rows.push({ name: skill.name, category, importance, jdCount, resumeCount, match });
+    const row: SkillMatch = { name: skill.name, category, importance, jdCount, resumeCount, match };
+    // a soft skill that is only a nice to have, or only shows up in filler like "strong analytical skills", counts for less
+    if (category === "soft" && !isForced) {
+      generic ??= genericMentions(jdText, skills);
+      if (importance === "preferred" || (generic.get(skill.name) ?? 0) >= jdCount) row.light = true;
+    }
+    rows.push(row);
   }
 
   // missing skills first, then the ones the job mentions most, required before preferred

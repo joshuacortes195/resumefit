@@ -5,7 +5,9 @@ import { analyzeJd, cleanTitle, stripIgnoredSections, yearsWanted, type JdAnalys
 import type { LayoutMeta } from "./layout";
 import { countSkills, matchSkills, type SkillTerm } from "./match";
 import { DEGREE_LEVELS, parseResume, type DegreeLevel, type ParsedResume } from "./parse";
-import { checkScore, matchRate, skillScore, type CategoryScores } from "./score";
+import { applyAlternatives, findAlternativeGroups } from "./groups";
+import { checkScore, lightScale, matchRate, skillScore, type CategoryScores } from "./score";
+import { blankCulture, companyProducts, isCompanyProduct } from "./wording";
 
 // what a scan needs to run
 export type ScanInput = {
@@ -84,9 +86,21 @@ export type ScanResult = {
   cap?: { limit: number; reason: "noHardSkills" | "levelGap"; wanted?: number; have?: number } | null;
 };
 
-// counts the skills the resume does not fully cover
+// counts the skills the resume does not fully cover. a light soft skill is not worth chasing,
+// and an "any one of" list is one thing to fix however many skills are in it
 function skillIssues(skills: SkillMatch[]): number {
-  return skills.filter((skill) => skill.match !== "exact").length;
+  const lists = new Set<string>();
+  let count = 0;
+  for (const skill of skills) {
+    if (skill.match === "exact" || skill.light) continue;
+    if (skill.options) {
+      const key = [skill.name, ...skill.options].sort().join("|");
+      if (lists.has(key)) continue;
+      lists.add(key);
+    }
+    count++;
+  }
+  return count;
 }
 
 // counts the checks that failed
@@ -99,6 +113,15 @@ function withCustom(skills: SkillTerm[], custom: ScanInput["customSkills"], cate
   const known = new Set(skills.flatMap((skill) => [skill.name, ...(skill.aliases ?? [])]).map((name) => name.toLowerCase()));
   const extra = (custom ?? []).filter((skill) => skill.category === category && !known.has(skill.name.toLowerCase()));
   return extra.length > 0 ? [...skills, ...extra.map((skill) => ({ name: skill.name }))] : skills;
+}
+
+// true when every mention of a skill sits right after the company's name, like "Anduril's Lattice OS"
+function onlyAsProduct(jobText: string, row: SkillMatch, company: string | null): boolean {
+  const word = company?.split(/\s+/)[0];
+  if (!word) return false;
+  const escape = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const named = jobText.match(new RegExp(`\\b${escape(word)}(?:['’]s)?\\s+${escape(row.name).replace(/\\? /g, "\\s+")}`, "gi"))?.length ?? 0;
+  return named >= row.jdCount;
 }
 
 // runs the whole scan on plain text, no network or file access needed
@@ -125,16 +148,23 @@ export function scanResume(input: ScanInput): ScanResult {
   // a title like Staff or Director says how senior the job is, even when the posting never gives a number of years
   jd.levelYears = jobTitle ? yearsWanted(jobTitle) : null;
 
-  // compare skills against the parts of the posting that are about the job
-  const jobText = stripIgnoredSections(jdText);
+  // compare skills against the parts of the posting that are about the job, with culture lines like "bias for action" taken out
+  const jobText = blankCulture(stripIgnoredSections(jdText));
   const forced = new Set((input.customSkills ?? []).map((skill) => skill.name));
   const hardList = withCustom(input.hardSkills, input.customSkills, "hard");
   const softList = withCustom(input.softSkills, input.customSkills, "soft");
   // hinted skills join the lists for this scan, a skill we already know as soft stays soft
   const hintedHard = usableHints(hints.hardSkills, [...hardList, ...softList], jobText);
   const hintedSoft = usableHints(hints.softSkills, [...hardList, ...softList, ...hintedHard], jobText);
-  const hard = matchSkills(jobText, resumeText, [...hardList, ...hintedHard], "hard", forced);
-  const soft = matchSkills(jobText, resumeText, [...softList, ...hintedSoft], "soft", forced);
+  const hardTerms = [...hardList, ...hintedHard];
+  const softTerms = [...softList, ...hintedSoft];
+  // "Java, Python, Go, or Rust" asks for any one of them, not all four
+  const products = companyProducts(jobText, jd.company);
+  const hinted = new Set(hintedHard.map((skill) => skill.name));
+  const hard = applyAlternatives(matchSkills(jobText, resumeText, hardTerms, "hard", forced), findAlternativeGroups(jobText, hardTerms), forced)
+    // the hiring company's own products, like Lattice OS at Anduril, are not something to have on a resume
+    .filter((row) => row.match === "exact" || forced.has(row.name) || !isCompanyProduct(row.name, products) || !(hinted.has(row.name) || onlyAsProduct(jobText, row, jd.company)));
+  const soft = applyAlternatives(matchSkills(jobText, resumeText, softTerms, "soft", forced), findAlternativeGroups(jobText, softTerms), forced);
 
   // run the pass or fail checks
   const checkInput = { text: resumeText, parsed: resume, jd, jobTitle, educationOverride: input.educationOverride, layout };
@@ -152,7 +182,8 @@ export function scanResume(input: ScanInput): ScanResult {
 
   // a category the posting gave nothing for cannot be judged, so it sits out
   const unread: NonNullable<ScanResult["unread"]> = [...(hard.length === 0 ? (["hardSkills"] as const) : []), ...(soft.length === 0 ? (["softSkills"] as const) : [])];
-  const raw = matchRate(categoryScores, unread);
+  // soft skills that are mostly filler move the match rate less
+  const raw = matchRate(categoryScores, unread, { softSkills: lightScale(soft) });
 
   // the years the job wants: what the posting says, or what its title usually means, whichever is more
   const wanted = Math.max(jd.yearsRequired ?? 0, jd.levelYears ?? 0);

@@ -25,6 +25,10 @@ export const skillMatchSchema = z.object({
   resumeCount: z.number().int().min(0),
   // exact or alias is a full match, related is a half match
   match: z.enum(["exact", "related", "missing"]),
+  // the other skills in an "any one of" list with this one, like Go in "Java, Python, Go, or Rust". any one of them is enough
+  options: z.array(z.string()).optional(),
+  // a soft skill that is only a nice to have or only shows up in filler, it counts for less
+  light: z.boolean().optional(),
 });
 export type SkillMatch = z.infer<typeof skillMatchSchema>;
 

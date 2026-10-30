@@ -8,4 +8,6 @@ export * from "./match";
 export * from "./parse";
 export * from "./scan";
 export * from "./score";
+export * from "./groups";
+export * from "./wording";
 export * from "./linkedin";

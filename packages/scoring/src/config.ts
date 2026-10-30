@@ -13,6 +13,8 @@ export const SCORE_WEIGHTS: Record<ScoreCategory, number> = {
 export const SKILL_CONFIG = {
   requiredBoost: 1.5,
   relatedCredit: 0.5,
+  // how much a soft skill counts when it is only a nice to have or only shows up in filler
+  lightWeight: 0.25,
 };
 
 // ceilings on the match rate for the cases where a high number would mislead
