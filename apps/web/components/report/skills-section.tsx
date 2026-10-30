@@ -29,6 +29,9 @@ export function SkillsSection({ kind, skills, resumeText, spans, customNames, re
   const [showAll, setShowAll] = useState(false);
   const [copied, setCopied] = useState(false);
   const missing = skills.filter((skill) => skill.match === "missing");
+  // hard skills are split into what the posting requires and what it would like, required first. soft skills stay one list
+  const split = kind === "hard" && skills.some((skill) => skill.importance === "required") && skills.some((skill) => skill.importance === "preferred");
+  const rows = split ? [...skills.filter((skill) => skill.importance === "required"), ...skills.filter((skill) => skill.importance === "preferred")] : skills;
 
   // copies the missing skills as one comma separated line
   async function copyMissing() {
@@ -66,46 +69,66 @@ export function SkillsSection({ kind, skills, resumeText, spans, customNames, re
                     )}
                   </span>
                 </th>
-                <th className="w-20 py-2 text-center font-medium">Resume</th>
-                <th className="w-28 py-2 text-center font-medium">Job description</th>
+                <th className="w-28 py-2 text-center font-medium">Resume / Job</th>
               </tr>
             </thead>
             <tbody>
-              {skills.map((skill, index) => (
-                // rows past the first ten stay hidden until asked for, but always print
-                <tr key={skill.name} className={`border-b border-border last:border-0 ${!showAll && index >= FIRST_ROWS ? "hidden print:table-row" : ""}`}>
-                  <td className="py-2.5">
-                    <span className="font-medium">{skill.name}</span>
-                    {skill.importance === "preferred" && <span className="ml-2 text-xs text-muted">nice to have</span>}
-                    {customNames.includes(skill.name) && !readOnly && (
-                      <button type="button" onClick={() => onRemove(skill.name)} className="ml-2 text-xs text-muted underline hover:text-danger print:hidden">
-                        remove
-                      </button>
-                    )}
-                  </td>
-                  <td className="py-2.5 text-center tabular-nums">
-                    {skill.match === "exact" && (
-                      <span className="inline-flex items-center gap-1 text-success">
-                        <Check className="size-4" aria-hidden />
-                        {skill.resumeCount}
-                        <span className="sr-only"> in your resume</span>
-                      </span>
-                    )}
-                    {skill.match === "related" && (
-                      <span className="font-semibold text-warning" title="A similar term is in your resume. It counts for half.">
-                        ~<span className="sr-only">Similar term found, counts for half</span>
-                      </span>
-                    )}
-                    {skill.match === "missing" && (
-                      <span className="inline-flex text-danger">
-                        <X className="size-4" aria-hidden />
-                        <span className="sr-only">Missing from your resume</span>
-                      </span>
-                    )}
-                  </td>
-                  <td className="py-2.5 text-center tabular-nums">{skill.jdCount}</td>
-                </tr>
-              ))}
+              {rows.map((skill, index) => {
+                const hidden = !showAll && index >= FIRST_ROWS ? "hidden print:table-row" : "";
+                // a heading row where the required skills start and where the preferred ones start
+                const heading = split && (index === 0 || rows[index - 1]?.importance !== skill.importance) ? (skill.importance === "required" ? "Required skills" : "Preferred skills") : null;
+                return [
+                  heading && (
+                    <tr key={`${heading}-heading`} className={hidden}>
+                      <th colSpan={2} scope="colgroup" className="pt-4 pb-1 text-left text-xs font-semibold tracking-wide text-muted uppercase">
+                        {heading}
+                      </th>
+                    </tr>
+                  ),
+                  // rows past the first ten stay hidden until asked for, but always print
+                  <tr key={skill.name} className={`border-b border-border last:border-0 ${hidden}`}>
+                    <td className="py-2.5">
+                      <span className="font-medium">{skill.name}</span>
+                      {!split && skill.importance === "preferred" && <span className="ml-2 text-xs text-muted">nice to have</span>}
+                      {/* any one skill from a list like "Java, Python, or Go" is enough */}
+                      {skill.options && skill.options.length > 0 && <span className="ml-2 text-xs text-muted">or {skill.options.join(", ")}</span>}
+                      {skill.light && (
+                        <span className="ml-2 text-xs text-muted" title="Only a nice to have or general wording in the posting, so it counts for less">
+                          counts less
+                        </span>
+                      )}
+                      {customNames.includes(skill.name) && !readOnly && (
+                        <button type="button" onClick={() => onRemove(skill.name)} className="ml-2 text-xs text-muted underline hover:text-danger print:hidden">
+                          remove
+                        </button>
+                      )}
+                    </td>
+                    {/* how many times the resume says it next to how many times the posting does, like 5/3 */}
+                    <td className="py-2.5 text-center tabular-nums" title={`In your resume ${skill.resumeCount} ${skill.resumeCount === 1 ? "time" : "times"}, in the job description ${skill.jdCount}`}>
+                      {skill.match === "exact" && (
+                        <span className="inline-flex items-center gap-1 text-success">
+                          <Check className="size-4" aria-hidden />
+                          <span className="sr-only">In your resume </span>
+                          {skill.resumeCount}/{skill.jdCount}
+                        </span>
+                      )}
+                      {skill.match === "related" && (
+                        <span className="inline-flex items-center gap-1 font-semibold text-warning" title="A similar term is in your resume. It counts for half.">
+                          ~<span className="sr-only">Similar term found, counts for half. </span>
+                          {skill.resumeCount}/{skill.jdCount}
+                        </span>
+                      )}
+                      {skill.match === "missing" && (
+                        <span className="inline-flex items-center gap-1 text-danger">
+                          <X className="size-4" aria-hidden />
+                          <span className="sr-only">Missing from your resume </span>
+                          {skill.resumeCount}/{skill.jdCount}
+                        </span>
+                      )}
+                    </td>
+                  </tr>,
+                ];
+              })}
             </tbody>
           </table>
         ))}
