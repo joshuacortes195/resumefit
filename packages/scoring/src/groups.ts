@@ -1,8 +1,23 @@
 import type { SkillMatch } from "@resumefit/shared";
-import { findSkillSpans, unflatten, type SkillSpan, type SkillTerm } from "./match";
+import { countSkills, findSkillSpans, unflatten, type SkillSpan, type SkillTerm } from "./match";
+import { categoryTools, normalizeName, stemCount, stemWords } from "./wording";
 
-// one "any one of these" list from a posting, like "Java, Python, C++, Go, or TypeScript", with where each skill sat
-export type AlternativeGroup = SkillSpan[];
+// one "any one of these" list from a posting, like "Java, Python, C++, Go, or TypeScript".
+// spans are the skills we know in it, with their text, and items is every choice as the posting wrote it, known or not
+export type AlternativeGroup = { spans: (SkillSpan & { text: string })[]; items: string[] };
+
+// words that end a list without being a choice of their own, like "or related fields"
+const NOT_AN_ITEM = /^(?:related|other|similar|equivalent|another|comparable|a related|an equivalent)\b/i;
+
+// cuts the text of a list into its choices, "C, C++, Firmware, or Kernel" into four
+function listItems(region: string): string[] {
+  return region
+    .replace(/\([^)]*\)/g, " ")
+    // a slash only splits when it has spaces round it, so CI/CD and TCP/IP stay whole
+    .split(/,|\s\/\s|;|\s+(?:or|and\/or)\s+/i)
+    .map((item) => item.replace(/^\s*(?:or|and\/or|and)\s+/i, "").replace(/[\s•*]+$/g, "").trim())
+    .filter((item) => item.length > 0 && item.split(/\s+/).length <= 6 && !NOT_AN_ITEM.test(item));
+}
 
 // the joining words a list can use
 const JOIN = /^(?:or|and\/or|and|&|nor)$/i;
@@ -47,6 +62,23 @@ function markOf(line: string): string {
   return (line.match(/^\s*(?:[-–—•▪◦●○■·*]\s*|o\s+|\d+[.)]\s*)*/)?.[0] ?? "").replace(/\s+/g, "");
 }
 
+// the choices written before the first skill we know, like the "C" in "Experience with C, C++, Firmware, or Kernel"
+function leadingItems(before: string): string[] {
+  const pieces = before.split(",");
+  if ((pieces.at(-1) ?? "").trim() !== "") return [];
+  const items: string[] = [];
+  for (let i = pieces.length - 2; i >= 0; i--) {
+    const piece = pieces[i] ?? "";
+    // "Experience with C" or "Networking: C" starts the list, so only the words after "with" or the colon are a choice
+    const parts = piece.split(/:|\b(?:with|in|of|using|including|such as|like|on)\s+/i);
+    const item = (parts.at(-1) ?? "").trim();
+    if (!item || item.split(/\s+/).length > 3) break;
+    items.unshift(item);
+    if (parts.length > 1) break;
+  }
+  return items;
+}
+
 // the skill lists in a posting that ask for any one of their skills, not all of them
 export function findAlternativeGroups(jdText: string, skills: SkillTerm[]): AlternativeGroup[] {
   const text = unflatten(jdText);
@@ -59,8 +91,8 @@ export function findAlternativeGroups(jdText: string, skills: SkillTerm[]): Alte
   }
   const spansIn = (from: number, to: number) => spans.filter((span) => span.start >= from && span.end <= to);
   const groups: AlternativeGroup[] = [];
-  const add = (members: SkillSpan[]) => {
-    if (new Set(members.map((span) => span.name)).size >= 2) groups.push(members);
+  const add = (members: SkillSpan[], items: string[]) => {
+    if (members.length > 0 && items.length >= 2) groups.push({ spans: members.map((span) => ({ ...span, text: text.slice(span.start, span.end) })), items });
   };
 
   lines.forEach((line, index) => {
@@ -71,10 +103,17 @@ export function findAlternativeGroups(jdText: string, skills: SkillTerm[]): Alte
     const close = () => {
       const first = run[0];
       const last = run.at(-1);
-      if (first && last && run.length >= 2) {
+      if (first && last) {
         const before = text.slice(Math.max(line.start, first.start - 60), first.start);
         const after = text.slice(last.end, line.end);
-        if (choice || CHOICE_LEAD.test(before) || CHOICE_TAIL.test(after.slice(0, 40)) || endsInOr(after) || DEGREE_LINE.test(line.text)) add(run);
+        const tail = endsInOr(after) || CHOICE_TAIL.test(after.slice(0, 40));
+        // a lone known skill only counts as a list when the "or" list around it is plain to see, like ", Firmware, Hardware, or Operating Systems"
+        const isList = run.length >= 2 ? choice || CHOICE_LEAD.test(before) || tail || DEGREE_LINE.test(line.text) : tail && /[,:]\s*$/.test(before);
+        if (isList) {
+          // the list runs to the end of its clause when it ends in "or ..." past the last skill we know
+          const clauseEnd = tail ? last.end + (after.search(/[.;:\n]/) === -1 ? after.length : after.search(/[.;:\n]/)) : last.end;
+          add(run, [...leadingItems(text.slice(line.start, first.start)), ...listItems(text.slice(first.start, clauseEnd))]);
+        }
       }
       run = [];
       choice = false;
@@ -96,6 +135,7 @@ export function findAlternativeGroups(jdText: string, skills: SkillTerm[]): Alte
     if (BLOCK_LEAD.test(line.text.trim())) {
       const lead = markOf(line.text);
       const members: SkillSpan[] = [];
+      const items: string[] = [];
       let itemMark: string | null = null;
       for (const next of lines.slice(index + 1, index + 12)) {
         if (!next.text.trim()) break;
@@ -104,25 +144,45 @@ export function findAlternativeGroups(jdText: string, skills: SkillTerm[]): Alte
         // the block ends at a line that goes back to the outer list
         if (mark !== itemMark || (itemMark === lead && lead !== "" && members.length > 0 && next.text.trim().length > 80)) break;
         members.push(...spansIn(next.start, next.end));
+        items.push(next.text.replace(/^\s*(?:[-–—•▪◦●○■·*]\s*|o\s+|\d+[.)]\s*)*/, "").replace(/\([^)]*\)/g, " ").replace(/\s+/g, " ").trim());
       }
-      add(members);
+      add(members, items.filter(Boolean));
     }
   });
   return groups;
 }
 
+// true when the resume covers a list item we do not know as a skill, like "Version control systems" through Git
+function itemOnResume(item: string, resumeText: string, resumeStems: string[]): boolean {
+  if (stemCount({ name: item }, resumeStems) > 0) return true;
+  const tools = categoryTools(item);
+  return tools !== null && countSkills(resumeText, tools).size > 0;
+}
+
 // any one skill from a list is enough. a skill whose every list already has a match on the resume is not missing at all,
-// and one from a list with no match yet shares a single skill's weight with the others in it
-export function applyAlternatives(rows: SkillMatch[], groups: AlternativeGroup[], forced: Set<string> = new Set()): SkillMatch[] {
+// and one from a list with no match yet shares a single skill's weight with the other choices in it
+export function applyAlternatives(rows: SkillMatch[], groups: AlternativeGroup[], resumeText: string, forced: Set<string> = new Set()): SkillMatch[] {
   if (groups.length === 0) return rows;
   const byName = new Map(rows.map((row) => [row.name, row]));
+  const resumeStems = stemWords(resumeText);
   // how many of each skill's mentions sit inside a list. one mention outside a list means the job asks for it on its own
   const seen = new Map<string, Set<number>>();
   for (const group of groups) {
-    for (const span of group) seen.set(span.name, (seen.get(span.name) ?? new Set()).add(span.start));
+    for (const span of group.spans) seen.set(span.name, (seen.get(span.name) ?? new Set()).add(span.start));
   }
-  const clauses = groups.map((group) => [...new Set(group.map((span) => span.name))].filter((name) => byName.has(name)));
-  const covered = (clause: string[]) => clause.some((name) => byName.get(name)?.match === "exact");
+  // the items that hold one of the skills, so they are not checked again as unknown words
+  const holds = (item: string, span: { text: string }) => normalizeName(item).includes(normalizeName(span.text));
+  const met = new Map<AlternativeGroup, boolean>();
+  const covered = (group: AlternativeGroup) => {
+    let answer = met.get(group);
+    if (answer === undefined) {
+      answer =
+        group.spans.some((span) => byName.get(span.name)?.match === "exact") ||
+        group.items.some((item) => !group.spans.some((span) => holds(item, span)) && itemOnResume(item, resumeText, resumeStems));
+      met.set(group, answer);
+    }
+    return answer;
+  };
 
   const kept: SkillMatch[] = [];
   for (const row of rows) {
@@ -131,17 +191,16 @@ export function applyAlternatives(rows: SkillMatch[], groups: AlternativeGroup[]
       kept.push(row);
       continue;
     }
-    const mine = clauses.filter((clause) => clause.includes(row.name) && clause.length >= 2);
-    const open = mine.find((clause) => !covered(clause));
+    const mine = groups.filter((group) => group.spans.some((span) => span.name === row.name));
+    const open = mine.find((group) => !covered(group));
     // every list it is in already has a match, so the job's ask is met
-    if (mine.length > 0 && !open) continue;
-    if (!open) {
-      kept.push(row);
-      continue;
-    }
+    if (!open) continue;
+    // the other choices, as the posting wrote them
+    const own = open.spans.filter((span) => span.name === row.name);
+    const options = open.items.filter((item) => !own.some((span) => holds(item, span)));
     // when one of its lists is already met, what is left is the other list, which is usually the nice to have one
     const partlyMet = mine.some(covered);
-    kept.push({ ...row, options: open.filter((name) => name !== row.name), ...(partlyMet ? { importance: "preferred" as const } : {}) });
+    kept.push({ ...row, options, ...(partlyMet ? { importance: "preferred" as const } : {}) });
   }
   return kept;
 }

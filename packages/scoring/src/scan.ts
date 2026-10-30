@@ -158,13 +158,14 @@ export function scanResume(input: ScanInput): ScanResult {
   const hintedSoft = usableHints(hints.softSkills, [...hardList, ...softList, ...hintedHard], jobText);
   const hardTerms = [...hardList, ...hintedHard];
   const softTerms = [...softList, ...hintedSoft];
-  // "Java, Python, Go, or Rust" asks for any one of them, not all four
+  // the hiring company's own product names, and which skills only came from the model's read
   const products = companyProducts(jobText, jd.company);
   const hinted = new Set(hintedHard.map((skill) => skill.name));
-  const hard = applyAlternatives(matchSkills(jobText, resumeText, hardTerms, "hard", forced), findAlternativeGroups(jobText, hardTerms), forced)
+  // "Java, Python, Go, or Rust" asks for any one of them, not all four
+  const hard = applyAlternatives(matchSkills(jobText, resumeText, hardTerms, "hard", forced), findAlternativeGroups(jobText, hardTerms), resumeText, forced)
     // the hiring company's own products, like Lattice OS at Anduril, are not something to have on a resume
     .filter((row) => row.match === "exact" || forced.has(row.name) || !isCompanyProduct(row.name, products) || !(hinted.has(row.name) || onlyAsProduct(jobText, row, jd.company)));
-  const soft = applyAlternatives(matchSkills(jobText, resumeText, softTerms, "soft", forced), findAlternativeGroups(jobText, softTerms), forced);
+  const soft = applyAlternatives(matchSkills(jobText, resumeText, softTerms, "soft", forced), findAlternativeGroups(jobText, softTerms), resumeText, forced);
 
   // run the pass or fail checks
   const checkInput = { text: resumeText, parsed: resume, jd, jobTitle, educationOverride: input.educationOverride, layout };

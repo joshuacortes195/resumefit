@@ -12,7 +12,7 @@ const DEGREES: SkillTerm[] = ["Computer science", "Computer engineering", "Data 
 
 // matches the rows and then applies the "any one of" lists, like a scan does
 function rowsFor(jd: string, resume: string, skills: SkillTerm[], category: "hard" | "soft" = "hard") {
-  return applyAlternatives(matchSkills(jd, resume, skills, category), findAlternativeGroups(jd, skills));
+  return applyAlternatives(matchSkills(jd, resume, skills, category), findAlternativeGroups(jd, skills), resume);
 }
 
 describe("any one of lists", () => {
@@ -46,7 +46,7 @@ describe("any one of lists", () => {
   it("splits one skill's weight across a list nobody on the resume covers", () => {
     const rows = rowsFor("Experience with Rust, Go, or C++", "Python", LANGUAGES);
     expect(rows).toHaveLength(3);
-    expect(rows.find((row) => row.name === "Go")?.options?.sort()).toEqual(["C++", "Rust"]);
+    expect(rows.find((row) => row.name === "Go")?.options).toEqual(["Rust", "C++"]);
     // one list of three missing skills weighs the same as one missing skill
     const lone = matchSkills("Experience with Rust", "Python", LANGUAGES, "hard");
     expect(skillScore([...rows, { name: "Python", category: "hard", importance: "required", jdCount: 1, resumeCount: 1, match: "exact" }])).toBeCloseTo(
@@ -62,6 +62,25 @@ describe("any one of lists", () => {
   it("carries a list past items that are not skills, like Bare-Metal", () => {
     const rows = rowsFor("Experience with C++, Embedded Development, Firmware, Rust, ARM, Bare-Metal, or Kernel", "Rust", LANGUAGES);
     expect(rows.map((row) => row.name)).toEqual(["Rust"]);
+  });
+});
+
+describe("lists with choices we do not know as skills", () => {
+  it("treats one known skill inside an or list as one choice of many", () => {
+    const rows = rowsFor("Experience with Networking: C, Rust, Hardware, Memory Management, Computer Architecture, or Operating Systems", "Python", LANGUAGES);
+    const rust = rows.find((row) => row.name === "Rust");
+    expect(rust?.options).toEqual(["C", "Hardware", "Memory Management", "Computer Architecture", "Operating Systems"]);
+  });
+
+  it("keeps a skill with a slash in it as one choice", () => {
+    const rows = rowsFor("Experience with Rust, CI/CD, or Go", "Python", [...LANGUAGES, { name: "CI/CD" }]);
+    expect(rows.find((row) => row.name === "Rust")?.options).toEqual(["CI/CD", "Go"]);
+  });
+
+  it("counts a list as met when the resume covers a choice through the tools under it", () => {
+    const jd = "Preferred\n- Experience with one or more of the following:\n- o Rust\n- o Version control systems\n- o Cloud platforms (preferably AWS)";
+    expect(rowsFor(jd, "Git and GitHub every day", LANGUAGES)).toEqual([]);
+    expect(rowsFor(jd, "Python", LANGUAGES).map((row) => row.name)).toEqual(["Rust"]);
   });
 });
 

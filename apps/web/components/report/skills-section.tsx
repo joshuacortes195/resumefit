@@ -89,9 +89,15 @@ export function SkillsSection({ kind, skills, resumeText, spans, customNames, re
                   <tr key={skill.name} className={`border-b border-border last:border-0 ${hidden}`}>
                     <td className="py-2.5">
                       <span className="font-medium">{skill.name}</span>
-                      {!split && skill.importance === "preferred" && <span className="ml-2 text-xs text-muted">nice to have</span>}
+                      {/* under the Preferred heading this is only read out, so a row still says it on its own */}
+                      {skill.importance === "preferred" && <span className={split ? "sr-only" : "ml-2 text-xs text-muted"}>nice to have</span>}
                       {/* any one skill from a list like "Java, Python, or Go" is enough */}
-                      {skill.options && skill.options.length > 0 && <span className="ml-2 text-xs text-muted">or {skill.options.join(", ")}</span>}
+                      {skill.options && skill.options.length > 0 && (
+                        <span className="ml-2 text-xs text-muted" title={`Any one of these is enough: ${[skill.name, ...skill.options].join(", ")}`}>
+                          or {skill.options.slice(0, 3).join(", ")}
+                          {skill.options.length > 3 && ` and ${skill.options.length - 3} more`}
+                        </span>
+                      )}
                       {skill.light && (
                         <span className="ml-2 text-xs text-muted" title="Only a nice to have or general wording in the posting, so it counts for less">
                           counts less
