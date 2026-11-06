@@ -116,7 +116,8 @@ const PHONE = /(?:\+?\d{1,2}[\s.-]?)?\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}(?!\d)/;
 const STATE_CODES = "AL|AK|AZ|AR|CA|CO|CT|DE|DC|FL|GA|HI|ID|IL|IN|IA|KS|KY|LA|ME|MD|MA|MI|MN|MS|MO|MT|NE|NV|NH|NJ|NM|NY|NC|ND|OH|OK|OR|PA|PR|RI|SC|SD|TN|TX|UT|VT|VA|WA|WV|WI|WY";
 const STATE_NAMES =
   "Alabama|Alaska|Arizona|Arkansas|California|Colorado|Connecticut|Delaware|Florida|Georgia|Hawaii|Idaho|Illinois|Indiana|Iowa|Kansas|Kentucky|Louisiana|Maine|Maryland|Massachusetts|Michigan|Minnesota|Mississippi|Missouri|Montana|Nebraska|Nevada|New Hampshire|New Jersey|New Mexico|New York|North Carolina|North Dakota|Ohio|Oklahoma|Oregon|Pennsylvania|Rhode Island|South Carolina|South Dakota|Tennessee|Texas|Utah|Vermont|Virginia|Washington|West Virginia|Wisconsin|Wyoming";
-const LOCATION = new RegExp(`\\b([A-Z][A-Za-z.]+(?: [A-Z][A-Za-z.]+){0,2}, (?:(?:${STATE_CODES})(?![A-Za-z])|(?:${STATE_NAMES})\\b))(?: \\d{5})?`);
+// each word of the city is capped too, so a run like A.A.A. does not get read to the end from every A in it
+const LOCATION = new RegExp(`\\b([A-Z][A-Za-z.]{1,30}(?: [A-Z][A-Za-z.]{1,30}){0,2}, (?:(?:${STATE_CODES})(?![A-Za-z])|(?:${STATE_NAMES})\\b))(?: \\d{5})?`);
 const URL = /(?:https?:\/\/)?(?:www\.)?[a-z0-9-]{1,63}(?:\.[a-z0-9-]{1,63}){0,8}\.[a-z]{2,24}(?:\/[^\s,;|)]{0,2000})?/gi;
 
 // finds name, email, phone, location and links, mostly from the top of the resume
