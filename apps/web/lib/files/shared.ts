@@ -63,3 +63,22 @@ export const MAX_XML_TAGS = 250_000;
 
 // a resume saved from word has a few dozen parts inside. thousands means it was built to waste memory
 export const MAX_ZIP_ENTRIES = 1000;
+
+// the names people give the rows of a skills section
+const LIST_WORD = "(?:Languages|Frameworks|Libraries|Tools|Technologies|Concepts|Cloud|Data|Databases|Platforms|Skills|Methodologies|Methods|Certifications|Interests|DevOps|Testing|Software|Hardware)";
+const LIST_LABEL = `(?:(?:Programming|Technical|Soft|Other|Core|Developer)\\s+)?${LIST_WORD}(?:\\s*(?:,|and|&)\\s*${LIST_WORD})*`;
+const STARTS_WITH_LABEL = new RegExp(`^\\s*(?:[•\\-*]\\s*)?${LIST_LABEL}:\\s`);
+const LABEL_INSIDE = new RegExp(`\\s+(${LIST_LABEL}:\\s)`, "g");
+
+// a pdf sometimes hands back two rows of a skills section as one line, like "Tools: Git, Docker Concepts: Testing, Agile".
+// each labelled row goes back on its own line, so a skill added to one row does not land in the middle of the next
+export function splitLabelledLists(text: string): string {
+  return text
+    .split("\n")
+    .map((line) => {
+      // only a line that is itself a labelled row is looked at, and only past its own label
+      const own = line.match(STARTS_WITH_LABEL)?.[0];
+      return own ? own + line.slice(own.length).replace(LABEL_INSIDE, "\n$1") : line;
+    })
+    .join("\n");
+}
