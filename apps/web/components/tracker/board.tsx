@@ -247,6 +247,8 @@ function AddJobModal({ open, onClose }: { open: boolean; onClose: () => void }) 
   const blank = { url: "", title: "", company: "", location: "", description: "", status: "saved" as JobStatus };
   const [fields, setFields] = useState(blank);
   const [error, setError] = useState<string | null>(null);
+  // a problem with the link shows right under the link box, apart from problems with the form as a whole
+  const [linkError, setLinkError] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const [importing, startImport] = useTransition();
@@ -255,15 +257,15 @@ function AddJobModal({ open, onClose }: { open: boolean; onClose: () => void }) 
   // reads the posting behind the link and fills in the boxes
   function fillFromLink(url = fields.url) {
     if (!/^https:\/\/\S+\.\S+/.test(url.trim())) {
-      setError("Paste the full link to the job posting, starting with https://");
+      setLinkError("Paste the full link to the job posting, starting with https://");
       return;
     }
     startImport(async () => {
-      setError(null);
+      setLinkError(null);
       setNote(null);
       const result = await importJobFromLink(url);
       if (!result.ok) {
-        setError(result.error);
+        setLinkError(result.error);
         return;
       }
       // what the page says wins, but anything it left out keeps what was typed
@@ -282,6 +284,7 @@ function AddJobModal({ open, onClose }: { open: boolean; onClose: () => void }) 
       }
       setFields(blank);
       setNote(null);
+      setLinkError(null);
       onClose();
     });
   }
@@ -299,7 +302,11 @@ function AddJobModal({ open, onClose }: { open: boolean; onClose: () => void }) 
               id="add-job-link"
               type="url"
               value={fields.url}
-              onChange={(event) => set("url", event.target.value)}
+              onChange={(event) => {
+                set("url", event.target.value);
+                // the old complaint was about the old link
+                setLinkError(null);
+              }}
               // pasting a link into an empty form fills it in straight away
               onPaste={(event) => {
                 const pasted = event.clipboardData.getData("text").trim();
@@ -313,7 +320,13 @@ function AddJobModal({ open, onClose }: { open: boolean; onClose: () => void }) 
               {importing ? "Reading..." : "Fill in from link"}
             </button>
           </div>
-          <p className="mt-1 text-xs text-muted">Paste the link and we fill in the title, company and description for you.</p>
+          {linkError ? (
+            <p role="alert" className="mt-1 text-sm text-danger">
+              {linkError}
+            </p>
+          ) : (
+            <p className="mt-1 text-xs text-muted">Paste the link and we fill in the title, company and description for you.</p>
+          )}
         </div>
         {note && (
           <p role="status" className="rounded-lg bg-primary-soft px-3 py-2 text-sm">
