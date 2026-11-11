@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { STYLE_RULES } from "@/lib/ai/prompts/style";
+import { blankInstructions } from "@resumefit/scoring";
 
 export const builderBulletsSchema = z.object({ bullets: z.array(z.string()).min(1).max(6) });
 
@@ -36,7 +37,7 @@ export function builderSummaryPrompt(input: { resume: string; years: string; jdT
 
 Target job description:
 """
-${input.jdText?.slice(0, 5000) || "not given"}
+${(input.jdText ? blankInstructions(input.jdText).trim().slice(0, 5000) : "") || "not given"}
 """
 
 The rest of the resume:

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { blankInstructions } from "@resumefit/scoring";
 
 // what we ask the model to pull out of a job description
 export const jdExtractionSchema = z.object({
@@ -30,5 +31,5 @@ export const JD_EXTRACTION_SYSTEM = `You read job descriptions and pull out the 
 
 // the request for one job description
 export function jdExtractionPrompt(jdText: string): string {
-  return `Job description:\n"""\n${jdText.slice(0, 12_000)}\n"""`;
+  return `Job description:\n"""\n${blankInstructions(jdText).slice(0, 12_000)}\n"""`;
 }

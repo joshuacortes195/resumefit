@@ -12,6 +12,7 @@ ${STYLE_RULES}
 - Write exactly 3 options, each under 200 characters.
 - Each one names the kind of role the person wants and two or three skills they already show in their profile.
 - Use only skills and facts from the profile. Prefer the ones the target jobs ask for.
+- Keep the person's level. Someone whose profile shows a student or an intern stays a student or an intern in the headline, never a full "Engineer" or "Developer" title they have not held.
 - No emoji, no "seeking opportunities", no "guru", "ninja" or "rockstar".`;
 
 export const LINKEDIN_ABOUT_TASK = "Task: write a linkedin about section.";

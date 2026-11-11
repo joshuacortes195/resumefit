@@ -7,7 +7,7 @@ import { countSkills, matchSkills, type SkillTerm } from "./match";
 import { DEGREE_LEVELS, parseResume, type DegreeLevel, type ParsedResume } from "./parse";
 import { applyAlternatives, findAlternativeGroups } from "./groups";
 import { checkScore, lightScale, matchRate, skillScore, type CategoryScores } from "./score";
-import { blankCulture, companyProducts, isCompanyProduct } from "./wording";
+import { blankCulture, blankInstructions, companyProducts, isCompanyProduct } from "./wording";
 
 // what a scan needs to run
 export type ScanInput = {
@@ -126,7 +126,9 @@ function onlyAsProduct(jobText: string, row: SkillMatch, company: string | null)
 
 // runs the whole scan on plain text, no network or file access needed
 export function scanResume(input: ScanInput): ScanResult {
-  const { resumeText, jdText, layout = null } = input;
+  const { resumeText, layout = null } = input;
+  // lines written for an ai model are not part of the job, so nothing in them is scored
+  const jdText = blankInstructions(input.jdText);
 
   // read the resume and the job description
   const resume = parseResume(resumeText, input.today);

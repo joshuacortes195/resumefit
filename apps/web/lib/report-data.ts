@@ -1,4 +1,4 @@
-import { findSkillSpans, type ScanResult, type SkillSpan } from "@resumefit/scoring";
+import { blankInstructions, findSkillSpans, type ScanResult, type SkillSpan } from "@resumefit/scoring";
 import { HARD_SKILLS, SOFT_SKILLS } from "@resumefit/skills-data";
 import type { CustomSkill, SavedScan } from "@/lib/data/scans";
 import { runScan } from "@/lib/data/scans";
@@ -35,7 +35,8 @@ function buildSpans(report: ScanResult, jdText: string, resumeText: string): Rep
   const known = [...HARD_SKILLS, ...SOFT_SKILLS].filter((skill) => names.has(skill.name));
   const knownNames = new Set(known.map((skill) => skill.name));
   const terms = [...known, ...[...names].filter((name) => !knownNames.has(name)).map((name) => ({ name }))];
-  return { jd: findSkillSpans(jdText, terms), resume: findSkillSpans(resumeText, terms) };
+  // lines written for an ai model were not scored, so nothing in them is highlighted either. blanking keeps the length, so the marks still line up
+  return { jd: findSkillSpans(blankInstructions(jdText), terms), resume: findSkillSpans(resumeText, terms) };
 }
 
 // packs a saved scan up for the report page

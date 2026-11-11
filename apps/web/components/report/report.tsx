@@ -3,8 +3,8 @@
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowDown, ArrowUp, Briefcase, Check, Compass, Cpu, Pencil, Printer, RefreshCw, Sparkles } from "lucide-react";
-import { DEGREE_LEVELS } from "@resumefit/scoring";
+import { ArrowDown, ArrowUp, Briefcase, Check, Compass, Cpu, Pencil, Printer, RefreshCw, ShieldAlert, Sparkles } from "lucide-react";
+import { DEGREE_LEVELS, hasInstructions } from "@resumefit/scoring";
 import type { ScoreCategory } from "@resumefit/shared";
 import { addSkill, removeSkill, renameScan, setRequiredEducation, setTargetTitle, trackScan, updateJobDescription, type ActionResult } from "@/app/actions/scans";
 import { SECTIONS } from "@/components/report/copy";
@@ -100,6 +100,14 @@ export function Report({ data, resumes }: { data: ReportData; resumes: ResumeOpt
           </button>
         </div>
       </header>
+
+      {/* a posting with lines aimed at an ai model: say that they were skipped, so missing skills from them are no surprise */}
+      {hasInstructions(data.jdText) && (
+        <div className="mt-5 flex items-center gap-3 rounded-xl border border-border bg-surface px-4 py-3 text-sm">
+          <ShieldAlert className="size-4 shrink-0 text-muted" aria-hidden />
+          <p>Part of this posting reads like instructions to an AI, not a description of the job. That part was left out of your score.</p>
+        </div>
+      )}
 
       {/* which applicant system the posting uses, when we can tell */}
       {report.jd.ats && (

@@ -1,4 +1,5 @@
 import { STYLE_RULES } from "@/lib/ai/prompts/style";
+import { blankInstructions } from "@resumefit/scoring";
 
 export const TONES = ["Professional", "Enthusiastic", "Concise", "Conversational"] as const;
 export type Tone = (typeof TONES)[number];
@@ -20,6 +21,7 @@ ${STYLE_RULES}
 - Pick two or three things from the resume that match what the job asks for and say what the person did.
 - When no job description is given, write for what that job title usually involves, and still only use facts from the resume.
 - If the person gave a reason for wanting this company, work it in. Do not make up reasons or facts about the company.
+- Do not describe habits, traits or feelings the resume does not state, such as "my habit of writing tests" or "I thrive under pressure". Say what was done and let it speak.
 - Address it to the hiring manager by name when one is given, otherwise "Dear Hiring Manager,".
 - End with a short closing line and the person's name placeholder if the resume has one.
 - Plain text only. No headings, no bullet points, no subject line.`;
@@ -33,7 +35,7 @@ Why this company, in the person's words: ${input.why?.trim() || "not given"}
 
 Job description:
 """
-${input.jdText.trim().slice(0, 8000) || "not given"}
+${blankInstructions(input.jdText).trim().slice(0, 8000) || "not given"}
 """
 
 Resume:

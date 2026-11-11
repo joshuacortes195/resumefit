@@ -191,3 +191,37 @@ for (const [phrases, tools] of CATEGORY_TOOLS) {
 export function categoryTools(name: string): SkillTerm[] | null {
   return CATEGORY_LOOKUP.get(normalizeName(name)) ?? null;
 }
+
+// wording that speaks to an ai model instead of a person reading the posting, like "ignore all previous instructions".
+// some postings carry it as a trap for bots, and some people paste it in to see what happens
+const INSTRUCTION_PATTERNS = [
+  /\b(?:ignore|disregard|forget|override)\s+(?:all\s+|any\s+|your\s+|the\s+|of\s+)*(?:previous|prior|above|earlier|preceding)?\s*(?:instructions?|rules|prompts?|guidelines)\b/i,
+  /\b(?:system\s+(?:prompt|note|message)|(?:note|instructions?|message)\s+(?:to|for)\s+(?:the\s+)?(?:ai|llm|model|grader|assistant|chatbot|language model))\b/i,
+  /\bif\s+you\s+are\s+an?\s+(?:ai|llm|large language model|language model|chatbot|bot)\b/i,
+  /\b(?:print|reveal|output|repeat|show)\s+(?:your\s+|the\s+)?(?:full\s+|entire\s+)?(?:system\s+prompt|hidden\s+instructions?|api\s+keys?)\b/i,
+];
+
+// true when a posting has lines written for an ai model
+export function hasInstructions(text: string): boolean {
+  return INSTRUCTION_PATTERNS.some((pattern) => pattern.test(text));
+}
+
+// blanks out the part of a posting that is written for an ai model, from the sentence that starts it to the end of its paragraph,
+// so the skills it names are not read as things the job asks for. the text keeps its length, so positions still line up
+export function blankInstructions(text: string): string {
+  if (!hasInstructions(text)) return text;
+  return text
+    .split(/(\n)/)
+    .map((line) => {
+      // the first sentence in the line that talks to a model, everything after it in the same line goes too
+      const sentences = line.split(/(?<=[.!?])\s+/);
+      let offset = 0;
+      for (const sentence of sentences) {
+        const at = line.indexOf(sentence, offset);
+        if (hasInstructions(sentence)) return line.slice(0, at) + " ".repeat(line.length - at);
+        offset = at + sentence.length;
+      }
+      return line;
+    })
+    .join("");
+}

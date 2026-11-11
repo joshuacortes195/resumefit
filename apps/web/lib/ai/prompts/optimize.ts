@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { STYLE_RULES } from "@/lib/ai/prompts/style";
+import { blankInstructions } from "@resumefit/scoring";
 
 // the kinds of change a suggestion can be
 export const SUGGESTION_TYPES = ["summary", "bullet", "skills", "verb", "metric"] as const;
@@ -31,7 +32,7 @@ What to suggest:
 - "summary": rewrite the summary so it names the target job title and the top skills the person already shows elsewhere in the resume.
 - "bullet": rephrase a bullet so a missing keyword fits naturally, only when the bullet already describes that kind of work.
 - "skills": add missing skills to the skills line. Set requires_user_confirmation to true for these, because only the person knows if they have the skill.
-- "verb": replace a weak opening like "Responsible for", "Helped with" or "Worked on" with a direct verb.
+- "verb": replace a weak opening like "Responsible for", "Helped with" or "Worked on" with a direct verb. A line that already opens with a direct verb is not a "verb" suggestion.
 - "metric": when a bullet has no number, add a placeholder such as [X%] or [N] for the person to fill in. Never make up a number.
 
 Rules for the reply:
@@ -40,7 +41,9 @@ Rules for the reply:
 - Keep each bullet to two lines at most, about 30 words.
 - keywords_added lists only the missing keywords that appear in proposed.
 - Leave lines that are already strong alone. Between 4 and 12 suggestions is right for most resumes.
-- Never touch names, contact details, employers, job titles, dates or schools.`;
+- Never touch names, contact details, employers, job titles, dates or schools.
+- A change must never make a line say less. Keep every number, and keep words that show scope or ownership such as led, leading, owned, managed, mentored, trained, fully and end to end. Never swap one of those for a plainer verb like developed, built or implemented.
+- Only suggest a change when it adds a missing keyword, fixes a weak opening or adds a place for a number. Swapping one good word for another is not a suggestion.`;
 
 // the request for one resume and job
 export function optimizePrompt(input: { lines: string[]; jobTitle: string | null; missing: string[]; present: string[]; jdSummary: string }): string {
@@ -55,7 +58,7 @@ ${input.present.join(", ") || "none"}
 
 Job description:
 """
-${input.jdSummary}
+${blankInstructions(input.jdSummary)}
 """
 
 Resume, one numbered line each:

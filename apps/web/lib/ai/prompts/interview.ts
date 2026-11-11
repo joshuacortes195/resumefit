@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { STYLE_RULES } from "@/lib/ai/prompts/style";
+import { blankInstructions } from "@resumefit/scoring";
 
 export const QUESTION_TYPES = ["behavioral", "technical", "resume"] as const;
 export const questionSchema = z.object({ type: z.enum(QUESTION_TYPES), question: z.string().min(10).max(400) });
@@ -20,7 +21,7 @@ export function interviewQuestionsPrompt(input: { jobTitle: string | null; jdTex
 
 Job description:
 """
-${input.jdText.slice(0, 6000)}
+${blankInstructions(input.jdText).slice(0, 6000)}
 """
 
 Candidate's resume:
@@ -58,7 +59,7 @@ export function interviewFeedbackPrompt(input: { question: string; answer: strin
 
 Job description:
 """
-${input.jdText.slice(0, 4000)}
+${blankInstructions(input.jdText).slice(0, 4000)}
 """
 
 Candidate's resume:
