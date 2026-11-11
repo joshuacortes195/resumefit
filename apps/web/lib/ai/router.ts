@@ -1,6 +1,7 @@
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { getDb, schema } from "@/db";
+import { plainAnswer } from "@/lib/ai/clean";
 import { decrypt } from "@/lib/ai/crypto";
 import { globalCapReached, logFailure, logUsage, remainingToday, userCapReached, type AiFeature } from "@/lib/ai/limits";
 import { mockCall } from "@/lib/ai/mock";
@@ -31,7 +32,8 @@ export class AiLimitError extends Error {
 }
 
 // a provider that is ready to be called
-export type ReadyProvider = { name: ProviderName; call: ProviderCall; model: string; fastModel: string };
+// own marks a key the person saved themselves, its faults say nothing about the shared ones
+export type ReadyProvider = { name: ProviderName; call: ProviderCall; model: string; fastModel: string; own?: boolean };
 
 export type GenerateOptions = {
   userId: string;
@@ -112,7 +114,7 @@ export async function readyProviders(userId?: string): Promise<ReadyProvider[]> 
       .where(and(eq(schema.userAiKeys.userId, userId), eq(schema.userAiKeys.provider, "gemini")))
       .limit(1);
     const key = own ? decrypt(own.encryptedKey, secret) : null;
-    if (key) ready.push({ name: "gemini", call: geminiCall(key), model: env.GEMINI_MODEL ?? DEFAULT_MODELS.gemini.main, fastModel: env.GEMINI_MODEL_FAST ?? DEFAULT_MODELS.gemini.fast });
+    if (key) ready.push({ name: "gemini", call: geminiCall(key), model: env.GEMINI_MODEL ?? DEFAULT_MODELS.gemini.main, fastModel: env.GEMINI_MODEL_FAST ?? DEFAULT_MODELS.gemini.fast, own: true });
   }
 
   for (const name of aiProviderOrder()) {
@@ -166,6 +168,68 @@ async function prepare(feature: AiFeature, options: GenerateOptions): Promise<Re
   return providers;
 }
 
+// how long one model gets to answer before the next one is tried. people are waiting on these, so it is kept short
+const DEFAULT_TIMEOUT_MS = 15_000;
+// a model that fails this many times in a row is left alone for a while, so nobody waits out its timeout again and again
+const BREAKER_FAILS = 2;
+const BREAKER_REST_MS = 10 * 60_000;
+
+// which models are being rested and until when, by "provider/model"
+type Breakers = Record<string, { fails: number; until: number }>;
+const globalForBreakers = globalThis as unknown as { aiBreakers?: Breakers };
+const breakers = (globalForBreakers.aiBreakers ??= {});
+
+// the rested models, with what other copies of the app wrote to the database mixed in
+async function loadBreakers(): Promise<Breakers> {
+  try {
+    const db = await getDb();
+    const [row] = await db.select({ value: schema.appSettings.value }).from(schema.appSettings).where(eq(schema.appSettings.key, "ai-breakers")).limit(1);
+    for (const [key, saved] of Object.entries((row?.value ?? {}) as Breakers)) {
+      const mine = breakers[key];
+      if (!mine || saved.until > mine.until) breakers[key] = saved;
+    }
+  } catch {
+    // memory alone still works, it just forgets sooner
+  }
+  return breakers;
+}
+
+// writes the rested models down so every copy of the app skips them, quietly giving up if that fails
+async function saveBreakers(): Promise<void> {
+  try {
+    const db = await getDb();
+    await db.insert(schema.appSettings).values({ key: "ai-breakers", value: breakers }).onConflictDoUpdate({ target: schema.appSettings.key, set: { value: breakers } });
+  } catch {
+    // never a reason to fail a request
+  }
+}
+
+// notes a failed call against a model and starts its rest once it has failed enough. a rate limit is not counted, that clears on its own
+async function tripBreaker(key: string, error: unknown): Promise<void> {
+  if (error instanceof ProviderError && error.status === 429) return;
+  const entry = (breakers[key] ??= { fails: 0, until: 0 });
+  entry.fails += 1;
+  if (entry.fails < BREAKER_FAILS) return;
+  entry.until = Date.now() + BREAKER_REST_MS;
+  console.warn(`ai model ${key} failed ${entry.fails} times in a row, skipping it for ${BREAKER_REST_MS / 60_000} minutes`);
+  await saveBreakers();
+}
+
+// a good answer ends a model's rest and clears its count
+async function resetBreaker(key: string): Promise<void> {
+  if (!breakers[key]) return;
+  const wasResting = breakers[key].until > 0;
+  delete breakers[key];
+  if (wasResting) await saveBreakers();
+}
+
+// for tests, forgets every rested model here and in the database
+export async function clearBreakers(): Promise<void> {
+  for (const key of Object.keys(breakers)) delete breakers[key];
+  const db = await getDb();
+  await db.delete(schema.appSettings).where(eq(schema.appSettings.key, "ai-breakers"));
+}
+
 // tries each provider in turn until one gives a usable answer
 async function attempt<T>(
   feature: AiFeature,
@@ -173,33 +237,48 @@ async function attempt<T>(
   run: (provider: ReadyProvider, model: string, signal: AbortSignal) => Promise<{ value: T; tokensIn: number; tokensOut: number }>,
 ): Promise<T> {
   const providers = await prepare(feature, options);
-  for (const provider of providers) {
-    // the model that was asked for first, then the provider's smaller one in case the first is not on offer for this key
+  // every model that could be asked, in order: the one that was wanted first, then the provider's smaller one in case the first is not on offer for this key
+  const candidates = providers.flatMap((provider) => {
     const wanted = options.fast ? provider.fastModel : provider.model;
     const models = wanted === provider.fastModel ? [wanted] : [wanted, provider.fastModel];
-    for (const model of models) {
-      try {
-        const { value, tokensIn, tokensOut } = await run(provider, model, AbortSignal.timeout(options.timeoutMs ?? 25_000));
-        // the first good call on this copy of the app is written down, and so is one that follows a problem. that is what lets a saved problem be cleared
-        const worthSaving = !options.untracked && (!health[provider.name]?.lastOk || Boolean(health[provider.name]?.lastError));
-        if (!options.untracked) record(provider.name);
-        if (worthSaving) await saveHealth(provider.name);
-        if (!options.untracked) await logUsage({ userId: options.userId, feature, provider: provider.name, model, tokensIn, tokensOut });
-        return value;
-      } catch (error) {
-        // rate limits, outages, timeouts and unusable answers all mean "try the next one"
-        // someone trying out a key of their own is not news about the shared providers, so nothing is noted down for that
-        if (!options.untracked) {
-          record(provider.name, error instanceof Error ? error : new Error("unknown error"));
-          // also into the server log and the database, so the reason can be found afterwards
-          console.error(`ai provider ${provider.name} (${model}) failed for ${feature}: ${health[provider.name]?.lastError ?? "unknown"}`);
-          await saveHealth(provider.name);
-        }
-        // "wants billing", "not allowed" and "no such model" are about that one model, so the smaller one is worth a try.
-        // anything else, like a rate limit, is about the whole provider, so move on to the next
-        // groq says a retired model with a 400, so the reason it gives counts too, not only the status
-        if (!isModelProblem(error)) break;
+    return models.map((model) => ({ provider, model, key: `${provider.name}/${model}`, wantedKey: `${provider.name}/${wanted}` }));
+  });
+  // models that keep failing are skipped while they rest. if that would leave nobody to ask, everyone gets a try anyway
+  const rested = options.untracked ? {} : await loadBreakers();
+  // a provider's smaller model is only a stand in for a main one that is missing, so while the main one rests the stand in is skipped too
+  const asleep = (key: string) => (rested[key]?.until ?? 0) > Date.now();
+  const resting = (candidate: (typeof candidates)[number]) => !candidate.provider.own && (asleep(candidate.key) || asleep(candidate.wantedKey));
+  const awake = candidates.filter((candidate) => !resting(candidate));
+  const queue = awake.length > 0 ? awake : candidates;
+  // a provider that failed for a reason that is not about one model is done for this request
+  const givenUp = new Set<ReadyProvider>();
+
+  for (const { provider, model, key } of queue) {
+    if (givenUp.has(provider)) continue;
+    try {
+      const { value, tokensIn, tokensOut } = await run(provider, model, AbortSignal.timeout(options.timeoutMs ?? DEFAULT_TIMEOUT_MS));
+      // the first good call on this copy of the app is written down, and so is one that follows a problem. that is what lets a saved problem be cleared
+      const worthSaving = !options.untracked && (!health[provider.name]?.lastOk || Boolean(health[provider.name]?.lastError));
+      if (!options.untracked) record(provider.name);
+      if (worthSaving) await saveHealth(provider.name);
+      if (!options.untracked && !provider.own) await resetBreaker(key);
+      if (!options.untracked) await logUsage({ userId: options.userId, feature, provider: provider.name, model, tokensIn, tokensOut });
+      // fancy dashes, quotes and spaces are swapped for plain ones before anything is shown or saved
+      return plainAnswer(value);
+    } catch (error) {
+      // rate limits, outages, timeouts and unusable answers all mean "try the next one"
+      // someone trying out a key of their own is not news about the shared providers, so nothing is noted down for that
+      if (!options.untracked) {
+        record(provider.name, error instanceof Error ? error : new Error("unknown error"));
+        // also into the server log and the database, so the reason can be found afterwards
+        console.error(`ai provider ${provider.name} (${model}) failed for ${feature}: ${health[provider.name]?.lastError ?? "unknown"}`);
+        await saveHealth(provider.name);
+        if (!provider.own) await tripBreaker(key, error);
       }
+      // "wants billing", "not allowed" and "no such model" are about that one model, so the smaller one is worth a try.
+      // anything else, like a rate limit, is about the whole provider, so move on to the next
+      // groq says a retired model with a 400, so the reason it gives counts too, not only the status
+      if (!isModelProblem(error)) givenUp.add(provider);
     }
   }
   // nobody answered. it still cost calls to the providers, so it is counted

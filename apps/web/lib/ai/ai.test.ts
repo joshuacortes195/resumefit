@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
+import { like } from "drizzle-orm";
 import { z } from "zod";
 import { getDb, schema } from "@/db";
 import { decrypt, encrypt } from "@/lib/ai/crypto";
@@ -10,11 +11,20 @@ import { tidy } from "@/lib/ai/prompts/style";
 import { errorDetail, groqCall, isModelProblem, ProviderError, type ProviderRequest } from "@/lib/ai/providers";
 import { plainProblem } from "@/lib/ai/status";
 import { redact, redactor } from "@/lib/ai/redact";
-import { AiBusyError, AiLimitError, AiUnavailableError, generateJSON, generateText, type ReadyProvider } from "@/lib/ai/router";
+import { plainAnswer, plainPunctuation } from "@/lib/ai/clean";
+import { AiBusyError, AiLimitError, AiUnavailableError, clearBreakers, generateJSON, generateText, type ReadyProvider } from "@/lib/ai/router";
 import { getCurrentUser } from "@/lib/auth";
 import { createScan } from "@/lib/data/scans";
 
 const shape = z.object({ answer: z.string(), score: z.number() });
+
+// each test starts with no model being rested, so one test's failures never change who the next one asks
+beforeEach(async () => {
+  await clearBreakers();
+  // and with no burst counted against the test user, so a test that makes a few calls is not turned away for the ones before it
+  const db = await getDb();
+  await db.delete(schema.appSettings).where(like(schema.appSettings.key, "rate:%"));
+});
 
 // a fake provider that plays back a list of replies and remembers what it was asked
 function fake(name: ReadyProvider["name"], replies: (string | Error)[]): ReadyProvider & { requests: ProviderRequest[] } {
@@ -115,6 +125,63 @@ describe("provider router", () => {
     const gemini = fake("gemini", ["plain text"]);
     await generateText("bullets", { system: "s", prompt: "p" }, { userId: user.id, providers: [gemini], fast: true });
     expect(gemini.requests[0]?.model).toBe("gemini-fast");
+  });
+});
+
+describe("resting a model that keeps failing", () => {
+  it("skips a model after two failures in a row, so nobody waits on it again", async () => {
+    const user = await getCurrentUser();
+    const gemini = fake("gemini", [new ProviderError("This operation was aborted")]);
+    const groq = fake("groq", ["fine"]);
+    const options = { userId: user.id, providers: [gemini, groq] };
+    await generateText("bullets", { system: "s", prompt: "p" }, options);
+    await generateText("bullets", { system: "s", prompt: "p" }, options);
+    expect(gemini.requests).toHaveLength(2);
+    // the third request goes straight to the one that works
+    expect(await generateText("bullets", { system: "s", prompt: "p" }, options)).toBe("fine");
+    expect(gemini.requests).toHaveLength(2);
+    expect(groq.requests).toHaveLength(3);
+  });
+
+  it("does not rest a model for being rate limited, and a good answer clears the count", async () => {
+    const user = await getCurrentUser();
+    const limited = fake("gemini", [new ProviderError("rate limited", 429)]);
+    const groq = fake("groq", ["fine"]);
+    for (let i = 0; i < 3; i += 1) await generateText("bullets", { system: "s", prompt: "p" }, { userId: user.id, providers: [limited, groq] });
+    expect(limited.requests).toHaveLength(3);
+
+    const flaky = fake("cloudflare", [new ProviderError("down", 503), "back", new ProviderError("down", 503), "back again"]);
+    for (let i = 0; i < 4; i += 1) await generateText("bullets", { system: "s", prompt: "p" }, { userId: user.id, providers: [flaky, groq] });
+    expect(flaky.requests).toHaveLength(4);
+  });
+
+  it("still asks a rested model when it is the only one there is", async () => {
+    const user = await getCurrentUser();
+    const only = fake("gemini", [new ProviderError("down", 503), new ProviderError("down", 503), "back"]);
+    const options = { userId: user.id, providers: [only] };
+    await expect(generateText("bullets", { system: "s", prompt: "p" }, options)).rejects.toBeInstanceOf(AiBusyError);
+    await expect(generateText("bullets", { system: "s", prompt: "p" }, options)).rejects.toBeInstanceOf(AiBusyError);
+    expect(await generateText("bullets", { system: "s", prompt: "p" }, options)).toBe("back");
+  });
+});
+
+describe("plain punctuation", () => {
+  it("swaps the characters applicant systems trip on for keyboard ones", () => {
+    expect(plainPunctuation("end\u2011to\u2011end and 5\u2011person")).toBe("end-to-end and 5-person");
+    expect(plainPunctuation("\u201Cquoted\u201D and it\u2019s")).toBe("\"quoted\" and it's");
+    expect(plainPunctuation("non\u00A0breaking\u200B space")).toBe("non breaking space");
+    expect(plainPunctuation("2023 \u2013 2025")).toBe("2023-2025");
+    expect(plainPunctuation("built it \u2014 then shipped it")).toBe("built it, then shipped it");
+  });
+
+  it("cleans every piece of text inside a json answer", () => {
+    expect(plainAnswer({ options: ["work\u2011order"], nested: { note: "data\u2011leakage" }, count: 2 })).toEqual({ options: ["work-order"], nested: { note: "data-leakage" }, count: 2 });
+  });
+
+  it("is applied to what the router hands back", async () => {
+    const user = await getCurrentUser();
+    const groq = fake("groq", ["a machine\u2011learning model"]);
+    expect(await generateText("bullets", { system: "s", prompt: "p" }, { userId: user.id, providers: [groq] })).toBe("a machine-learning model");
   });
 });
 
