@@ -1,4 +1,4 @@
-import { like, sql } from "drizzle-orm";
+import { and, like, sql } from "drizzle-orm";
 import { getDb, schema } from "@/db";
 
 // how often one person may do each of the expensive things, per minute. these sit on top of the daily caps,
@@ -64,4 +64,18 @@ export async function rateLimit(userId: string, bucket: RateBucket): Promise<voi
 export async function clearRateLimits(userId: string): Promise<void> {
   const db = await getDb();
   await db.delete(schema.appSettings).where(like(schema.appSettings.key, `rate:${userId}:%`));
+}
+
+// counters nobody has touched in this long are finished, the longest window is a quarter of an hour
+const STALE_MS = 24 * 60 * 60_000;
+
+// clears out counters that ran out long ago and says how many went. without this the table grows by one row
+// for every address that ever asked for a sign in email
+export async function sweepRateLimits(now = Date.now()): Promise<number> {
+  const db = await getDb();
+  const gone = await db
+    .delete(schema.appSettings)
+    .where(and(like(schema.appSettings.key, "rate:%"), sql`(${schema.appSettings.value}->>'start')::bigint <= ${now - STALE_MS}`))
+    .returning({ key: schema.appSettings.key });
+  return gone.length;
 }

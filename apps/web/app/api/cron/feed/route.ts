@@ -1,7 +1,7 @@
 import { timingSafeEqual } from "node:crypto";
 import { serverEnv } from "@/lib/env";
 import { refreshFeed, savedJobs } from "@/lib/jobs-feed";
-import { RATE_LIMITS, withinLimit } from "@/lib/rate-limit";
+import { RATE_LIMITS, sweepRateLimits, withinLimit } from "@/lib/rate-limit";
 
 // how long the address stays shut after a visit when there is no secret
 const OPEN_WINDOW_MS = 10 * 60_000;
@@ -24,6 +24,8 @@ export async function GET(request: Request): Promise<Response> {
     // one visit every ten minutes from everyone put together is all it will answer, and the daily visit needs just one
     const secret = serverEnv().CRON_SECRET;
     if (secret ? !fromScheduler(request, secret) : !(await withinLimit("everyone", "feed-refresh", RATE_LIMITS["feed-refresh"], Date.now(), OPEN_WINDOW_MS))) return Response.json({ ok: false }, { status: secret ? 401 : 429 });
+    // the daily visit is also when old rate limit counters get cleared out. a failure here never stops the refresh
+    await sweepRateLimits().catch(() => 0);
     const result = await refreshFeed(50_000);
     // how much is saved now, handy when checking that the feed is healthy
     const pool = await savedJobs();

@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import { getDb, schema } from "@/db";
-import { clearRateLimits, RATE_LIMITS, withinLimit } from "./rate-limit";
+import { clearRateLimits, RATE_LIMITS, sweepRateLimits, withinLimit } from "./rate-limit";
 
 // a person to count against
 async function someone(): Promise<string> {
@@ -45,5 +45,16 @@ describe("per person rate limits", () => {
     await clearRateLimits(user);
     const db = await getDb();
     expect((await db.select().from(schema.appSettings)).filter((row) => row.key.includes(user))).toHaveLength(0);
+  });
+
+  it("sweeps out counters that ran out more than a day ago and keeps the live ones", async () => {
+    const [old, live] = [await someone(), await someone()];
+    const now = Date.now();
+    await withinLimit(old, "scan", 3, now - 25 * 60 * 60_000);
+    await withinLimit(live, "scan", 3, now - 5_000);
+    expect(await sweepRateLimits(now)).toBeGreaterThanOrEqual(1);
+    // the old counter is gone, so that person starts from one again. the live one kept its count
+    expect(await withinLimit(old, "scan", 1, now)).toBe(true);
+    expect(await withinLimit(live, "scan", 1, now)).toBe(false);
   });
 });
