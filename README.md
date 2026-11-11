@@ -112,6 +112,15 @@ The first person to sign in becomes the admin and needs no invite code, so sign 
 
 Keep `ENCRYPTION_KEY` safe and do not change it later. It locks the API keys people save, and a new one would make those unreadable.
 
+### 4. Lock the accounts down
+
+The code can only be as safe as the accounts it runs on. Whoever gets into the Vercel account can read every secret and every stored resume, so do these once:
+
+- Turn on two factor sign in for Vercel, GitHub and Supabase.
+- In Supabase, under Authentication: switch off email and password sign up if you only use sign in links, lower the email sending limit, and turn on CAPTCHA (Cloudflare Turnstile is free). The public key is meant to be public, but without these anyone can ask your project to send sign in emails. They still cannot get into the app without an invite.
+- In Vercel, under Firewall: turn on Bot Protection. Under Functions, pick the region closest to your Supabase project.
+- If the admin page shows a provider that never answers, set `GEMINI_MODEL` or `GROQ_MODEL` to a model your key can use. A model that fails twice in a row is skipped for ten minutes, so the app stays quick in the meantime.
+
 ## The Chrome extension
 
 It is not in the Chrome Web Store, so it is loaded by hand. The Chrome Extension page in the app has a download button and the steps, which is all a friend needs:
@@ -169,6 +178,9 @@ This project includes information from the [O*NET 30.0 Database](https://www.one
 - **The admin**: the first person ever to sign in is the admin, and only one person can be. With `ADMIN_EMAIL` set, only that address can be, and only once the sign in provider has confirmed it. If the only admin deletes their account, whoever has been a member longest takes over. If everyone leaves, the next person still needs an invite code, unless they sign in with the `ADMIN_EMAIL` address.
 - **Caching**: anything that depends on who is signed in is sent as `private, no-store`.
 - **Addresses that point at nothing** answer with a real 404 and the app's own not found page.
+- **Ids that are not ids**, like a link someone mangled, get the same not found page instead of an error.
+- **Postings that talk to the AI**: a line like "ignore all previous instructions" in a job description is left out of the score and out of everything sent to a model, and the report says so.
+- **AI answers** have fancy hyphens, quotes and spaces swapped for plain ones, since some applicant systems cannot read them.
 
 ## Privacy, in short
 
