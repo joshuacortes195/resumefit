@@ -8,6 +8,8 @@ import { getCurrentUser } from "@/lib/auth";
 import { listJobs, getJob } from "@/lib/data/jobs";
 import { LocalTime } from "@/components/local-time";
 import { listLinkedinReports, pendingLinkedin } from "@/lib/data/practice";
+import { removeLinkedinReport } from "@/app/actions/practice";
+import { DeleteRow } from "@/components/delete-row";
 
 export const metadata = { title: "LinkedIn Optimizer" };
 
@@ -54,12 +56,13 @@ async function History() {
       <h2 className="text-lg font-semibold">LinkedIn scan history</h2>
       <ul className="mt-3 divide-y divide-border">
         {reports.map((report) => (
-          <li key={report.id}>
-            <Link href={`/linkedin/${report.id}`} className="group flex items-center gap-4 py-3">
+          <li key={report.id} className="flex items-center gap-2">
+            <Link href={`/linkedin/${report.id}`} className="group flex min-w-0 flex-1 items-center gap-4 py-3">
               <ScoreRing score={report.score} size="sm" label="LinkedIn score" />
               <span className="min-w-0 flex-1 truncate group-hover:text-primary">{report.headline || "No headline"}</span>
               <span className="shrink-0 text-sm text-muted"><LocalTime value={report.createdAt} /></span>
             </Link>
+            <DeleteRow id={report.id} action={removeLinkedinReport} what="LinkedIn report" />
           </li>
         ))}
       </ul>

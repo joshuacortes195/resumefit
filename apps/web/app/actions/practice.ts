@@ -12,7 +12,7 @@ import { redactor } from "@/lib/ai/redact";
 import { AiBusyError, AiLimitError, AiUnavailableError, aiAvailable, generateJSON, generateText } from "@/lib/ai/router";
 import { getCurrentUser } from "@/lib/auth";
 import { getJob } from "@/lib/data/jobs";
-import { clearPendingLinkedin, createPracticeSession, getLinkedinReport, getPracticeSession, saveLinkedinReport, savePracticeAnswer, type PracticeAnswer } from "@/lib/data/practice";
+import { clearPendingLinkedin, createPracticeSession, deleteLinkedinReport, deletePracticeSession, getLinkedinReport, getPracticeSession, saveLinkedinReport, savePracticeAnswer, type PracticeAnswer } from "@/lib/data/practice";
 import { getResume, listResumes } from "@/lib/data/resumes";
 import { fallbackQuestions, measureAnswer } from "@/lib/interview";
 import { safeErrorText } from "@/lib/log";
@@ -159,4 +159,20 @@ export async function answerQuestion(input: { sessionId: string; index: number; 
   await savePracticeAnswer(user.id, session, parsed.data.index, answer);
   revalidatePath(`/interview/${session.id}`);
   return { ok: true, answer, coached: answer.feedback !== null, note };
+}
+
+// deletes one linkedin report from the history list
+export async function removeLinkedinReport(id: string): Promise<Result> {
+  const user = await getCurrentUser();
+  await deleteLinkedinReport(user.id, id);
+  revalidatePath("/linkedin");
+  return { ok: true };
+}
+
+// deletes one practice session from the past sessions list
+export async function removePracticeSession(id: string): Promise<Result> {
+  const user = await getCurrentUser();
+  await deletePracticeSession(user.id, id);
+  revalidatePath("/interview");
+  return { ok: true };
 }

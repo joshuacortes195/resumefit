@@ -1,5 +1,7 @@
 import { Suspense } from "react";
 import Link from "next/link";
+import { removePracticeSession } from "@/app/actions/practice";
+import { DeleteRow } from "@/components/delete-row";
 import { InterviewStart } from "@/components/interview-start";
 import { CARD } from "@/components/ui/buttons";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -51,14 +53,15 @@ async function PastSessions() {
           const score = sessionScore(session);
           const answered = session.answers.filter(Boolean).length;
           return (
-            <li key={session.id}>
-              <Link href={`/interview/${session.id}`} className="group flex items-center gap-4 py-3 text-sm">
+            <li key={session.id} className="flex items-center gap-2">
+              <Link href={`/interview/${session.id}`} className="group flex min-w-0 flex-1 items-center gap-4 py-3 text-sm">
                 <span className="min-w-0 flex-1 truncate font-medium group-hover:text-primary">{[session.jobTitle ?? "Practice session", session.company].filter(Boolean).join(", ")}</span>
                 <span className="shrink-0 text-muted">
-                  {answered} of {session.questions.length} answered{score !== null ? `, average ${score} / 100` : ""}
+                  {answered} of {session.questions.length} answered{score !== null ? `, average ${score}%` : ""}
                 </span>
                 <span className="shrink-0 text-muted"><LocalTime value={session.createdAt} style="day" /></span>
               </Link>
+              <DeleteRow id={session.id} action={removePracticeSession} what="practice session" />
             </li>
           );
         })}

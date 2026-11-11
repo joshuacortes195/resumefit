@@ -132,3 +132,17 @@ export function sessionScore(session: PracticeSession): number | null {
   const scores = session.answers.flatMap((answer) => (answer?.feedback ? [answer.feedback.score] : []));
   return scores.length > 0 ? Math.round(scores.reduce((total, score) => total + score, 0) / scores.length) : null;
 }
+
+// removes one saved linkedin report, only if it belongs to this user
+export async function deleteLinkedinReport(userId: string, id: string): Promise<void> {
+  if (!isUuid(id)) return;
+  const db = await getDb();
+  await db.delete(schema.linkedinReports).where(and(eq(schema.linkedinReports.id, id), eq(schema.linkedinReports.userId, userId)));
+}
+
+// removes one practice session with its answers, only if it belongs to this user
+export async function deletePracticeSession(userId: string, id: string): Promise<void> {
+  if (!isUuid(id)) return;
+  const db = await getDb();
+  await db.delete(schema.interviewSessions).where(and(eq(schema.interviewSessions.id, id), eq(schema.interviewSessions.userId, userId)));
+}
