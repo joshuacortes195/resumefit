@@ -9,6 +9,7 @@ import { getCurrentUser, type CurrentUser } from "@/lib/auth";
 import { DRAFT_COOKIE, parseDraft } from "@/lib/builder/open-draft";
 import { toBuilderResume } from "@/lib/data/builder";
 import { getResume, type ResumeRow } from "@/lib/data/resumes";
+import { isUuid } from "@/lib/ids";
 
 export const metadata = { title: "Resume Builder" };
 
@@ -19,7 +20,7 @@ export default async function BuilderEditorPage({ params, searchParams }: Props)
   // looked up before anything is sent, so a resume that is not there answers with a real 404 and the not found page
   const [{ id }, query] = await Promise.all([params, searchParams]);
   const user = await getCurrentUser();
-  const row = /^[0-9a-f-]{36}$/i.test(id) ? await getResume(user.id, id) : null;
+  const row = isUuid(id) ? await getResume(user.id, id) : null;
   if (!row) notFound();
   return (
     <Suspense fallback={<ReportSkeleton />}>

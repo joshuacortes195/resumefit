@@ -3,8 +3,8 @@ import type { LinkedinProfile, LinkedinReport } from "@resumefit/scoring";
 import { getDb, schema } from "@/db";
 import type { AnswerFeedback, InterviewQuestion } from "@/lib/ai/prompts/interview";
 import type { AnswerMetrics } from "@/lib/interview";
+import { isUuid } from "@/lib/ids";
 
-const isId = (id: string) => /^[0-9a-f-]{36}$/i.test(id);
 
 // a saved linkedin report
 export type SavedLinkedinReport = { id: string; profile: LinkedinProfile; jobDescriptions: string[]; score: number; report: LinkedinReport; createdAt: Date };
@@ -41,7 +41,7 @@ export async function saveLinkedinReport(userId: string, profile: LinkedinProfil
 }
 
 export async function getLinkedinReport(userId: string, id: string): Promise<SavedLinkedinReport | null> {
-  if (!isId(id)) return null;
+  if (!isUuid(id)) return null;
   const db = await getDb();
   const [row] = await db
     .select()
@@ -95,7 +95,7 @@ function toSession(row: typeof schema.interviewSessions.$inferSelect): PracticeS
 }
 
 export async function getPracticeSession(userId: string, id: string): Promise<PracticeSession | null> {
-  if (!isId(id)) return null;
+  if (!isUuid(id)) return null;
   const db = await getDb();
   const [row] = await db
     .select()

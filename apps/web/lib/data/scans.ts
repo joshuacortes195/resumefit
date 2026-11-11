@@ -4,6 +4,7 @@ import { scanResume, type DegreeLevel, type JdHints, type LayoutMeta, type ScanR
 import { HARD_SKILLS, SOFT_SKILLS } from "@resumefit/skills-data";
 import { getDb, schema } from "@/db";
 import { createJob, findCard, tidyCompany } from "@/lib/data/jobs";
+import { isUuid } from "@/lib/ids";
 
 export type ScanRow = typeof schema.scans.$inferSelect;
 
@@ -180,7 +181,7 @@ export async function createScan(userId: string, input: NewScan): Promise<SavedS
 // one scan, only if it belongs to this user
 export async function getScan(userId: string, id: string): Promise<SavedScan | null> {
   // ids that are not uuids can never match, and postgres would throw on them
-  if (!/^[0-9a-f-]{36}$/i.test(id)) return null;
+  if (!isUuid(id)) return null;
   const db = await getDb();
   const [row] = await db
     .select()

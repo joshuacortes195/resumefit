@@ -1,6 +1,7 @@
 import { and, asc, count, desc, eq, gte, inArray, max } from "drizzle-orm";
 import type { JobStatus } from "@resumefit/shared";
 import { getDb, schema } from "@/db";
+import { isUuid } from "@/lib/ids";
 
 export type JobRow = typeof schema.jobs.$inferSelect;
 
@@ -65,7 +66,7 @@ export async function createJob(userId: string, job: NewJob): Promise<JobRow> {
 
 // one job, only if it belongs to this user
 export async function getJob(userId: string, id: string): Promise<JobRow | null> {
-  if (!/^[0-9a-f-]{36}$/i.test(id)) return null;
+  if (!isUuid(id)) return null;
   const db = await getDb();
   const [row] = await db
     .select()

@@ -3,6 +3,7 @@ import { parseResume, type LayoutMeta } from "@resumefit/scoring";
 import type { ResumeSource } from "@resumefit/shared";
 import { getDb, schema } from "@/db";
 import { deleteFile, saveFile } from "@/lib/storage";
+import { isUuid } from "@/lib/ids";
 
 export type ResumeRow = typeof schema.resumes.$inferSelect;
 
@@ -41,6 +42,8 @@ export async function listResumes(userId: string): Promise<ResumeSummary[]> {
 
 // one resume, only if it belongs to this user
 export async function getResume(userId: string, id: string): Promise<ResumeRow | null> {
+  // an id that is not shaped like one of ours can never match, and postgres would throw on it
+  if (!isUuid(id)) return null;
   const db = await getDb();
   const [row] = await db
     .select()

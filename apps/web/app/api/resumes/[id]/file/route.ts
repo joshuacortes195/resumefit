@@ -4,6 +4,7 @@ import { toBuilderResume } from "@/lib/data/builder";
 import { getResume } from "@/lib/data/resumes";
 import { withinLimit } from "@/lib/rate-limit";
 import { loadFile } from "@/lib/storage";
+import { isUuid } from "@/lib/ids";
 
 // file names in a download header can only use plain characters
 function safeName(name: string): string {
@@ -15,7 +16,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
   const { id } = await params;
   const user = await getCurrentUser();
   if (!(await withinLimit(user.id, "export"))) return new Response("That is a lot of downloads in a short time. Wait a minute and try again.", { status: 429 });
-  const resume = /^[0-9a-f-]{36}$/i.test(id) ? await getResume(user.id, id) : null;
+  const resume = isUuid(id) ? await getResume(user.id, id) : null;
   if (!resume) return new Response("Resume not found", { status: 404 });
 
   // resumes made in the builder are drawn fresh from their template

@@ -5,6 +5,7 @@ import { BuilderStart } from "@/components/builder/start";
 import { getCurrentUser } from "@/lib/auth";
 import { DRAFT_COOKIE, parseDraft } from "@/lib/builder/open-draft";
 import { getResume } from "@/lib/data/resumes";
+import { isUuid } from "@/lib/ids";
 
 export const metadata = { title: "Resume Builder" };
 
@@ -26,7 +27,7 @@ export default function BuilderPage({ searchParams }: { searchParams: Promise<{ 
 // sends "edit in builder" links, and anyone with a resume still open, on to the editor
 async function OpenExisting({ searchParams }: { searchParams: Promise<{ resume?: string }> }) {
   const { resume } = await searchParams;
-  if (resume && /^[0-9a-f-]{36}$/i.test(resume)) redirect(`/builder/${resume}`);
+  if (resume && isUuid(resume)) redirect(`/builder/${resume}`);
   // a resume that was being worked on opens again, right where it was left
   const draft = parseDraft((await cookies()).get(DRAFT_COOKIE)?.value);
   if (draft) {
