@@ -44,6 +44,13 @@ const MAX_NAME = 200;
 
 const resumeTextSchema = z.string().min(50, "That resume looks too short. Paste the full text.").max(60_000, "That resume is too long to scan.");
 
+// what to call a pasted resume. the job it was pasted for tells them apart later, a list of "Pasted resume" with only a date does not
+export function pastedName(jobTitle?: string, company?: string, today = new Date()): string {
+  const job = [jobTitle, company].filter(Boolean).join(", ");
+  const day = today.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  return (job ? `Pasted for ${job}` : `Pasted resume, ${day}`).slice(0, MAX_NAME);
+}
+
 // works out which resume a form is about: an uploaded file, pasted text or a saved one
 export async function resolveResume(userId: string, form: FormData, linkedJobId?: string | null): Promise<ResolvedResume> {
   const file = form.get("file");
@@ -79,7 +86,7 @@ export async function resolveResume(userId: string, form: FormData, linkedJobId?
   // text pasted into the box
   const parsed = resumeTextSchema.safeParse(resumeText ?? "");
   if (!parsed.success) throw new RequestError(resumeText ? (parsed.error.issues[0]?.message ?? "Check your resume text.") : "Add a resume first. Upload a file, paste the text or pick a saved one.");
-  const name = field(form, "resumeName")?.slice(0, MAX_NAME) ?? `Pasted resume, ${new Date().toLocaleDateString("en-US", { month: "short", day: "numeric" })}`;
+  const name = field(form, "resumeName")?.slice(0, MAX_NAME) ?? pastedName(field(form, "jobTitle"), field(form, "company"));
   const saved = await saveResume(userId, { name, text: parsed.data, linkedJobId });
   return { resumeId: saved.id, text: parsed.data, layout: null };
 }
