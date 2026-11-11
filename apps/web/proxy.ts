@@ -5,7 +5,7 @@ import { NextResponse, type NextRequest } from "next/server";
 const SESSION_COOKIE = { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "lax" as const };
 
 // pages anyone can open without signing in
-const PUBLIC = /^\/(sign-in|auth\/|privacy|terms|api\/ext\/|api\/health$|api\/cron\/feed$|scans\/sample)/;
+const PUBLIC = /^\/(sign-in|auth\/|privacy|terms|robots\.txt$|api\/ext\/|api\/health$|api\/cron\/feed$|scans\/sample)/;
 
 // pages that are the same for everyone, so a shared cache may keep them. everything else is one person's own
 const SAME_FOR_EVERYONE = /^\/(sign-in|privacy|terms|scans\/sample)?$/;

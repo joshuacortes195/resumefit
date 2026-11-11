@@ -5,6 +5,8 @@ const SECURITY_HEADERS = [
   { key: "X-Content-Type-Options", value: "nosniff" },
   { key: "X-Frame-Options", value: "DENY" },
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+  // a page that opens us in a new tab gets no handle back to this one
+  { key: "Cross-Origin-Opener-Policy", value: "same-origin" },
   // the microphone is only for interview practice, nothing else is ever asked for
   { key: "Permissions-Policy", value: "camera=(), geolocation=(), microphone=(self)" },
 ];
