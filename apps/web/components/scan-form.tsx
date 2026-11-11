@@ -100,8 +100,8 @@ export function ScanForm({ resumes, rescan, job, next }: ScanFormProps) {
   return (
     <form onSubmit={handleSubmit}>
       <div className={`grid gap-6 ${rescan ? "" : "md:grid-cols-2"}`}>
-        {/* step one, the resume */}
-        <fieldset>
+        {/* step one, the resume. a fieldset will not shrink below its widest row unless told to, and a long saved list then covers the job description */}
+        <fieldset className="min-w-0">
           <div className="flex min-h-9 flex-wrap items-center justify-between gap-2">
             <legend className="float-left font-semibold">{rescan ? "Pick the updated resume" : "1. Add your resume"}</legend>
             <Tabs label="How to add your resume" look="pill" tabs={sources} value={source} onChange={setSource} />
@@ -147,7 +147,7 @@ export function ScanForm({ resumes, rescan, job, next }: ScanFormProps) {
 
         {/* step two, the job description */}
         {!rescan && (
-          <div>
+          <div className="min-w-0">
             <label htmlFor="jdText" className="flex min-h-9 items-center font-semibold">
               2. Paste the job description
             </label>
@@ -212,6 +212,10 @@ export function ScanForm({ resumes, rescan, job, next }: ScanFormProps) {
           </Link>
         )}
       </div>
+      {/* a greyed out button with no reason is a dead end, so say what is still missing */}
+      {!pending && (!hasResume || !hasJob) && (
+        <p className="mt-2 text-xs text-muted">{!hasResume ? (source === "saved" ? "Pick one of your saved resumes to start." : "Add your resume to start.") : "Paste the job description to start, at least a few sentences of it."}</p>
+      )}
     </form>
   );
 }
