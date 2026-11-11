@@ -7,7 +7,7 @@ export function mendBuilder(data: BuilderData): BuilderData {
   for (const job of data.experience) {
     const last = experience.at(-1);
     const orphan = !job.company.trim() && !job.start.trim() && !job.end.trim() && !job.current && job.bullets.filter((bullet) => bullet.trim()).length === 0;
-    // "Ormco (Envista" on its own, right after a job that has a title and dates but no company
+    // "Acme (Globex" on its own, right after a job that has a title and dates but no company
     if (orphan && last && !last.company.trim()) {
       const open = (job.title.match(/\(/g) ?? []).length - (job.title.match(/\)/g) ?? []).length;
       last.company = job.title.trim() + ")".repeat(Math.max(0, open));

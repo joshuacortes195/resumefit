@@ -279,7 +279,7 @@ const HEADER_SPLIT = /\s+[|·•—–@]\s+|\s+-\s+|,\s+|\s+at\s+|\t+|\s{3,}/;
 const PLACE = /^(?:[Rr]emote|[Hh]ybrid|[Oo]n-?[Ss]ite|[A-Z][A-Za-z.]+(?: [A-Z][A-Za-z.]+){0,2},? [A-Z]{2}|[A-Z][A-Za-z.]+(?: [A-Z][A-Za-z.]+){0,2}, [A-Z][a-z]+)$/;
 
 // tidies one piece of a job heading. a bracket is only dropped when its partner is missing,
-// so "Ormco (Envista)" keeps both and "(Remote" loses the stray one
+// so "Acme (Globex)" keeps both and "(Remote" loses the stray one
 function trimPiece(part: string): string {
   let piece = part.replace(/^[\s,|-]+|[\s,|-]+$/g, "");
   // a piece that is all inside one pair of brackets, like "(Remote)", comes out of them

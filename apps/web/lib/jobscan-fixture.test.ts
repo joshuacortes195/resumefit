@@ -3,8 +3,8 @@ import { describe, expect, it } from "vitest";
 import { scanResume } from "@resumefit/scoring";
 import { HARD_SKILLS, SOFT_SKILLS } from "@resumefit/skills-data";
 
-// a real resume and the AWS SDE Intern, Embedded Development (Linux) posting, with the personal details swapped out.
-// Jobscan scored the Oct 28 version of this resume against this posting at 76 and ResumeFit at 60. the resume text here is the Sep 30 version
+// a made up resume shaped like a real student one (wrapped bullets, two jobs, four projects) and the AWS SDE Intern, Embedded Development (Linux) posting.
+// Jobscan scored a resume of this shape against this posting at 76 and ResumeFit at 60
 const fixtures = new URL("../../../packages/scoring/src/fixtures/", import.meta.url);
 const RESUME = readFileSync(new URL("aws-embedded-resume.txt", fixtures), "utf8");
 const POSTING = readFileSync(new URL("aws-embedded-posting.txt", fixtures), "utf8");
@@ -16,7 +16,7 @@ const HINTS = {
   softSkills: ["ownership mindset", "think big"],
 };
 
-describe("AWS embedded posting against a real resume", () => {
+describe("AWS embedded posting against a student resume", () => {
   const result = scanResume({ resumeText: RESUME, jdText: POSTING, hardSkills: HARD_SKILLS, softSkills: SOFT_SKILLS, hints: HINTS, today: TODAY });
   const missing = (rows: typeof result.hardSkills) => rows.filter((row) => row.match === "missing").map((row) => row.name);
 
@@ -56,11 +56,10 @@ describe("AWS embedded posting against a real resume", () => {
     expect(result.issuesToFix.softSkills).toBeLessThanOrEqual(2);
   });
 
-  it("scores in the band this older resume earns", () => {
-    // 49 before these fixes. the newer resume Jobscan saw adds C++ and more, which this one does not have
+  it("scores in the band this resume earns", () => {
+    // 49 before these fixes. the resume Jobscan saw adds C++ and more, which this one does not have
     expect(result.matchRate).toBeGreaterThanOrEqual(52);
     expect(result.matchRate).toBeLessThanOrEqual(64);
   });
 
-  it.todo("lands within 5 points of Jobscan's 76 once the Oct 28 resume text is in aws-embedded-resume.txt");
 });
