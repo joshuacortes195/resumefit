@@ -1,6 +1,8 @@
 import { eq, inArray } from "drizzle-orm";
 import JSZip from "jszip";
 import { getDb, schema } from "@/db";
+import { openDetails } from "@/lib/data/applications";
+import { getProfile } from "@/lib/data/profile";
 import { handOverAdmin, markClaimed } from "@/lib/data/users";
 import { clearRateLimits } from "@/lib/rate-limit";
 import { safeErrorText } from "@/lib/log";
@@ -12,8 +14,8 @@ async function everything(userId: string) {
   const own = <T extends { userId: unknown }>(table: T) => eq(table.userId as never, userId);
   const [user] = await db.select().from(schema.users).where(eq(schema.users.id, userId));
   const [profile] = await db.select().from(schema.profiles).where(eq(schema.profiles.userId, userId));
-  // the newer application answers are saved as one bundle next to the profile
-  const [application] = await db.select({ value: schema.appSettings.value }).from(schema.appSettings).where(eq(schema.appSettings.key, `application:${userId}`));
+  // the application profile is stored locked, so it is read back the way the app reads it, as plain answers
+  const application = profile ? await getProfile(userId) : null;
   // a linkedin profile that was read in and is still waiting to be used
   const [pendingLinkedin] = await db.select({ value: schema.appSettings.value }).from(schema.appSettings).where(eq(schema.appSettings.key, `linkedin-import:${userId}`));
   const jobs = await db.select().from(schema.jobs).where(own(schema.jobs));
@@ -21,7 +23,7 @@ async function everything(userId: string) {
   return {
     account: user ? { email: user.email, name: user.name, createdAt: user.createdAt } : null,
     profile: profile ?? null,
-    application: application?.value ?? null,
+    application,
     resumes: await db.select().from(schema.resumes).where(own(schema.resumes)),
     jobs,
     interviews: jobIds.length > 0 ? await db.select().from(schema.interviews).where(inArray(schema.interviews.jobId, jobIds)) : [],
@@ -30,7 +32,8 @@ async function everything(userId: string) {
     optimizations: await db.select().from(schema.optimizations).where(own(schema.optimizations)),
     linkedinReports: await db.select().from(schema.linkedinReports).where(own(schema.linkedinReports)),
     interviewSessions: await db.select().from(schema.interviewSessions).where(own(schema.interviewSessions)),
-    applications: await db.select().from(schema.applications).where(own(schema.applications)),
+    // each run with the answers that were used on it, unlocked
+    applications: (await db.select().from(schema.applications).where(own(schema.applications))).map(({ aiAnswers, ...run }) => ({ ...run, details: openDetails(aiAnswers) })),
     pendingLinkedin: pendingLinkedin?.value ?? null,
     // which ai features were used and when. the text that was sent is never kept
     aiUsage: await db.select().from(schema.aiUsage).where(own(schema.aiUsage)),
