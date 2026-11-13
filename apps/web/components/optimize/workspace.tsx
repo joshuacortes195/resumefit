@@ -433,7 +433,7 @@ export function Workspace({ scan, saved, ai }: WorkspaceProps) {
               </button>
             )}
             <div className="mt-3">
-              <AiNotice available={ai.available} remaining={remaining} />
+              <AiNotice available={ai.available} remaining={remaining} busy={pending} />
             </div>
           </section>
 
@@ -569,7 +569,7 @@ function KeywordHelper({ scan, missing, text, ai, onInsert }: KeywordHelperProps
       )}
       {missing.length > 0 && (
         <div className="mt-3">
-          <AiNotice available={ai.available} remaining={remaining} />
+          <AiNotice available={ai.available} remaining={remaining} busy={pending} />
         </div>
       )}
     </section>

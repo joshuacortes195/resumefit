@@ -1,14 +1,17 @@
 import Link from "next/link";
+import { StillWorking } from "@/components/still-working";
 
 type AiNoticeProps = {
   // false when no provider is set up
   available: boolean;
   // uses left today, null when this feature is not capped
   remaining: number | null;
+  // true while the request this notice sits under is running, so a slow one can say it is still going
+  busy?: boolean;
 };
 
 // the small print next to every ai button: what is left today and what gets sent
-export function AiNotice({ available, remaining }: AiNoticeProps) {
+export function AiNotice({ available, remaining, busy = false }: AiNoticeProps) {
   if (!available) {
     return (
       <p className="text-xs text-muted">
@@ -21,16 +24,20 @@ export function AiNotice({ available, remaining }: AiNoticeProps) {
     );
   }
   return (
-    <p className="text-xs text-muted">
-      {remaining !== null && (
-        <span className="font-medium text-foreground">
-          {remaining} AI {remaining === 1 ? "action" : "actions"} left today.{" "}
-        </span>
-      )}
-      Your name and contact details are removed before anything is sent.{" "}
-      <Link href="/privacy" className="underline hover:text-foreground">
-        How this works
-      </Link>
-    </p>
+    <>
+      {/* shows after a few seconds of waiting */}
+      <StillWorking active={busy} />
+      <p className="text-xs text-muted">
+        {remaining !== null && (
+          <span className="font-medium text-foreground">
+            {remaining} AI {remaining === 1 ? "action" : "actions"} left today.{" "}
+          </span>
+        )}
+        Your name and contact details are removed before anything is sent.{" "}
+        <Link href="/privacy" className="underline hover:text-foreground">
+          How this works
+        </Link>
+      </p>
+    </>
   );
 }

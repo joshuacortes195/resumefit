@@ -113,7 +113,7 @@ export function LinkedinReportView({ id, score, report, ai }: ReportProps) {
                   </button>
                 </div>
               ))}
-              <AiNotice available={ai.available} remaining={remaining} />
+              <AiNotice available={ai.available} remaining={remaining} busy={busy !== null} />
             </div>
           )}
         </section>

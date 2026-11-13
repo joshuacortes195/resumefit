@@ -497,7 +497,7 @@ function BulletWriter({ job, ai, remaining, onUsed, onAdd }: { job: BuilderData[
         <Sparkles className="size-4" aria-hidden />
         {pending ? "Writing..." : "Write bullets"}
       </button>
-      <AiNotice available={ai.available} remaining={remaining} />
+      <AiNotice available={ai.available} remaining={remaining} busy={pending} />
     </div>
   );
 }
@@ -749,7 +749,7 @@ function SummaryStep({ data, onChange, ai, remaining, onUsed }: AiStepProps) {
           <Sparkles className="size-4" aria-hidden />
           {pending ? "Writing..." : "Generate with AI"}
         </button>
-        <AiNotice available={ai.available} remaining={remaining} />
+        <AiNotice available={ai.available} remaining={remaining} busy={pending} />
       </div>
     </div>
   );

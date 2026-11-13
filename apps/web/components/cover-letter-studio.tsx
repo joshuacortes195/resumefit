@@ -236,7 +236,7 @@ export function CoverLetterStudio({ resumes: savedResumes, scans, jobs, ai }: St
               <Sparkles className="size-4" aria-hidden />
               {pending ? "Writing your letter..." : "Generate cover letter"}
             </button>
-            <AiNotice available={ai.available} remaining={remaining} />
+            <AiNotice available={ai.available} remaining={remaining} busy={pending} />
           </div>
         </section>
       )}
@@ -306,7 +306,7 @@ export function CoverLetterStudio({ resumes: savedResumes, scans, jobs, ai }: St
               </button>
             </div>
           )}
-          <AiNotice available={ai.available} remaining={remaining} />
+          <AiNotice available={ai.available} remaining={remaining} busy={pending} />
         </section>
       )}
 
