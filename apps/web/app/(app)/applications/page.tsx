@@ -1,0 +1,106 @@
+import { Suspense } from "react";
+import Link from "next/link";
+import { ClipboardList, ExternalLink } from "lucide-react";
+import { AutoApplyButton } from "@/components/auto-apply-button";
+import { LocalTime } from "@/components/local-time";
+import { CARD, LINK_BUTTON, SECONDARY_BUTTON } from "@/components/ui/buttons";
+import { EmptyState } from "@/components/ui/empty-state";
+import { TableSkeleton } from "@/components/ui/skeleton";
+import { runLabel, type RunLabel } from "@/lib/application-status";
+import { getCurrentUser } from "@/lib/auth";
+import { listApplications } from "@/lib/data/applications";
+import { featureFlags } from "@/lib/data/settings";
+
+export const metadata = { title: "All Applications" };
+
+// the color each kind of run wears
+const TONES: Record<RunLabel["tone"], string> = { good: "bg-success/10 text-success", warn: "bg-warning/10 text-warning", muted: "bg-border/60 text-muted", bad: "bg-danger/10 text-danger" };
+
+// every application the extension filled in, with how each one was left
+export default function ApplicationsPage() {
+  return (
+    <div className="mx-auto max-w-5xl">
+      <h1 className="text-3xl font-semibold">All Applications</h1>
+      <p className="mt-1 mb-6 max-w-2xl text-muted">Every application Auto Apply filled in for you, and where each one stands. You are the one who presses Submit, so nothing here was sent without you.</p>
+      <Suspense fallback={<TableSkeleton />}>
+        <Runs />
+      </Suspense>
+    </div>
+  );
+}
+
+// the list itself
+async function Runs() {
+  const user = await getCurrentUser();
+  const [runs, flags] = await Promise.all([listApplications(user.id), featureFlags()]);
+
+  if (runs.length === 0) {
+    return (
+      <EmptyState icon={ClipboardList} title="No applications yet" text={flags.autoApply ? "Open a job on your tracker and press Auto Apply. The extension fills in the form, you check it and press Submit." : "Auto Apply is switched off for now."}>
+        <Link href="/tracker" className={SECONDARY_BUTTON}>
+          Open the tracker
+        </Link>
+      </EmptyState>
+    );
+  }
+
+  return (
+    <div className={`${CARD} overflow-x-auto`}>
+      <table className="w-full min-w-[40rem] text-sm">
+        <thead>
+          <tr className="border-b border-border text-left text-muted">
+            <th scope="col" className="px-4 py-3 font-medium">Job</th>
+            <th scope="col" className="px-4 py-3 font-medium">Status</th>
+            <th scope="col" className="px-4 py-3 font-medium">Form</th>
+            <th scope="col" className="px-4 py-3 font-medium">Last touched</th>
+            <th scope="col" className="px-4 py-3 font-medium">
+              <span className="sr-only">Actions</span>
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          {runs.map((run) => {
+            const label = runLabel(run);
+            return (
+              <tr key={run.id} className="border-b border-border transition-colors duration-150 last:border-0 hover:bg-background/60">
+                <th scope="row" className="px-4 py-3 text-left font-normal">
+                  {/* the tracker card when there is one, otherwise just where the form was */}
+                  {run.jobId ? (
+                    <Link href={`/tracker/${run.jobId}/application`} className="font-semibold hover:text-primary">
+                      {run.jobTitle ?? "Untitled job"}
+                    </Link>
+                  ) : (
+                    <span className="font-semibold">Not on your tracker</span>
+                  )}
+                  <span className="block text-muted">{run.company ?? (run.applyUrl ? new URL(run.applyUrl).hostname : "")}</span>
+                </th>
+                <td className="px-4 py-3">
+                  <span className={`inline-block whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-medium ${TONES[label.tone]}`}>{label.text}</span>
+                </td>
+                <td className="px-4 py-3 text-muted">
+                  {run.ats ? `${run.ats}, ` : ""}
+                  {run.fieldsFilled} filled{run.fieldsNeedingAttention > 0 ? `, ${run.fieldsNeedingAttention} to check` : ""}
+                </td>
+                <td className="px-4 py-3 text-muted">
+                  <LocalTime value={run.updatedAt.toISOString()} style="date" />
+                </td>
+                <td className="px-4 py-3">
+                  <div className="flex items-start justify-end gap-3">
+                    {run.applyUrl && (
+                      <a href={run.applyUrl} target="_blank" rel="noreferrer" className={`inline-flex items-center gap-1 whitespace-nowrap ${LINK_BUTTON}`}>
+                        <ExternalLink className="size-3.5" aria-hidden />
+                        Posting
+                      </a>
+                    )}
+                    {/* a run that was not sent can be picked up again */}
+                    {flags.autoApply && run.jobId && run.status !== "applied" && <AutoApplyButton jobId={run.jobId} url={run.applyUrl} label="Open again" className={`${SECONDARY_BUTTON} px-3 py-1.5`} />}
+                  </div>
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}

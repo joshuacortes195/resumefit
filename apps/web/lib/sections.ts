@@ -6,6 +6,8 @@ export const SECTIONS = [
   { key: "letter", prefix: "/cover-letter" },
   { key: "linkedin", prefix: "/linkedin" },
   { key: "tracker", prefix: "/tracker" },
+  // the list of filled in applications belongs with the tracker
+  { key: "tracker", prefix: "/applications" },
   { key: "jobs", prefix: "/jobs" },
   { key: "builder", prefix: "/builder" },
   { key: "resumes", prefix: "/resumes" },

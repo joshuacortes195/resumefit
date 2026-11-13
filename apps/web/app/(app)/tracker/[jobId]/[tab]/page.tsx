@@ -1,7 +1,10 @@
 import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import { JobModal } from "@/components/tracker/job-modal";
+import { runLabel } from "@/lib/application-status";
 import { getCurrentUser, type CurrentUser } from "@/lib/auth";
+import { applicationForJob } from "@/lib/data/applications";
+import { featureFlags } from "@/lib/data/settings";
 import { getCoverLetter, getJob, latestScores, listInterviews, type JobRow } from "@/lib/data/jobs";
 import { listPracticeSessions, sessionScore } from "@/lib/data/practice";
 import { getResume, listResumes } from "@/lib/data/resumes";
@@ -29,13 +32,15 @@ export default async function JobPage({ params }: { params: Params }) {
 // loads everything the card's tabs show
 async function JobModalLoader({ user, job, tab }: { user: CurrentUser; job: JobRow; tab: JobTab }) {
 
-  const [scores, resumes, resume, coverLetter, interviews, practice] = await Promise.all([
+  const [scores, resumes, resume, coverLetter, interviews, practice, application, flags] = await Promise.all([
     latestScores(user.id, [job.id]),
     listResumes(user.id),
     job.resumeId ? getResume(user.id, job.resumeId) : null,
     getCoverLetter(user.id, job.id),
     listInterviews(user.id, job.id),
     listPracticeSessions(user.id, job.id),
+    applicationForJob(user.id, job.id),
+    featureFlags(),
   ]);
 
   return (
@@ -61,6 +66,22 @@ async function JobModalLoader({ user, job, tab }: { user: CurrentUser; job: JobR
         resume: resume ? { id: resume.id, name: resume.name, text: resume.rawText ?? "" } : null,
         resumes: resumes.map(({ id, name, isBase }) => ({ id, name, isBase })),
         coverLetter: coverLetter?.content ?? "",
+        autoApply: flags.autoApply,
+        // the newest auto apply run for this job, with what was put on the form
+        application: application
+          ? {
+              label: runLabel(application),
+              ats: application.ats,
+              applyUrl: application.applyUrl,
+              fieldsFilled: application.fieldsFilled,
+              fieldsNeedingAttention: application.fieldsNeedingAttention,
+              updatedAt: application.updatedAt.toISOString(),
+              appliedAt: application.details?.appliedAt ?? null,
+              resumeName: application.details?.resumeName ?? null,
+              coverLetter: application.details?.coverLetter ?? false,
+              answers: application.details?.answers ?? [],
+            }
+          : null,
         practice: practice.map((session) => ({ id: session.id, date: session.createdAt.toISOString(), answered: session.answers.filter(Boolean).length, score: sessionScore(session) })),
         interviews: interviews.map((interview) => ({
           id: interview.id,

@@ -17,9 +17,11 @@ import { StatusSelect } from "@/components/ui/status-select";
 import { LENGTHS, TONES, type Length, type Tone } from "@/lib/ai/prompts/letters";
 import { googleCalendarUrl, icsFile } from "@/lib/calendar";
 import { JOB_TABS, localToday, type JobTab } from "@/lib/job-tabs";
+import { AutoApplyButton } from "@/components/auto-apply-button";
+import type { RunLabel } from "@/lib/application-status";
 
 
-const TAB_LABELS: Record<JobTab, string> = { job: "Job", resume: "Resume", "cover-letter": "Cover Letter", interviews: "Interviews", notes: "Notes" };
+const TAB_LABELS: Record<JobTab, string> = { job: "Job", resume: "Resume", "cover-letter": "Cover Letter", application: "Application", interviews: "Interviews", notes: "Notes" };
 const INTERVIEW_TYPES = ["Phone screen", "Technical", "Behavioral", "Onsite", "Final", "Other"] as const;
 
 // everything the card needs, loaded on the server
@@ -41,6 +43,21 @@ export type JobModalData = {
   resume: { id: string; name: string; text: string } | null;
   resumes: { id: string; name: string; isBase: boolean }[];
   coverLetter: string;
+  // false when the admin has switched auto apply off for everyone
+  autoApply: boolean;
+  // the newest auto apply run for this job, null when it was never filled in that way
+  application: {
+    label: RunLabel;
+    ats: string | null;
+    applyUrl: string | null;
+    fieldsFilled: number;
+    fieldsNeedingAttention: number;
+    updatedAt: string;
+    appliedAt: string | null;
+    resumeName: string | null;
+    coverLetter: boolean;
+    answers: { label: string; value: string; status: "filled" | "review" | "missing" | "skipped" }[];
+  } | null;
   // practice sessions done for this job
   practice: { id: string; date: string; answered: number; score: number | null }[];
   interviews: {
@@ -134,6 +151,7 @@ export function JobModal({ data, tab }: { data: JobModalData; tab: JobTab }) {
         {tab === "job" && <JobTabPanel data={data} pending={pending} run={run} />}
         {tab === "resume" && <ResumeTabPanel data={data} pending={pending} run={run} />}
         {tab === "cover-letter" && <CoverLetterPanel data={data} pending={pending} run={run} />}
+        {tab === "application" && <ApplicationPanel data={data} />}
         {tab === "interviews" && <InterviewsPanel data={data} pending={pending} run={run} />}
         {tab === "notes" && <NotesPanel data={data} />}
       </div>
@@ -349,6 +367,91 @@ function downloadText(name: string, text: string, type: string) {
   link.download = name;
   link.click();
   URL.revokeObjectURL(url);
+}
+
+// the dot next to each answer says how it went onto the form
+const ANSWER_DOTS = { filled: "bg-success", review: "bg-warning", missing: "bg-danger", skipped: "bg-border" } as const;
+
+// application tab: start auto apply for this job, and look back at what was put on the form
+function ApplicationPanel({ data }: { data: JobModalData }) {
+  const { job, application } = data;
+  return (
+    <div className="space-y-5">
+      {data.autoApply ? (
+        <div className="flex flex-wrap items-start gap-4 rounded-xl bg-background p-4">
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-semibold">Auto Apply</p>
+            <p className="mt-1 max-w-prose text-sm text-muted">
+              The extension opens this job&apos;s application, types in your{" "}
+              <Link href="/settings/application" className={LINK_BUTTON}>
+                application profile
+              </Link>
+              , attaches your resume and cover letter and drafts the written questions. Then it stops. You check it and press Submit yourself. It does not run on LinkedIn or Indeed.
+            </p>
+          </div>
+          <AutoApplyButton jobId={job.id} url={job.url} resumeId={data.resume?.id ?? null} label={application ? "Open again" : "Auto Apply"} className={PRIMARY_BUTTON} />
+        </div>
+      ) : (
+        <p className="rounded-xl bg-background p-4 text-sm text-muted">Auto Apply is switched off for now.</p>
+      )}
+
+      {application ? (
+        <>
+          {/* how the last run was left */}
+          <dl className="grid gap-x-6 gap-y-3 text-sm sm:grid-cols-2">
+            <div>
+              <dt className="text-muted">Status</dt>
+              <dd className="font-medium">{application.label.text}</dd>
+            </div>
+            <div>
+              <dt className="text-muted">{application.appliedAt ? "Date applied" : "Last filled in"}</dt>
+              <dd className="font-medium">{application.appliedAt ?? <LocalTime value={application.updatedAt} style="date" />}</dd>
+            </div>
+            <div>
+              <dt className="text-muted">Form</dt>
+              <dd className="font-medium">
+                {application.ats ? `${application.ats}, ` : ""}
+                {application.fieldsFilled} filled{application.fieldsNeedingAttention > 0 ? `, ${application.fieldsNeedingAttention} to check` : ""}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-muted">Sent with</dt>
+              <dd className="font-medium">
+                {application.resumeName ?? "No resume noted"}
+                {application.coverLetter ? ", and the cover letter" : ""}
+              </dd>
+            </div>
+          </dl>
+
+          {/* a copy of what went onto the form, so the person can look back at what they said */}
+          {application.answers.length > 0 && (
+            <div>
+              <p className="text-sm font-semibold">Answers on the form</p>
+              <ul className="mt-2 divide-y divide-border rounded-xl border border-border text-sm">
+                {application.answers.map((answer, index) => (
+                  <li key={index} className="flex gap-3 px-3 py-2.5">
+                    <span aria-hidden className={`mt-1.5 size-2 shrink-0 rounded-full ${ANSWER_DOTS[answer.status]}`} />
+                    <div className="min-w-0">
+                      <p className="font-medium">{answer.label}</p>
+                      <p className="whitespace-pre-wrap break-words text-muted">{answer.value}</p>
+                      {answer.status === "review" && <p className="text-xs text-warning">Was marked for you to check</p>}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </>
+      ) : (
+        <p className="text-sm text-muted">Nothing has been filled in for this job yet. Once Auto Apply has run, the answers it used show up here.</p>
+      )}
+      <p className="text-sm">
+        <Link href="/applications" className={LINK_BUTTON}>
+          See all applications
+        </Link>
+      </p>
+    </div>
+  );
 }
 
 // interviews tab: the list, plus a form for a new one

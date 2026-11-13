@@ -1,5 +1,5 @@
 // the tabs on a job's card, each one is part of the card's address
-export const JOB_TABS = ["job", "resume", "cover-letter", "interviews", "notes"] as const;
+export const JOB_TABS = ["job", "resume", "cover-letter", "application", "interviews", "notes"] as const;
 export type JobTab = (typeof JOB_TABS)[number];
 
 // when a job was added: "today" or "yesterday" by the calendar, then the real date, with the year once it is not this one

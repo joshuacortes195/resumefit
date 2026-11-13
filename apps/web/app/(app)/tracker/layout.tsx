@@ -1,5 +1,7 @@
 import { Suspense } from "react";
+import Link from "next/link";
 import { BoardLoader } from "@/components/tracker/board-loader";
+import { LINK_BUTTON } from "@/components/ui/buttons";
 import { Skeleton } from "@/components/ui/skeleton";
 
 // the board shows on every tracker page, a job's card opens on top of it
@@ -7,7 +9,12 @@ export default function TrackerLayout({ children }: { children: React.ReactNode 
   return (
     <div>
       <h1 className="text-3xl font-semibold">Application Tracker</h1>
-      <p className="mt-1 mb-6 text-muted">Drag jobs from Saved to Offer and keep notes on each one.</p>
+      <p className="mt-1 mb-6 text-muted">
+        Drag jobs from Saved to Offer and keep notes on each one.{" "}
+        <Link href="/applications" className={LINK_BUTTON}>
+          All applications
+        </Link>
+      </p>
       <Suspense
         fallback={
           <div className="flex gap-3" role="status" aria-label="Loading the board">
