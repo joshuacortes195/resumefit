@@ -13,5 +13,7 @@ export default defineConfig({
     env: { LOCAL_DATA_DIR: "memory" },
     // the first test in each data file waits for its database to be set up
     testTimeout: 30_000,
+    // same wait for a setup step that touches the database before the first test
+    hookTimeout: 30_000,
   },
 });
