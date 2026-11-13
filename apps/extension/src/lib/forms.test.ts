@@ -511,7 +511,7 @@ describe("never sending the form", () => {
 
   it("has no code that submits a form, and clicks only through the guard", () => {
     const folder = path.join(import.meta.dirname, "..");
-    const files = ["content.ts", "background.ts", ...["adapters/index", "apply-link", "blocked", "dropdowns", "fields", "fill", "job-page", "press", "synonyms", "values"].map((name) => `lib/${name}.ts`)];
+    const files = ["content.ts", "background.ts", "sidepanel/App.tsx", "sidepanel/AutoApply.tsx", "sidepanel/page.ts", ...["adapters/index", "api", "apply-link", "blocked", "dropdowns", "fields", "fill", "job-page", "pending", "pipeline", "press", "synonyms", "values"].map((name) => `lib/${name}.ts`)];
     for (const file of files) {
       const code = readFileSync(path.join(folder, file), "utf8").replace(/\/\/.*$/gm, "");
       expect(code, file).not.toMatch(/\.submit\(|requestSubmit|dispatchEvent\([^)]*["']submit/);

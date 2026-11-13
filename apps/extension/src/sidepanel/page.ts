@@ -46,3 +46,9 @@ export async function askPage<T>(request: PageRequest): Promise<T> {
 
 export const readPage = () => askPage<PageInfo>({ type: "read-page" });
 
+
+// today's date on the person's own calendar, so "date applied" is their day and not the server's
+export function localToday(): string {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+}

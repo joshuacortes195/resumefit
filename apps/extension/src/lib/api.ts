@@ -1,4 +1,4 @@
-import type { Account, LinkedinImport } from "./types";
+import type { Account, FieldReport, FileData, LinkedinImport } from "./types";
 
 // where the web app lives and the key that lets us act for the person
 export type Connection = { apiBase: string; token: string };
@@ -78,10 +78,33 @@ async function call<T>(path: string, body?: unknown): Promise<T> {
   return data;
 }
 
+// how one auto apply run is going, as the web app records it
+export type ApplicationReport = {
+  jobId: string | null;
+  ats: string | null;
+  applyUrl: string;
+  status: "autofilling" | "needs_review" | "applied" | "failed";
+  fieldsFilled: number;
+  fieldsNeedingAttention: number;
+  answers?: Pick<FieldReport, "label" | "value" | "status">[];
+  resumeId?: string | null;
+  coverLetter?: boolean;
+  // the person's own date, so the date applied matches their calendar
+  today?: string;
+};
+
 export const api = {
   me: () => call<Account>("me"),
   saveJob: (job: { title: string; company?: string; location?: string; url?: string; description?: string }) => call<{ jobId: string; alreadySaved: boolean }>("jobs", job),
   scan: (input: { jdText: string; title?: string; company?: string; url?: string; resumeId?: string; jobId?: string }) => call<{ scanId: string; matchRate: number; missing: string[]; resumeName: string; jobId: string | null }>("scan", input),
   importLinkedin: (profile: LinkedinImport) => call<{ saved: boolean }>("linkedin", profile),
+  // one of the person's own resumes as a file, to attach to an application
+  resumeFile: (id: string) => call<FileData>(`resumes/${encodeURIComponent(id)}/file`),
+  // the cover letter saved on a tracker card, as a pdf
+  coverLetterFile: (jobId: string) => call<FileData>(`cover-letter?jobId=${encodeURIComponent(jobId)}`),
+  // an answer to a written question: the person's saved one when it fits, otherwise a draft to check
+  answer: (input: { question: string; jdText: string; resumeId?: string; jobId?: string }) => call<{ answer: string; source: "saved" | "ai"; remaining?: number | null }>("answer", input),
+  // tells the web app how a fill went, so it shows on the tracker and under All Applications
+  reportApplication: (report: ApplicationReport) => call<{ id: string }>("applications", report),
 };
 

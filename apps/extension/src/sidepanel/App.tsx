@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { accountBehind, api, ApiError, getConnection, parseConnectionCode, saveConnection, type Connection } from "../lib/api";
 import type { Account, LinkedinImport, PageInfo } from "../lib/types";
+import { AutoApply } from "./AutoApply";
 import { askPage, NeedsAccess, readPage, SITE_ACCESS } from "./page";
 
 // asks chrome, once, to let us read job pages. it has to be asked from a click
@@ -155,6 +156,8 @@ function Workspace({ connection, account, onDisconnect }: { connection: Connecti
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [allowed, setAllowed] = useState(true);
+  // the tracker card for the job on this page, once it was saved or scanned from here. auto apply ties its run to it
+  const [jobId, setJobId] = useState<string | null>(null);
 
   // reads the tab again, used on open and whenever the person moves on
   const check = useCallback(async () => {
@@ -234,8 +237,10 @@ function Workspace({ connection, account, onDisconnect }: { connection: Connecti
 
       {page?.linkedinProfile && <LinkedinCard open={open} />}
       {/* the key starts the card afresh for every job, so a scan never lands on the card of the job looked at before */}
-      {page?.job && !page.linkedinProfile && <JobCard key={`${page.job.url} ${page.job.title}`} job={page.job} account={account} open={open} heading="Job on this page" />}
-      {page && !page.job && !pasted && !page.linkedinProfile && (
+      {page?.job && !page.linkedinProfile && <JobCard key={`${page.job.url} ${page.job.title}`} job={page.job} account={account} open={open} heading="Job on this page" onJob={setJobId} />}
+      {/* filling in the application, only while the app has it switched on. the key starts it afresh when the page or its fields change */}
+      {page && account.autoApply && !page.linkedinProfile && <AutoApply key={`${page.url} ${page.fields.length} ${page.confirmed}`} page={page} account={account} jobId={jobId} open={open} onPage={setPage} />}
+      {page && !page.job && !pasted && !page.linkedinProfile && !page.hasForm && (
         <div className="card">
           <p>We did not find a job posting on this page.</p>
           <p className="muted small" style={{ marginTop: 6 }}>
@@ -301,10 +306,12 @@ type JobCardProps = {
   account: Account;
   open: (path: string) => void;
   heading: string;
+  // told which tracker card the job landed on, so auto apply can tie its run to it
+  onJob?: (jobId: string) => void;
 };
 
 // a job we read off the page: save it, scan it, or go and optimize for it
-function JobCard({ job, account, open, heading }: JobCardProps) {
+function JobCard({ job, account, open, heading, onJob }: JobCardProps) {
   // the tracker card this job was saved to, once it has been saved or scanned
   const [jobId, setJobId] = useState<string | null>(null);
   const [busy, setBusy] = useState<"save" | "scan" | null>(null);
@@ -330,6 +337,7 @@ function JobCard({ job, account, open, heading }: JobCardProps) {
     run("save", async () => {
       const result = await api.saveJob({ title: job.title, company: job.company || undefined, location: job.location || undefined, url: job.url || undefined, description: job.description });
       setJobId(result.jobId);
+      onJob?.(result.jobId);
       setSaved(true);
     });
 
@@ -340,6 +348,7 @@ function JobCard({ job, account, open, heading }: JobCardProps) {
       // the scan lands on a tracker card, so the score shows up there too
       if (result.jobId) {
         setJobId(result.jobId);
+        onJob?.(result.jobId);
         setSaved(true);
       }
     });
