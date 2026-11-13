@@ -41,7 +41,8 @@ const TOPICS: { title: string; questions: { q: string; a: React.ReactNode }[] }[
     title: "Chrome extension",
     questions: [
       { q: "What does the extension do?", a: "It scans the job posting you are looking at against your resume and shows your match rate and the top missing skills, right on the page. It can also save the job to your tracker and read your own LinkedIn profile into the LinkedIn Optimizer." },
-      { q: "Does it fill in applications for me?", a: "No. It reads job postings, it does not fill in or send anything." },
+      { q: "Does it fill in applications for me?", a: <>Yes, when you ask. On an application form, press Fill this application in the side panel and it types in your <Link href="/settings/application" className={LINK_BUTTON}>application profile</Link>, attaches your resume and drafts the written questions. It never presses Submit, that is always you. It does not run on LinkedIn or Indeed.</> },
+      { q: "Where do I see what it filled in?", a: <>The Application tab on the job&apos;s tracker card keeps the answers that were used, and <Link href="/applications" className={LINK_BUTTON}>All Applications</Link> lists every one with where it stands.</> },
       { q: "It says there is no job posting on the page.", a: "Highlight the job description, right click it and choose Scan this job description with ResumeFit. That works on any page." },
       { q: "How do I connect it?", a: <>Follow the steps on the <Link href="/extension" className={LINK_BUTTON}>Chrome Extension</Link> page. A connection lasts 90 days.</> },
     ],

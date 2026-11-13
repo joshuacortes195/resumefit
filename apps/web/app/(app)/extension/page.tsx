@@ -1,8 +1,9 @@
 import { Suspense } from "react";
+import Link from "next/link";
 import { Download } from "lucide-react";
 import { CopyText } from "@/components/copy-text";
 import { ExtensionConnect } from "@/components/extension-connect";
-import { CARD, PRIMARY_BUTTON } from "@/components/ui/buttons";
+import { CARD, LINK_BUTTON, PRIMARY_BUTTON } from "@/components/ui/buttons";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getCurrentUser } from "@/lib/auth";
 import { extensionStatus } from "@/lib/data/extension";
@@ -15,7 +16,7 @@ export default function ExtensionPage() {
     <div className="mx-auto max-w-3xl space-y-6">
       <div>
         <h1 className="text-3xl font-semibold">Chrome Extension</h1>
-        <p className="mt-1 text-muted">Scan any job posting against your resume without leaving the page, and save it to your tracker in one click.</p>
+        <p className="mt-1 text-muted">Scan any job posting against your resume without leaving the page, save it to your tracker in one click, and have application forms filled in for you to check.</p>
       </div>
 
       <section className={`${CARD} p-6`}>
@@ -64,15 +65,35 @@ export default function ExtensionPage() {
           <li><strong>On a job posting:</strong> save the job to your tracker, or scan it against your resume and see your match rate and the top missing skills without leaving the page.</li>
           <li><strong>On any page:</strong> highlight a job description, right click and choose &quot;Scan this job description with ResumeFit&quot;.</li>
           <li><strong>On your LinkedIn profile:</strong> press Import my profile and the LinkedIn Optimizer opens with your headline, About, experience and skills filled in.</li>
+          <li>
+            <strong>On an application form (Auto Apply):</strong> press Fill this application and it types in the answers from your{" "}
+            <Link href="/settings/application" className={LINK_BUTTON}>
+              application profile
+            </Link>
+            , attaches the resume you picked and the cover letter saved for that job, and drafts answers to the written questions. Then it stops and lists what it filled, what needs a look and what is still empty. You read it over and press the site&apos;s own Submit button.
+          </li>
+        </ul>
+      </section>
+
+      {/* exactly how auto apply behaves, since it is the one thing here that changes a page */}
+      <section className={`${CARD} p-6`}>
+        <h2 className="text-xl font-semibold">How Auto Apply stays safe</h2>
+        <ul className="mt-3 list-disc space-y-1.5 pl-5 text-sm">
+          <li>It never presses Submit, Next or Continue. Sending an application is always your own click.</li>
+          <li>One application at a time, and only when you press the button. Nothing is filled in the background.</li>
+          <li>It does not run on LinkedIn or Indeed, whose rules forbid it, and it never touches a captcha.</li>
+          <li>A field outlined in yellow is a draft or a close match, so read it. One outlined in red is required and still empty.</li>
+          <li>Gender, race, veteran, disability and sponsorship questions are only ever answered with what you chose in your application profile. Each one starts on &quot;Decline to self-identify&quot;.</li>
+          <li>A drafted answer uses your resume and the job description, with your name and contact details taken out before anything is sent to a model, and it is always marked for you to check.</li>
         </ul>
       </section>
 
       <section className={`${CARD} p-6`}>
         <h2 className="text-xl font-semibold">What it never does</h2>
         <ul className="mt-3 list-disc space-y-1.5 pl-5 text-sm">
-          <li>It never fills in or sends an application. It only reads job postings, and your own LinkedIn profile when you ask.</li>
+          <li>It never sends an application. It can fill a form in when you ask, and pressing Submit is left to you.</li>
           <li>It never looks at a page by itself. It reads the page you are on only while its panel is open there.</li>
-          <li>It never changes anything on the page.</li>
+          <li>It never changes anything on a page unless you press Fill this application, and then only the form&apos;s own fields.</li>
         </ul>
       </section>
 
@@ -80,7 +101,8 @@ export default function ExtensionPage() {
         <h2 className="text-xl font-semibold">Privacy</h2>
         <p className="mt-2 text-sm">
           When you connect it, Chrome asks once whether it may read websites, because job postings live on all kinds of sites. Press Allow, or it cannot see the posting. It only reads the page you have its panel open on. On your
-          computer it stores your connection key and nothing else. Everything it sends goes to your own ResumeFit account.
+          computer it stores your connection key and nothing else. Everything it sends goes to your own ResumeFit account. For Auto Apply it fetches your application profile and the resume file from your account each time, uses them on the form in front of you and keeps no
+          copy.
         </p>
       </section>
 
