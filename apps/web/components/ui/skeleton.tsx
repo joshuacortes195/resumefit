@@ -1,6 +1,6 @@
 // grey blocks that stand in for a page while its data loads
 export function Skeleton({ className = "" }: { className?: string }) {
-  return <div aria-hidden className={`animate-pulse rounded-lg bg-border/70 ${className}`} />;
+  return <div aria-hidden className={`skeleton rounded-lg ${className}`} />;
 }
 
 // stand in for the report page

@@ -2,7 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Briefcase, FileSearch, PenLine, Puzzle, Sparkles, UserSearch } from "lucide-react";
 import { Logo } from "@/components/logo";
-import { CARD, LINK_BUTTON, PRIMARY_BUTTON, SECONDARY_BUTTON } from "@/components/ui/buttons";
+import { CARD, LIFT, LINK_BUTTON, PRIMARY_BUTTON, SECONDARY_BUTTON } from "@/components/ui/buttons";
 import dashboardShot from "@/public/landing/dashboard.png";
 import reportShot from "@/public/landing/report.png";
 import trackerShot from "@/public/landing/tracker.png";
@@ -53,7 +53,7 @@ export function Landing({ inviteOnly }: { inviteOnly: boolean }) {
 
       <main className="mx-auto max-w-6xl px-4 pb-20 sm:px-6">
         {/* what it is, in one breath */}
-        <section className="max-w-3xl py-12 sm:py-16">
+        <section className="stagger max-w-3xl py-12 sm:py-16">
           <h1 className="text-4xl font-semibold leading-tight sm:text-5xl">
             See how well your resume fits a job <span className="rounded bg-marker px-1.5 text-on-marker">before you apply</span>
           </h1>
@@ -77,7 +77,7 @@ export function Landing({ inviteOnly }: { inviteOnly: boolean }) {
         <div className="space-y-16">
           {SHOWN.map((item, index) => (
             // the picture swaps sides from one row to the next, and always gets the wider column
-            <section key={item.title} className={`grid items-center gap-8 ${index % 2 === 1 ? "lg:grid-cols-[1.5fr_1fr]" : "lg:grid-cols-[1fr_1.5fr]"}`}>
+            <section key={item.title} className={`reveal grid items-center gap-8 ${index % 2 === 1 ? "lg:grid-cols-[1.5fr_1fr]" : "lg:grid-cols-[1fr_1.5fr]"}`}>
               <div className={index % 2 === 1 ? "lg:order-2" : ""}>
                 <h2 className="text-2xl font-semibold">{item.title}</h2>
                 <p className="mt-3 text-muted">{item.text}</p>
@@ -94,7 +94,7 @@ export function Landing({ inviteOnly }: { inviteOnly: boolean }) {
           <h2 className="text-2xl font-semibold">What else is in it</h2>
           <ul className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {ALSO.map(({ icon: Icon, title, text }) => (
-              <li key={title} className={`${CARD} p-5`}>
+              <li key={title} className={`${CARD} ${LIFT} reveal p-5`}>
                 <span className="flex size-9 items-center justify-center rounded-full bg-primary-soft text-primary">
                   <Icon className="size-4" aria-hidden />
                 </span>
@@ -106,7 +106,7 @@ export function Landing({ inviteOnly }: { inviteOnly: boolean }) {
         </section>
 
         {/* one more way in at the bottom */}
-        <section className={`${CARD} mt-16 flex flex-wrap items-center justify-between gap-4 p-6`}>
+        <section className={`${CARD} reveal mt-16 flex flex-wrap items-center justify-between gap-4 p-6`}>
           <div>
             <h2 className="text-xl font-semibold">Try it on your own resume</h2>
             <p className="mt-1 text-sm text-muted">Start with the sample if you want to look around first.</p>

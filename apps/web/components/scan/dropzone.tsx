@@ -36,7 +36,7 @@ export function Dropzone({ file, onFile }: DropzoneProps) {
   // once a file is picked, show its name with a way to remove it
   if (file) {
     return (
-      <div className="flex h-64 flex-col items-center justify-center gap-3 rounded-lg border border-border bg-background p-4 text-center">
+      <div className="flex h-64 animate-pop flex-col items-center justify-center gap-3 rounded-lg border border-border bg-background p-4 text-center">
         <span className="flex size-12 items-center justify-center rounded-full bg-primary-soft text-primary">
           <FileText className="size-6" aria-hidden />
         </span>

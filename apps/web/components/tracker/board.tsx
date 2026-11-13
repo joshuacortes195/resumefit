@@ -66,7 +66,7 @@ function JobCard({ job, archived }: { job: BoardJob; archived: boolean }) {
   return (
     <li ref={setNodeRef} style={{ transform: CSS.Transform.toString(transform), transition }} className={isDragging ? "opacity-40" : ""}>
       {/* the link is the thing you grab. it stays a link, so enter opens the job and space picks the card up */}
-      <Link href={`/tracker/${job.id}/job`} draggable={false} className="block rounded-xl transition-transform duration-150 hover:-translate-y-0.5" {...attributes} role={undefined} {...listeners}>
+      <Link href={`/tracker/${job.id}/job`} draggable={false} className="block rounded-xl transition-transform duration-150 hover:-translate-y-0.5 active:scale-[0.98]" {...attributes} role={undefined} {...listeners}>
         <CardFace job={job} />
       </Link>
     </li>
@@ -80,7 +80,10 @@ function Column({ status, jobs, archived, isOver }: { status: JobStatus; jobs: B
     <section aria-label={COLUMNS[status].label} className="flex min-w-0 flex-col rounded-2xl bg-border/40 p-3">
       <h2 className="flex items-center justify-between px-1 text-base font-semibold">
         {COLUMNS[status].label}
-        <span className="rounded-full bg-surface px-2 py-0.5 text-xs font-medium tabular-nums text-muted">{jobs.length}</span>
+        {/* the key replays a little pop whenever a card arrives or leaves */}
+        <span key={jobs.length} className="animate-pop rounded-full bg-surface px-2 py-0.5 text-xs font-medium tabular-nums text-muted">
+          {jobs.length}
+        </span>
       </h2>
       <p className="mt-1 min-h-8 px-1 text-xs text-muted">{COLUMNS[status].blurb}</p>
       <SortableContext items={jobs.map((job) => job.id)} strategy={verticalListSortingStrategy}>
@@ -225,7 +228,7 @@ export function Board({ jobs: serverJobs, archived }: { jobs: BoardJob[]; archiv
           {jobs.length === 0 && <li className="text-sm text-muted">Nothing archived. Jobs you archive from their card show up here.</li>}
         </ul>
       ) : (
-        <DndContext sensors={sensors} collisionDetection={collisionDetection} onDragStart={handleDragStart} onDragOver={handleDragOver} onDragEnd={handleDragEnd} onDragCancel={cancelDrag}>
+        <DndContext id="board" sensors={sensors} collisionDetection={collisionDetection} onDragStart={handleDragStart} onDragOver={handleDragOver} onDragEnd={handleDragEnd} onDragCancel={cancelDrag}>
           {/* as many columns side by side as fit at a readable width, the rest drop to the next row and the page scrolls */}
           <div className="mt-5 grid grid-cols-[repeat(auto-fit,minmax(min(100%,15rem),1fr))] gap-3 pb-4">
             {JOB_STATUSES.map((status) => (

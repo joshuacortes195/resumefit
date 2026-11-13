@@ -108,7 +108,13 @@ export function ScanForm({ resumes, rescan, job, next }: ScanFormProps) {
           </div>
 
           {/* the key replays the little fade when you switch */}
-          <div key={source} className="mt-2 animate-swap">
+          <div key={source} className="relative mt-2 animate-swap">
+            {/* a line of light runs down the resume while it is being scanned. its own box keeps it inside the rounded corners */}
+            {pending && (
+              <span aria-hidden className="pointer-events-none absolute inset-0 z-10 overflow-hidden rounded-lg">
+                <span className="scan-sweep" />
+              </span>
+            )}
             {source === "upload" && <Dropzone file={file} onFile={setFile} />}
             {source === "paste" && (
               <textarea

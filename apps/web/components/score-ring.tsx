@@ -57,7 +57,10 @@ export function ScoreRing({ score, size = "md", label = "Match rate" }: ScoreRin
       <span
         className={`absolute animate-fade font-display font-semibold tabular-nums ${size === "lg" ? "text-4xl" : size === "md" ? "text-base" : "text-xs"}`}
       >
-        {value}
+        {/* the real number, for screen readers and for copying */}
+        <span className="sr-only">{value}</span>
+        {/* the number people see, it counts up from zero while the ring draws */}
+        <span aria-hidden className="count-up" style={{ "--to": value } as CSSProperties} />
         {size !== "sm" && <span className={size === "lg" ? "text-xl text-muted" : ""}>%</span>}
       </span>
     </div>
