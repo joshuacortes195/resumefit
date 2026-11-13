@@ -13,6 +13,8 @@ export const RATE_LIMITS = {
   // looking up skills for the builder, which reads through thousands of them each time
   "skill-lookup": 30,
   export: 30,
+  // resume and cover letter files handed to the extension to attach to an application
+  "ext-file": 20,
   // the zip of everything someone has stored is the heaviest download there is
   "account-export": 3,
   // shared by everyone, for the job refresh address when it has no secret. this one is per ten minutes
