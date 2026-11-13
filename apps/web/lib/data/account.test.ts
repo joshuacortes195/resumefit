@@ -115,8 +115,11 @@ describe("admin settings", () => {
 
   it("lets the caps and switches be changed, and uses the changed caps", async () => {
     expect((await featureFlags()).findJobs).toBe(true);
-    await saveFeatureFlags({ findJobs: false, interviewVoice: false });
-    expect(await featureFlags()).toEqual({ findJobs: false, interviewVoice: false });
+    expect((await featureFlags()).autoApply).toBe(true);
+    await saveFeatureFlags({ findJobs: false, interviewVoice: false, autoApply: false });
+    expect(await featureFlags()).toEqual({ findJobs: false, interviewVoice: false, autoApply: false });
+    // back on, so the tests after this one find it the way a fresh app has it
+    await saveFeatureFlags({ findJobs: false, interviewVoice: false, autoApply: true });
 
     const person = await seedPerson(`caps-${randomUUID()}@example.com`);
     expect(await remainingToday(person.id, "cover-letter")).toBe(10);
