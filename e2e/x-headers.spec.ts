@@ -10,7 +10,11 @@ test("nothing that depends on who is signed in can be kept by a shared cache", a
     expect(cache, `${path} answered with cache-control "${cache}"`).toContain("private");
     expect(cache, `${path} answered with cache-control "${cache}"`).toContain("no-store");
     expect(cache).not.toContain("public");
+    // and search engines are told to leave it out
+    expect(response.headers()["x-robots-tag"] ?? "", path).toContain("noindex");
   }
+  // the pages meant to be found carry no such mark
+  for (const path of ["/sign-in", "/privacy", "/terms", "/scans/sample"]) expect((await request.get(path)).headers()["x-robots-tag"], path).toBeUndefined();
 });
 
 // pages that load the most script: the board, the report, the builder and the forms

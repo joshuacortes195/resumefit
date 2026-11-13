@@ -14,7 +14,11 @@ const SAME_FOR_EVERYONE = /^\/(sign-in|privacy|terms|scans\/sample)?$/;
 // so it is never kept by a cache that other people share
 function finish(request: NextRequest, response: NextResponse): NextResponse {
   response.headers.set("Content-Security-Policy", request.headers.get("Content-Security-Policy") ?? "");
-  if (!SAME_FOR_EVERYONE.test(request.nextUrl.pathname)) response.headers.set("Cache-Control", "private, no-store");
+  if (!SAME_FOR_EVERYONE.test(request.nextUrl.pathname)) {
+    response.headers.set("Cache-Control", "private, no-store");
+    // and search engines are told to leave it out, in case a link to it ever turns up somewhere public
+    response.headers.set("X-Robots-Tag", "noindex, nofollow");
+  }
   return response;
 }
 
