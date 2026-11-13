@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { Send } from "lucide-react";
 import { LINK_BUTTON, SECONDARY_BUTTON } from "@/components/ui/buttons";
-import { tellExtension } from "@/lib/extension-client";
+import { startAutoApply } from "@/lib/extension-client";
 
 type AutoApplyButtonProps = {
   // the tracker card the application is for
@@ -27,7 +27,7 @@ export function AutoApplyButton({ jobId, url, resumeId = null, label = "Auto App
   async function start() {
     if (!usable) return;
     setState("asking");
-    const opened = await tellExtension({ type: "resumefit-apply", url, jobId, resumeId });
+    const opened = await startAutoApply({ jobId, url, resumeId });
     setState(opened ? "opened" : "unreachable");
   }
 

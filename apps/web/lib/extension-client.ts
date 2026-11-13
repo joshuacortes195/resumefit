@@ -37,3 +37,10 @@ export function tellExtension(message: Record<string, unknown>, extensionId = sa
 export function connectionCode(token: string): string {
   return btoa(JSON.stringify({ apiBase: location.origin, token }));
 }
+
+// asks the extension to open one application in a new tab, where its side panel can fill the form in for the person to check.
+// false when the link is not a secure one, or the extension is not there to ask
+export function startAutoApply(job: { jobId: string; url: string | null; resumeId?: string | null }): Promise<boolean> {
+  if (!job.url || !/^https:\/\//.test(job.url)) return Promise.resolve(false);
+  return tellExtension({ type: "resumefit-apply", url: job.url, jobId: job.jobId, resumeId: job.resumeId ?? null });
+}

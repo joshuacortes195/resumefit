@@ -2,14 +2,16 @@
 
 import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Briefcase, ExternalLink, ScanSearch, Search } from "lucide-react";
+import Link from "next/link";
+import { Briefcase, ExternalLink, ScanSearch, Search, Send } from "lucide-react";
 import { findJobs, readJob, saveFoundJob } from "@/app/actions/find-jobs";
 import { CompanyLogo } from "@/components/company-logo";
 import { FitBadge } from "@/components/fit-badge";
 import type { ResumeOption } from "@/components/scan-form";
-import { CARD, INPUT, PRIMARY_BUTTON, SECONDARY_BUTTON } from "@/components/ui/buttons";
+import { CARD, INPUT, LINK_BUTTON, PRIMARY_BUTTON, SECONDARY_BUTTON } from "@/components/ui/buttons";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
+import { startAutoApply } from "@/lib/extension-client";
 import type { JobResult } from "@/lib/jobs-feed";
 
 // how long ago an opening was posted
@@ -23,7 +25,7 @@ function age(iso: string | null): string {
 const LABEL = "block text-sm font-medium";
 
 // open roles ranked against a resume. the list is there as soon as the page opens
-export function FindJobs({ resumes }: { resumes: ResumeOption[] }) {
+export function FindJobs({ resumes, autoApply = false }: { resumes: ResumeOption[]; autoApply?: boolean }) {
   const router = useRouter();
   const base = resumes.find((resume) => resume.isBase) ?? resumes[0];
   const [resumeId, setResumeId] = useState(base?.id ?? "");
@@ -40,6 +42,8 @@ export function FindJobs({ resumes }: { resumes: ResumeOption[] }) {
   const [saved, setSaved] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
+  // how asking the extension to open an application went, for the job it was asked for
+  const [applied, setApplied] = useState<{ id: string; opened: boolean } | null>(null);
   const [searching, startSearch] = useTransition();
   const [, startRead] = useTransition();
 
@@ -83,7 +87,7 @@ export function FindJobs({ resumes }: { resumes: ResumeOption[] }) {
   }
 
   // saves the job to the tracker, then goes on to wherever the button was pointing
-  async function save(job: JobResult, then?: "scan") {
+  async function save(job: JobResult, then?: "scan" | "apply") {
     setBusy(then ?? "save");
     setError(null);
     const known = saved[job.id];
@@ -95,6 +99,8 @@ export function FindJobs({ resumes }: { resumes: ResumeOption[] }) {
     }
     setSaved((all) => ({ ...all, [job.id]: result.jobId }));
     if (then === "scan") router.push(`/scans/new?job=${result.jobId}`);
+    // auto apply: the job is on the tracker now, so the extension can open its application and tie the run to that card
+    if (then === "apply") setApplied({ id: job.id, opened: await startAutoApply({ jobId: result.jobId, url: job.url, resumeId: resumeId || null }) });
   }
 
   return (
@@ -266,11 +272,34 @@ export function FindJobs({ resumes }: { resumes: ResumeOption[] }) {
                     <Briefcase className="size-4" aria-hidden />
                     {saved[selected.id] ? "Saved to tracker" : busy === "save" ? "Saving..." : "Save job"}
                   </button>
+                  {/* saves the job, then has the extension open its application to fill in. only for a secure link, and only while the feature is on */}
+                  {autoApply && /^https:\/\//.test(selected.url) && (
+                    <button type="button" disabled={busy !== null} onClick={() => save(selected, "apply")} className={SECONDARY_BUTTON}>
+                      <Send className="size-4" aria-hidden />
+                      {busy === "apply" ? "Opening..." : "Auto Apply"}
+                    </button>
+                  )}
                   <a href={selected.url} target="_blank" rel="noreferrer" className={SECONDARY_BUTTON}>
                     <ExternalLink className="size-4" aria-hidden />
                     View job site
                   </a>
                 </div>
+                {/* what happened after Auto Apply was pressed for this job */}
+                {applied?.id === selected.id && (
+                  <p role="status" className="mt-2 text-sm text-muted">
+                    {applied.opened ? (
+                      "Saved to your tracker and opened in a new tab. Click the ResumeFit icon there, then Fill this application. You press Submit yourself."
+                    ) : (
+                      <>
+                        Saved to your tracker, but we could not reach the extension. Make sure version 0.7 or newer is installed and connected on the{" "}
+                        <Link href="/extension" className={LINK_BUTTON}>
+                          Chrome Extension
+                        </Link>{" "}
+                        page.
+                      </>
+                    )}
+                  </p>
+                )}
                 {selected.skills.length > 0 && (
                   <p className="mt-4 text-sm text-muted">
                     <span className="font-medium text-foreground">Skills it names:</span> {selected.skills.slice(0, 14).join(", ")}

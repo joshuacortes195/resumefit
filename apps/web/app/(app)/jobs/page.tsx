@@ -31,7 +31,8 @@ export default function JobsPage() {
 // shows the search when the feature is switched on
 async function JobsLoader() {
   const user = await getCurrentUser();
-  if (!(await featureFlags()).findJobs) {
+  const flags = await featureFlags();
+  if (!flags.findJobs) {
     return (
       <EmptyState icon={Search} title="Find Jobs is switched off" text="Every other feature works with job descriptions you paste in or save with the extension.">
         {user.isAdmin && (
@@ -43,5 +44,5 @@ async function JobsLoader() {
     );
   }
   const resumes = await listResumes(user.id);
-  return <FindJobs resumes={resumes.map(({ id, name, isBase }) => ({ id, name, isBase }))} />;
+  return <FindJobs resumes={resumes.map(({ id, name, isBase }) => ({ id, name, isBase }))} autoApply={flags.autoApply} />;
 }
