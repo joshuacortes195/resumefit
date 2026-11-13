@@ -11,6 +11,8 @@ test("the built extension loads and connects with a pasted code", async () => {
     // the background worker starting up is the sign that the manifest and scripts are valid
     const worker = context.serviceWorkers()[0] ?? (await context.waitForEvent("serviceworker"));
     const extensionId = new URL(worker.url()).host;
+    // the key in the manifest gives every copy the same id, on every machine
+    expect(extensionId).toBe("nhdphcemdobhiagipodpmpmgpdpcfkij");
 
     // the side panel opens on the connect screen
     const panel = await context.newPage();

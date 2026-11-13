@@ -16,7 +16,7 @@ type ConnectProps = {
 // connects the extension to this account: directly when we can reach it, with a code to paste when we cannot
 export function ExtensionConnect({ connected, lastUsed }: ConnectProps) {
   const [code, setCode] = useState<string | null>(null);
-  const [extensionId, setExtensionId] = useState(() => (typeof window === "undefined" ? "" : savedExtensionId()));
+  const [extensionId, setExtensionId] = useState(() => savedExtensionId());
   const [status, setStatus] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [pending, startTransition] = useTransition();
@@ -61,7 +61,7 @@ export function ExtensionConnect({ connected, lastUsed }: ConnectProps) {
       <label className="block max-w-md text-sm font-medium">
         Extension ID <span className="font-normal text-muted">(optional)</span>
         <input value={extensionId} onChange={(event) => setExtensionId(event.target.value)} placeholder="32 letters, shown on chrome://extensions" className={`${INPUT} mt-1 font-normal`} />
-        <span className="mt-1 block text-xs font-normal text-muted">With the ID we can connect in one click. Without it you get a code to paste into the extension, which works just as well.</span>
+        <span className="mt-1 block text-xs font-normal text-muted">Filled in for you. Only change it if chrome://extensions shows a different ID for ResumeFit, which an older copy of the extension would.</span>
       </label>
 
       <div className="flex flex-wrap gap-2">

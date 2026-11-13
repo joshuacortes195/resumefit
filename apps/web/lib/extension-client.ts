@@ -6,8 +6,12 @@ type ChromeRuntime = { sendMessage: (extensionId: string, message: unknown, call
 // remembers the extension's id on this computer, since an extension loaded by hand gets a different id on every machine
 const ID_KEY = "resumefit-extension-id";
 
+// the id every copy of the extension has since 0.7.1, which carries a key in its manifest. older copies got a different id on every machine
+export const SHIPPED_EXTENSION_ID = "nhdphcemdobhiagipodpmpmgpdpcfkij";
+
 export function savedExtensionId(): string {
-  return process.env.NEXT_PUBLIC_EXTENSION_ID || (typeof localStorage === "undefined" ? "" : (localStorage.getItem(ID_KEY) ?? ""));
+  // an id set for this copy of the app wins, then one the person typed in for an older extension, then the one the download has
+  return process.env.NEXT_PUBLIC_EXTENSION_ID || (typeof localStorage === "undefined" ? "" : (localStorage.getItem(ID_KEY) ?? "")) || SHIPPED_EXTENSION_ID;
 }
 
 export function rememberExtensionId(id: string): void {
