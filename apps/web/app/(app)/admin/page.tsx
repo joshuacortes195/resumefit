@@ -14,7 +14,7 @@ export const metadata = { title: "Admin" };
 
 
 // names for the capped features
-const CAP_LABELS: Partial<Record<AiFeature, string>> = { optimize: "Optimize", "cover-letter": "Cover letters", bullets: "Bullet ideas", linkedin: "LinkedIn", interview: "Interview", "thank-you": "Thank-you notes", builder: "Builder" };
+const CAP_LABELS: Partial<Record<AiFeature, string>> = { optimize: "Optimize", "cover-letter": "Cover letters", bullets: "Bullet ideas", linkedin: "LinkedIn", interview: "Interview", "thank-you": "Thank-you notes", builder: "Builder", screening: "Application answers" };
 
 // the admin page, only for people marked as admin
 export default function AdminPage() {

@@ -35,7 +35,9 @@ export const mockCall: ProviderCall = async ({ system, prompt }) => {
     const interviewer = prompt.match(/Interviewer: (.*)/)?.[1] ?? "there";
     text = `Hi ${interviewer},\n\nThank you for the conversation today. I am still very interested in the role.\n\nBest,\nThe applicant`;
   }
-  else if (system.startsWith("Task: write linkedin headlines.")) {
+  else if (system.startsWith("Task: answer an application question.")) {
+    text = "I enjoy this kind of work and have done it before. [Add a specific example here.]";
+  } else if (system.startsWith("Task: write linkedin headlines.")) {
     text = JSON.stringify({ options: ["Data Analyst | SQL and Tableau | Healthcare", "Data Analyst turning messy data into clear answers", "SQL and Tableau analyst for care teams"] });
   } else if (system.startsWith("Task: write a linkedin about section.")) {
     text = "I am a data analyst who helps care teams decide faster.\n\nI am looking for my next analytics role.";
