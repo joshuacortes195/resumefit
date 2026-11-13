@@ -45,14 +45,15 @@ async function Runs() {
   }
 
   return (
-    <div className={`${CARD} overflow-x-auto`}>
-      <table className="w-full min-w-[40rem] text-sm">
+    <div className={CARD}>
+      {/* on a phone the form and date columns step aside, so the table never runs off the screen */}
+      <table className="w-full table-fixed text-sm sm:table-auto">
         <thead>
           <tr className="border-b border-border text-left text-muted">
             <th scope="col" className="px-4 py-3 font-medium">Job</th>
             <th scope="col" className="px-4 py-3 font-medium">Status</th>
-            <th scope="col" className="px-4 py-3 font-medium">Form</th>
-            <th scope="col" className="px-4 py-3 font-medium">Last touched</th>
+            <th scope="col" className="hidden px-4 py-3 font-medium md:table-cell">Form</th>
+            <th scope="col" className="hidden px-4 py-3 font-medium md:table-cell">Last touched</th>
             <th scope="col" className="px-4 py-3 font-medium">
               <span className="sr-only">Actions</span>
             </th>
@@ -63,7 +64,7 @@ async function Runs() {
             const label = runLabel(run);
             return (
               <tr key={run.id} className="border-b border-border transition-colors duration-150 last:border-0 hover:bg-background/60">
-                <th scope="row" className="px-4 py-3 text-left font-normal">
+                <th scope="row" className="break-words px-4 py-3 text-left font-normal">
                   {/* the tracker card when there is one, otherwise just where the form was */}
                   {run.jobId ? (
                     <Link href={`/tracker/${run.jobId}/application`} className="font-semibold hover:text-primary">
@@ -75,17 +76,17 @@ async function Runs() {
                   <span className="block text-muted">{run.company ?? (run.applyUrl ? new URL(run.applyUrl).hostname : "")}</span>
                 </th>
                 <td className="px-4 py-3">
-                  <span className={`inline-block whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-medium ${TONES[label.tone]}`}>{label.text}</span>
+                  <span className={`inline-block rounded-full px-2.5 py-1 text-xs font-medium sm:whitespace-nowrap ${TONES[label.tone]}`}>{label.text}</span>
                 </td>
-                <td className="px-4 py-3 text-muted">
+                <td className="hidden px-4 py-3 text-muted md:table-cell">
                   {run.ats ? `${run.ats}, ` : ""}
                   {run.fieldsFilled} filled{run.fieldsNeedingAttention > 0 ? `, ${run.fieldsNeedingAttention} to check` : ""}
                 </td>
-                <td className="px-4 py-3 text-muted">
+                <td className="hidden px-4 py-3 text-muted md:table-cell">
                   <LocalTime value={run.updatedAt.toISOString()} style="date" />
                 </td>
                 <td className="px-4 py-3">
-                  <div className="flex items-start justify-end gap-3">
+                  <div className="flex flex-col items-end gap-2 sm:flex-row sm:items-start sm:justify-end sm:gap-3">
                     {run.applyUrl && (
                       <a href={run.applyUrl} target="_blank" rel="noreferrer" className={`inline-flex items-center gap-1 whitespace-nowrap ${LINK_BUTTON}`}>
                         <ExternalLink className="size-3.5" aria-hidden />

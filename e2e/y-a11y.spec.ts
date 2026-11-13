@@ -5,7 +5,7 @@ import { expect, test } from "./fixtures";
 // this file runs near the end on purpose, so the pages are full of what the other tests made
 
 // the pages people spend their time on
-const PAGES = ["/dashboard", "/scans/sample", "/scans", "/tracker", "/resumes", "/builder", "/optimize", "/cover-letter", "/linkedin", "/interview", "/jobs", "/extension", "/settings", "/help", "/sign-in", "/privacy"];
+const PAGES = ["/dashboard", "/scans/sample", "/scans", "/tracker", "/resumes", "/builder", "/optimize", "/cover-letter", "/linkedin", "/interview", "/jobs", "/extension", "/settings", "/settings/application", "/applications", "/help", "/sign-in", "/privacy"];
 
 // runs the accessibility checker and returns the problems that would really get in someone's way
 async function problems(page: Page) {

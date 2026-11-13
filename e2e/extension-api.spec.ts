@@ -46,8 +46,9 @@ test("connect the extension, then save and scan a job the way it does", async ({
   const me = await (await request.get("/api/ext/me", { headers })).json();
   expect(me.user.email).toBeTruthy();
   expect(me.resumes.length).toBeGreaterThan(0);
-  // only what scanning needs is handed over
-  expect(Object.keys(me).sort()).toEqual(["resumes", "user"]);
+  // who it is, their resumes, and the application profile auto apply fills forms from. the saved answers stay behind
+  expect(Object.keys(me).sort()).toEqual(["autoApply", "current", "profile", "profileReady", "resumes", "user"]);
+  expect(me.profile.qaBank).toBeUndefined();
 
   // no key and a made up key are turned away
   expect((await request.get("/api/ext/me")).status()).toBe(401);
@@ -92,8 +93,8 @@ test("connect the extension, then save and scan a job the way it does", async ({
   await page.goto(`/scans/${scan.scanId}`);
   await expect(page.getByRole("tab", { name: "Resume report" })).toBeVisible();
 
-  // the things the extension used to do for applications are gone
-  for (const path of ["answer", "applications", "qa", "match"]) expect((await request.post(`/api/ext/${path}`, { headers, data: {} })).status()).toBe(404);
+  // the parts of the old auto apply that did not come back are still gone
+  for (const path of ["qa", "match"]) expect((await request.post(`/api/ext/${path}`, { headers, data: {} })).status()).toBe(404);
   expect((await page.goto("/auto-apply"))?.status()).toBe(404);
 
   // a linkedin profile the extension read is waiting in the optimizer, already filled in
