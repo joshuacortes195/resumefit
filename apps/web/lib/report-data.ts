@@ -1,4 +1,4 @@
-import { blankInstructions, findSkillSpans, type ScanResult, type SkillSpan } from "@resumefit/scoring";
+import { blankInstructions, findSkillSpans, inHouseHost, type ScanResult, type SkillSpan } from "@resumefit/scoring";
 import { HARD_SKILLS, SOFT_SKILLS } from "@resumefit/skills-data";
 import type { CustomSkill, SavedScan } from "@/lib/data/scans";
 import { runScan } from "@/lib/data/scans";
@@ -19,6 +19,8 @@ export type ReportData = {
   // the job title the report looks for, when it differs from the one in the heading
   targetTitle: string | null;
   jobId: string | null;
+  // the posting's own site, when it is not one of the applicant systems we know and so is most likely the company's own
+  inHouse: string | null;
   // the scan of the same posting before this one, for the score change
   previous: { id: string; matchRate: number } | null;
   createdAt: string;
@@ -53,6 +55,7 @@ export function toReportData(scan: SavedScan, previous: ReportData["previous"]):
     educationOverride: scan.educationOverride,
     targetTitle: scan.jobTitleOverride,
     jobId: scan.jobId,
+    inHouse: inHouseHost(scan.jobUrl, scan.jdText),
     previous,
     createdAt: scan.createdAt.toISOString(),
     spans: buildSpans(scan.report, scan.jdText, scan.resumeTextSnapshot),
@@ -77,6 +80,7 @@ export function sampleReportData(): ReportData {
     educationOverride: null,
     targetTitle: null,
     jobId: null,
+    inHouse: null,
     previous: null,
     createdAt: today.toISOString(),
     spans: buildSpans(report, SAMPLE_JD, SAMPLE_RESUME),

@@ -140,3 +140,23 @@ export function detectAts(jobUrl: string | undefined, jdText: string): AtsInfo |
   if (!found) return null;
   return { id: found.id, name: found.name, tips: found.tips };
 }
+
+// job sites that list postings for other companies. a link to one of these says nothing about the system behind the application
+const JOB_BOARDS = /(^|\.)(linkedin|indeed|glassdoor|ziprecruiter|monster|dice|wellfound|themuse|simplyhired|handshake|joinhandshake|builtin|google)\.[a-z.]+$/i;
+
+// the site a posting lives on when it is not one of the systems we know and not a job board, which nearly always means the company's own careers system.
+// null when there is no link, the link is to a known system, or it is a job board
+export function inHouseHost(jobUrl: string | null | undefined, jdText = ""): string | null {
+  if (!jobUrl || detectAts(jobUrl, jdText)) return null;
+  let host: string;
+  try {
+    const url = new URL(jobUrl);
+    if (url.protocol !== "https:" && url.protocol !== "http:") return null;
+    host = url.hostname.replace(/^www\./, "");
+  } catch {
+    return null;
+  }
+  // a bare machine name or address is not a careers site
+  if (!host.includes(".") || /^[\d.]+$/.test(host) || JOB_BOARDS.test(host)) return null;
+  return host;
+}

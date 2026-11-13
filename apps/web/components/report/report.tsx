@@ -101,6 +101,16 @@ export function Report({ data, resumes }: { data: ReportData; resumes: ResumeOpt
         </div>
       </header>
 
+      {/* a company's own careers site: say so, the way a known system gets named */}
+      {!report.jd.ats && data.inHouse && (
+        <div className="mt-5 flex flex-wrap items-center gap-3 rounded-xl border border-border bg-surface px-4 py-3 text-sm">
+          <Cpu className="size-4 shrink-0 text-muted" aria-hidden />
+          <p className="flex-1">
+            This job is on <strong>{data.inHouse}</strong>, which looks like the company&apos;s own in-house application system. We have no tips made for it, so the report sticks to what every system looks for.
+          </p>
+        </div>
+      )}
+
       {/* a posting with lines aimed at an ai model: say that they were skipped, so missing skills from them are no surprise */}
       {hasInstructions(data.jdText) && (
         <div className="mt-5 flex items-center gap-3 rounded-xl border border-border bg-surface px-4 py-3 text-sm">
