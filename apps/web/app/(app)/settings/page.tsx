@@ -1,15 +1,16 @@
 import { Suspense } from "react";
 import Link from "next/link";
+import { ClipboardList } from "lucide-react";
 import { AiSettings } from "@/components/ai-settings";
 import { DataSettings } from "@/components/data-settings";
-import { LINK_BUTTON } from "@/components/ui/buttons";
+import { CARD, LINK_BUTTON, SECONDARY_BUTTON } from "@/components/ui/buttons";
 import { Skeleton } from "@/components/ui/skeleton";
 import { aiStatus } from "@/lib/ai/status";
 import { getCurrentUser } from "@/lib/auth";
 
 export const metadata = { title: "Settings" };
 
-// settings page: the ai settings and your data
+// settings page: the ai settings, the application profile and your data
 export default function SettingsPage() {
   return (
     <div className="mx-auto max-w-3xl space-y-6">
@@ -20,6 +21,17 @@ export default function SettingsPage() {
       <Suspense fallback={<Skeleton className="h-96" />}>
         <AiSection />
       </Suspense>
+      {/* the answers Auto Apply types into application forms */}
+      <section id="application" className={`${CARD} scroll-mt-20 space-y-4 p-6`}>
+        <div>
+          <h2 className="text-xl font-semibold">Application profile</h2>
+          <p className="mt-1 max-w-prose text-sm text-muted">Your contact details, school, work authorization and the answers you reuse. Fill it in once and Auto Apply types it into application forms for you to check.</p>
+        </div>
+        <Link href="/settings/application" className={SECONDARY_BUTTON}>
+          <ClipboardList className="size-4" aria-hidden />
+          Edit application profile
+        </Link>
+      </section>
       <DataSettings />
       <Suspense fallback={null}>
         <AdminLink />
