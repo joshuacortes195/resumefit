@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense, type CSSProperties } from "react";
-import Link from "next/link";
+import Link, { useLinkStatus } from "next/link";
 import { usePathname } from "next/navigation";
 import { Plus } from "lucide-react";
 import { NAV_ITEMS } from "@/lib/nav";
@@ -26,6 +26,19 @@ export function Sidebar(props: SidebarProps) {
 // reads which page we are on and highlights its link
 function CurrentSidebar(props: SidebarProps) {
   return <SidebarLinks {...props} pathname={usePathname()} />;
+}
+
+// a bar in the link's own color marks the current page. it shows the moment a link is clicked, before the new page has loaded
+function ActiveBar({ active }: { active: boolean }) {
+  const { pending } = useLinkStatus();
+  return (
+    <span
+      aria-hidden
+      className={`absolute left-0 top-1/2 w-1 -translate-y-1/2 rounded-full bg-(--link,var(--primary)) transition-[height,opacity] duration-200 ${
+        active || pending ? "h-5 opacity-100" : "h-0 opacity-0"
+      }`}
+    />
+  );
 }
 
 // the links themselves
@@ -63,13 +76,7 @@ function SidebarLinks({ collapsed = false, onNavigate, pathname }: SidebarProps 
               active ? "bg-(--link-soft,var(--primary-soft)) font-semibold" : "hover:bg-(--link-soft,var(--primary-soft))"
             } ${collapsed ? "justify-center" : ""}`}
           >
-            {/* a bar in the link's own color marks the current page */}
-            <span
-              aria-hidden
-              className={`absolute left-0 top-1/2 w-1 -translate-y-1/2 rounded-full bg-(--link,var(--primary)) transition-[height,opacity] duration-200 ${
-                active ? "h-5 opacity-100" : "h-0 opacity-0"
-              }`}
-            />
+            <ActiveBar active={active} />
             <Icon className="size-5 shrink-0" aria-hidden />
             {collapsed ? <span className="sr-only">{item.label}</span> : <span className="truncate">{item.label}</span>}
           </Link>

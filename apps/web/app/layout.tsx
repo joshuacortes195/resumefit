@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Bricolage_Grotesque, Instrument_Sans } from "next/font/google";
 import { headers } from "next/headers";
 import { Suspense } from "react";
+import { NavProgress } from "@/components/nav-progress";
 import { SectionTheme } from "@/components/section-theme";
 import { SECTION_SCRIPT } from "@/lib/sections";
 import "./globals.css";
@@ -35,6 +36,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <script nonce={nonce} dangerouslySetInnerHTML={{ __html: SECTION_SCRIPT }} />
         <Suspense fallback={null}>
           <SectionTheme />
+          {/* the loading bar across the top while the next page is on its way */}
+          <NavProgress />
         </Suspense>
         {children}
       </body>
