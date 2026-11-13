@@ -182,7 +182,7 @@ async function TrackerSummary() {
                 <ul className="mt-3 space-y-2">
                   {cards.slice(0, CARDS_PER_COLUMN).map((job) => (
                     <li key={job.id}>
-                      <Link href={`/tracker/${job.id}/job`} className="flex items-center gap-2.5 rounded-lg border border-border/70 bg-surface p-2.5 transition duration-150 hover:-translate-y-0.5 hover:border-primary/60 hover:shadow-sm active:scale-[0.98]">
+                      <Link href={`/tracker/${job.id}/job`} className="flex items-center gap-2.5 rounded-lg border border-border/70 bg-surface p-2.5 transition-colors duration-150 hover:border-primary/60">
                         {/* the match rate sits where a logo would, the same ring as on the tracker */}
                         <JobScore matchRate={job.matchRate} />
                         <span className="min-w-0 flex-1">

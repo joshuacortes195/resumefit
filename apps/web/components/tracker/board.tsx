@@ -66,7 +66,7 @@ function JobCard({ job, archived }: { job: BoardJob; archived: boolean }) {
   return (
     <li ref={setNodeRef} style={{ transform: CSS.Transform.toString(transform), transition }} className={isDragging ? "opacity-40" : ""}>
       {/* the link is the thing you grab. it stays a link, so enter opens the job and space picks the card up */}
-      <Link href={`/tracker/${job.id}/job`} draggable={false} className="block rounded-xl transition-transform duration-150 hover:-translate-y-0.5 active:scale-[0.98]" {...attributes} role={undefined} {...listeners}>
+      <Link href={`/tracker/${job.id}/job`} draggable={false} className="block rounded-xl" {...attributes} role={undefined} {...listeners}>
         <CardFace job={job} />
       </Link>
     </li>
