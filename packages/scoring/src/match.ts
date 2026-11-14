@@ -21,6 +21,8 @@ function termPattern(term: string): RegExp {
     if (char === " " || char === "-") body += "[\\s-]+";
     else body += char.replace(/[.*+?^${}()|[\]\\/]/g, "\\$&");
   }
+  // the language C is one capital letter, which also turns up in "Series C", "Class C" and "C-suite". those are never the language
+  if (term.trim() === "C") return new RegExp(`(?<![${SKILL_CHARS}]|\\b(?:Series|Class|Vitamin|Type|Grade|Level|Phase|Tier|Plan|Section|Appendix|Exhibit|Part|Option|Hepatitis) )C(?![${SKILL_CHARS}]|-(?:suite|level|corp)| corp)`, "g");
   // tiny all letter names like Go, JS and ML have to match the exact casing or they hit normal words
   const exactCase = /^[A-Za-z]{1,2}$/.test(term.trim());
   return new RegExp(`(?<![${SKILL_CHARS}])${body}(?![${SKILL_CHARS}])`, exactCase ? "g" : "gi");
