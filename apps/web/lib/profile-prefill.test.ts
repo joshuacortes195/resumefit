@@ -19,12 +19,12 @@ B.S. Computer Science, State University, 2021
 `;
 
 // a profile exactly as a new person has it
-const BLANK = { fullName: null, email: null, phone: null, city: null, state: null, linkedinUrl: null, githubUrl: null, portfolioUrl: null, yearsExperience: null, school: null, degree: null, major: null, graduationYear: null, workAuthorization: null, needsSponsorship: null, eeoGender: "Decline to self-identify", autoSend: "off" } as unknown as ReturnType<typeof profileSchema.parse>;
+const BLANK = { fullName: null, email: null, phone: null, city: null, state: null, country: null, linkedinUrl: null, githubUrl: null, portfolioUrl: null, yearsExperience: null, school: null, degree: null, major: null, graduationYear: null, workAuthorization: null, needsSponsorship: null, eeoGender: "Decline to self-identify", autoSend: "off" } as unknown as ReturnType<typeof profileSchema.parse>;
 
 describe("starting the application profile from the resume", () => {
   it("fills in contact details, links and school, and leaves the personal answers alone", () => {
     const { profile, filled } = prefillFromResume(BLANK, RESUME);
-    expect(profile).toMatchObject({ fullName: "Riley Chen", email: "riley.chen@example.com", phone: "(503) 555-0177", city: "Portland", state: "OR", linkedinUrl: "https://linkedin.com/in/rileychen", githubUrl: "https://github.com/rileychen", school: "State University", degree: "Bachelor's degree", graduationYear: "2021" });
+    expect(profile).toMatchObject({ fullName: "Riley Chen", email: "riley.chen@example.com", phone: "(503) 555-0177", city: "Portland", state: "Oregon", country: "United States", linkedinUrl: "https://linkedin.com/in/rileychen", githubUrl: "https://github.com/rileychen", school: "State University", degree: "Bachelor's degree", graduationYear: "2021" });
     expect(filled).toBeGreaterThanOrEqual(9);
     // never guessed
     expect([profile.workAuthorization, profile.needsSponsorship, profile.eeoGender, profile.autoSend]).toEqual([null, null, "Decline to self-identify", "off"]);

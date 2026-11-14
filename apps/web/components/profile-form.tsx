@@ -148,6 +148,35 @@ export function ProfileForm({ profile, back = "/settings", prefilled = 0 }: { pr
           )}
         </div>
 
+        {/* the four answers nearly every application asks for. with these and the contact details, most forms can be finished */}
+        <fieldset className="grid gap-4 sm:grid-cols-2">
+          <legend className="mb-1 font-semibold">Asked on almost every application</legend>
+          <p className="mb-2 text-sm text-muted sm:col-span-2">Answer these four and most forms can be filled in without you. They are never guessed.</p>
+          {select("workAuthorization", "Work authorization", WORK_AUTHORIZATIONS)}
+          {select("needsSponsorship", "Will you need visa sponsorship?", YES_NO)}
+          {select("over18", "Are you 18 or older?", YES_NO)}
+          {select("willingToRelocate", "Willing to relocate?", YES_NO)}
+        </fieldset>
+
+        {/* who presses Submit. it starts on the person, and they can hand it over */}
+        <fieldset className="grid gap-4 sm:grid-cols-2">
+          <legend className="mb-1 font-semibold">Sending applications</legend>
+          <p className="mb-2 text-sm text-muted sm:col-span-2">
+            Auto Apply fills in the form. Here you choose whether it also presses Submit. Once an application is sent it cannot be taken back, and most forms have you confirm that every answer is true, so only hand this over if you trust what is in this profile.
+          </p>
+          {select("autoSend", "Who presses Submit?", [
+            ["off", "I do, after checking the form"],
+            ["safe", "ResumeFit. It only asks me about questions specific to that company"],
+            ["all", "ResumeFit, and it answers those for me too"],
+          ])}
+          {text("dailySendCap", `Most it may send in a day (1 to ${MAX_DAILY_SENDS})`, { type: "number" })}
+          {form.autoSend !== "off" && (
+            <p className="text-sm text-muted sm:col-span-2">
+              It sends on Greenhouse, Lever and Ashby forms that fit on one page, and drafts answers to general written questions from your resume. When a form needs something only you can say, it shows up on the Auto Apply page for you to answer there, and then it is sent. It never ticks a captcha box or solves a puzzle, those forms are left for you, and it never runs on LinkedIn or Indeed.
+            </p>
+          )}
+        </fieldset>
+
         <fieldset className="grid gap-4 sm:grid-cols-2">
           <legend className="mb-3 font-semibold">Contact</legend>
           {text("fullName", "Full legal name")}
@@ -172,45 +201,47 @@ export function ProfileForm({ profile, back = "/settings", prefilled = 0 }: { pr
         <fieldset className="grid gap-4 sm:grid-cols-2">
           <legend className="mb-3 font-semibold">Work details</legend>
           {text("yearsExperience", "Years of experience", { placeholder: "4" })}
-          {select("workAuthorization", "Work authorization", WORK_AUTHORIZATIONS)}
-          {select("needsSponsorship", "Will you need visa sponsorship?", YES_NO)}
-          {select("willingToRelocate", "Willing to relocate?", YES_NO)}
-          {select("over18", "Are you 18 or older?", YES_NO)}
-          {text("noticePeriod", "Notice period", { placeholder: "2 weeks" })}
           {text("howHeard", "How you usually hear about jobs", { placeholder: "LinkedIn" })}
-          {text("desiredSalaryMin", "Desired salary, lowest", { placeholder: "85000" })}
-          {text("desiredSalaryMax", "Desired salary, highest", { placeholder: "105000" })}
-          {text("earliestStartDate", "Earliest start date", { type: "date" })}
-          {select("remotePreference", "Remote preference", ["", ...REMOTE_PREFERENCES.slice(1)])}
-          <div className="sm:col-span-2">
-            <p className="text-sm font-medium">Job types</p>
-            <div className="mt-2 flex flex-wrap gap-2">
-              {JOB_TYPES.map((type) => {
-                const on = form.jobTypes.includes(type);
-                return (
-                  <button
-                    key={type}
-                    type="button"
-                    aria-pressed={on}
-                    onClick={() => set({ jobTypes: on ? form.jobTypes.filter((entry) => entry !== type) : [...form.jobTypes, type] })}
-                    className={`rounded-lg border px-3 py-1.5 text-sm transition-colors duration-150 ${on ? "border-primary bg-primary-soft text-primary" : "border-border hover:bg-primary-soft/60"}`}
-                  >
-                    {type}
-                  </button>
-                );
-              })}
+          {/* asked now and then. tucked away so the form is not a wall of boxes */}
+          <details className="sm:col-span-2">
+            <summary className="cursor-pointer text-sm font-medium text-primary">Salary, start date and other preferences (optional)</summary>
+            <div className="mt-4 grid gap-4 sm:grid-cols-2">
+              {text("noticePeriod", "Notice period", { placeholder: "2 weeks" })}
+              {text("desiredSalaryMin", "Desired salary, lowest", { placeholder: "85000" })}
+              {text("desiredSalaryMax", "Desired salary, highest", { placeholder: "105000" })}
+              {text("earliestStartDate", "Earliest start date", { type: "date" })}
+              {select("remotePreference", "Remote preference", ["", ...REMOTE_PREFERENCES.slice(1)])}
+              <div className="sm:col-span-2">
+                <p className="text-sm font-medium">Job types</p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {JOB_TYPES.map((type) => {
+                    const on = form.jobTypes.includes(type);
+                    return (
+                      <button
+                        key={type}
+                        type="button"
+                        aria-pressed={on}
+                        onClick={() => set({ jobTypes: on ? form.jobTypes.filter((entry) => entry !== type) : [...form.jobTypes, type] })}
+                        className={`rounded-lg border px-3 py-1.5 text-sm transition-colors duration-150 ${on ? "border-primary bg-primary-soft text-primary" : "border-border hover:bg-primary-soft/60"}`}
+                      >
+                        {type}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+              <label className="block text-sm font-medium sm:col-span-2">
+                Preferred industries
+                <input
+                  value={form.preferredIndustries.join(", ")}
+                  onChange={(event) => set({ preferredIndustries: event.target.value.split(",").map((item) => item.trimStart()) })}
+                  placeholder="Healthcare, Education, Software"
+                  className={`${INPUT} mt-1 font-normal`}
+                />
+                <span className="mt-1 block text-xs font-normal text-muted">Separate them with commas.</span>
+              </label>
             </div>
-          </div>
-          <label className="block text-sm font-medium sm:col-span-2">
-            Preferred industries
-            <input
-              value={form.preferredIndustries.join(", ")}
-              onChange={(event) => set({ preferredIndustries: event.target.value.split(",").map((item) => item.trimStart()) })}
-              placeholder="Healthcare, Education, Software"
-              className={`${INPUT} mt-1 font-normal`}
-            />
-            <span className="mt-1 block text-xs font-normal text-muted">Separate them with commas.</span>
-          </label>
+          </details>
         </fieldset>
 
         {/* school questions come up on most forms */}
@@ -271,25 +302,6 @@ export function ProfileForm({ profile, back = "/settings", prefilled = 0 }: { pr
             <Plus className="size-4" aria-hidden />
             Add an answer
           </button>
-        </fieldset>
-
-        {/* who presses Submit. it starts on the person, and they can hand it over */}
-        <fieldset className="grid gap-4 sm:grid-cols-2">
-          <legend className="mb-1 font-semibold">Sending applications</legend>
-          <p className="mb-2 text-sm text-muted sm:col-span-2">
-            Auto Apply fills in the form. Here you choose whether it also presses Submit. Once an application is sent it cannot be taken back, and most forms have you confirm that every answer is true, so only hand this over if you trust what is in this profile.
-          </p>
-          {select("autoSend", "Who presses Submit?", [
-            ["off", "I do, after checking the form"],
-            ["safe", "ResumeFit. It only asks me about questions specific to that company"],
-            ["all", "ResumeFit, and it answers those for me too"],
-          ])}
-          {text("dailySendCap", `Most it may send in a day (1 to ${MAX_DAILY_SENDS})`, { type: "number" })}
-          {form.autoSend !== "off" && (
-            <p className="text-sm text-muted sm:col-span-2">
-              It sends on Greenhouse, Lever and Ashby forms that fit on one page, and drafts answers to general written questions from your resume. When a form needs something only you can say, it shows up on the Auto Apply page for you to answer there, and then it is sent. It never ticks a captcha box or solves a puzzle, those forms are left for you, and it never runs on LinkedIn or Indeed.
-            </p>
-          )}
         </fieldset>
 
         <div className="flex items-center gap-4 border-t border-border pt-5">
