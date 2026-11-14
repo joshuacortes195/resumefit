@@ -22,6 +22,8 @@ export type ReportData = {
   jobId: string | null;
   // the posting's own site, when it is not one of the applicant systems we know and so is most likely the company's own
   inHouse: string | null;
+  // set when this scan's job is on the tracker with a link, so the report can offer to apply to it with the resume that was scanned
+  apply: { jobId: string; url: string; resumeId: string | null } | null;
   // the rules the posting sets about who can apply, each compared with the person's application profile
   eligibility: EligibilityItem[];
   // the scan of the same posting before this one, for the score change
@@ -45,7 +47,7 @@ function buildSpans(report: ScanResult, jdText: string, resumeText: string): Rep
 }
 
 // packs a saved scan up for the report page
-export function toReportData(scan: SavedScan, previous: ReportData["previous"], profile: EligibilityProfile = {}): ReportData {
+export function toReportData(scan: SavedScan, previous: ReportData["previous"], profile: EligibilityProfile = {}, applyUrl: string | null = null): ReportData {
   return {
     id: scan.id,
     readOnly: false,
@@ -59,6 +61,7 @@ export function toReportData(scan: SavedScan, previous: ReportData["previous"], 
     targetTitle: scan.jobTitleOverride,
     jobId: scan.jobId,
     inHouse: inHouseHost(scan.jobUrl, scan.jdText),
+    apply: scan.jobId && applyUrl && /^https:\/\//.test(applyUrl) ? { jobId: scan.jobId, url: applyUrl, resumeId: scan.resumeId } : null,
     eligibility: checkEligibility(scan.jdText, profile),
     previous,
     createdAt: scan.createdAt.toISOString(),
@@ -85,6 +88,7 @@ export function sampleReportData(): ReportData {
     targetTitle: null,
     jobId: null,
     inHouse: null,
+    apply: null,
     eligibility: checkEligibility(SAMPLE_JD),
     previous: null,
     createdAt: today.toISOString(),

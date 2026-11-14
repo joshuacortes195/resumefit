@@ -5,7 +5,9 @@ import { ReportSkeleton } from "@/components/ui/skeleton";
 import { getCurrentUser } from "@/lib/auth";
 import { listResumes } from "@/lib/data/resumes";
 import { getScan, previousScan, type SavedScan } from "@/lib/data/scans";
+import { getJob } from "@/lib/data/jobs";
 import { getProfile } from "@/lib/data/profile";
+import { featureFlags } from "@/lib/data/settings";
 import { toReportData } from "@/lib/report-data";
 
 export const metadata = { title: "Match report" };
@@ -27,7 +29,9 @@ export default async function ScanPage({ params }: { params: Promise<{ id: strin
 // loads the rest and hands it to the report
 async function ScanReport({ userId, scan }: { userId: string; scan: SavedScan }) {
   // the profile is what the posting's rules about who can apply are checked against
-  const [previous, resumes, profile] = await Promise.all([previousScan(userId, scan), listResumes(userId), getProfile(userId)]);
+  const [previous, resumes, profile, flags, card] = await Promise.all([previousScan(userId, scan), listResumes(userId), getProfile(userId), featureFlags(), scan.jobId ? getJob(userId, scan.jobId) : null]);
+  // the link to apply at is the one on the tracker card, or the one the scan was given
+  const applyUrl = flags.autoApply ? (card?.url ?? scan.jobUrl) : null;
   // the key gives each scan a fresh report, so an open pop up does not carry over to the next one
-  return <Report key={scan.id} data={toReportData(scan, previous, profile)} resumes={resumes.map(({ id, name, isBase }) => ({ id, name, isBase }))} />;
+  return <Report key={scan.id} data={toReportData(scan, previous, profile, applyUrl)} resumes={resumes.map(({ id, name, isBase }) => ({ id, name, isBase }))} />;
 }

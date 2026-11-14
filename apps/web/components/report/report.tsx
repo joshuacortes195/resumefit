@@ -13,6 +13,7 @@ import { HighlightedText, HighlightLegend } from "@/components/report/highlighte
 import { SkillsSection } from "@/components/report/skills-section";
 import { Tour, type TourStep } from "@/components/report/tour";
 import { ScanForm, type ResumeOption } from "@/components/scan-form";
+import { AutoApplyButton } from "@/components/auto-apply-button";
 import { AtsView } from "@/components/report/ats-view";
 import { BestResume } from "@/components/report/best-resume";
 import { WhyScore } from "@/components/report/why-score";
@@ -332,6 +333,8 @@ export function Report({ data, resumes }: { data: ReportData; resumes: ResumeOpt
                 <RefreshCw className="size-4" aria-hidden />
                 Upload and rescan
               </button>
+              {/* happy with the match: apply to this job with the resume that was scanned */}
+              {data.apply && <AutoApplyButton jobId={data.apply.jobId} url={data.apply.url} resumeId={data.apply.resumeId} />}
             </div>
           )}
         </div>

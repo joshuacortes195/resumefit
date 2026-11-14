@@ -67,6 +67,13 @@ test("the results page adds the tracker up and offers a follow up note for an ap
   await expect(quiet.getByRole("button", { name: "Copied" })).toBeVisible();
   expect(await page.evaluate(() => navigator.clipboard.readText())).toContain("I applied for the Quiet Pipeline Engineer role at Stillwater");
 
+  // a scan started from that card offers to apply to it, right on the report
+  await page.goto(`/scans/new?job=${job.jobId}`);
+  await page.getByRole("tab", { name: "Saved resumes" }).click();
+  await page.getByRole("button", { name: "Scan", exact: true }).click();
+  await expect(page).toHaveURL(/\/scans\/[0-9a-f-]{36}$/);
+  await expect(page.getByRole("button", { name: "Auto Apply", exact: true })).toBeEnabled();
+
   // the dashboard brings it up too
   await page.goto("/dashboard");
   await expect(page.getByRole("region", { name: "Worth a follow up" })).toContainText("Quiet Pipeline Engineer");
