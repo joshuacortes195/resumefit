@@ -71,8 +71,8 @@ describe("auto apply runs", () => {
     expect(await listWaiting(id)).toMatchObject([{ id: run, jobId: job.id, jobTitle: "Data Analyst", questions: waiting }]);
     expect(await listWaiting(other.id)).toEqual([]);
     // nobody else can answer it
-    expect(await answerWaiting(other.id, run, [{ label: "Why do you want to work here?", value: "Not mine." }])).toBe(false);
-    expect(await answerWaiting(id, run, [{ label: "Why do you want to work here?", value: "I use the product every day." }])).toBe(true);
+    expect(await answerWaiting(other.id, run, [{ label: "Why do you want to work here?", value: "Not mine." }])).toBeNull();
+    expect(await answerWaiting(id, run, [{ label: "Why do you want to work here?", value: "I use the product every day." }])).toEqual({ company: "Acme" });
     expect((await listWaiting(id))[0]?.questions.map((question) => question.label)).toEqual(["How did you hear about us?"]);
     // the answer is found again by the question, whatever its spacing or capitals, and is stored locked
     expect((await providedFor(id, job.id))["why do you want to work here"]).toBe("I use the product every day.");

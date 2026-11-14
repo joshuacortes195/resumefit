@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { profileSchema } from "./profile";
 import { prefillFromResume } from "./profile-prefill";
-import { findAnswerForField } from "./qa-match";
+import { findAnswerForField, generalize } from "./qa-match";
 
 const RESUME = `Riley Chen
 Portland, OR | riley.chen@example.com | (503) 555-0177 | linkedin.com/in/rileychen | github.com/rileychen
@@ -41,6 +41,16 @@ describe("finding a saved answer for a form field", () => {
     { question: "How did you hear about us?", answer: "LinkedIn" },
     { question: "Country of citizenship", answer: "United States" },
   ];
+  it("fits an answer saved for one employer to the same question from another", () => {
+    const saved = generalize("Have you ever worked for Figma before, as an employee or a contractor?", "Figma");
+    expect(saved).toBe("Have you ever worked for this company before, as an employee or a contractor?");
+    const asked = generalize("Have you ever worked for Discord before, as an employee or a contractor?", "Discord");
+    expect(findAnswerForField(asked, [{ question: saved, answer: "No" }])?.answer).toBe("No");
+    // a name inside another word is left alone, and no name means no change
+    expect(generalize("Do you use Figmatic?", "Figma")).toBe("Do you use Figmatic?");
+    expect(generalize("Why here?", null)).toBe("Why here?");
+  });
+
   it("needs a short label to be the same question", () => {
     expect(findAnswerForField("how did you hear about us", bank)?.answer).toBe("LinkedIn");
     expect(findAnswerForField("Country", bank)).toBeNull();

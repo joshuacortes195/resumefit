@@ -143,19 +143,20 @@ export async function listWaiting(userId: string): Promise<WaitingRun[]> {
   });
 }
 
-// keeps the person's answers to what one application was waiting on. false when the application is not theirs
-export async function answerWaiting(userId: string, applicationId: string, answers: { label: string; value: string }[]): Promise<boolean> {
+// keeps the person's answers to what one application was waiting on, and says which employer it is for. null when the application is not theirs
+export async function answerWaiting(userId: string, applicationId: string, answers: { label: string; value: string }[]): Promise<{ company: string | null } | null> {
   const db = await getDb();
   const [row] = await db
-    .select({ aiAnswers: schema.applications.aiAnswers })
+    .select({ aiAnswers: schema.applications.aiAnswers, company: schema.jobs.company })
     .from(schema.applications)
+    .leftJoin(schema.jobs, eq(schema.applications.jobId, schema.jobs.id))
     .where(and(eq(schema.applications.userId, userId), eq(schema.applications.id, applicationId)))
     .limit(1);
   const details = row ? openDetails(row.aiAnswers) : null;
-  if (!details) return false;
+  if (!row || !details) return null;
   const provided = { ...details.provided, ...Object.fromEntries(answers.map((answer) => [questionKey(answer.label), answer.value])) };
   await db.update(schema.applications).set({ aiAnswers: seal({ ...details, provided }) }).where(eq(schema.applications.id, applicationId));
-  return true;
+  return { company: row.company };
 }
 
 // what the person answered for one job, by question

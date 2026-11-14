@@ -124,9 +124,43 @@ export function readJob(doc: Document, url: string): PageJob | null {
   };
 }
 
-// true when the page is showing a captcha, which only the person can do
+// the kinds of captcha a form can carry. background: the page scores the visit by itself when the form is sent and asks nothing of anyone.
+// challenge: a box to tick or a puzzle to solve, which only the person can do
+export type CaptchaKind = "none" | "background" | "challenge";
+
+// true when an element is really on screen
+function showing(element: Element): boolean {
+  const view = element.ownerDocument.defaultView;
+  for (let node: Element | null = element; node; node = node.parentElement) {
+    const style = view?.getComputedStyle(node);
+    if (node.hasAttribute("hidden") || style?.display === "none" || style?.visibility === "hidden" || style?.opacity === "0") return false;
+  }
+  return true;
+}
+
+// works out which kind of captcha the page has. anything it is not sure about counts as a challenge
+export function captchaKind(doc: Document): CaptchaKind {
+  // a puzzle that has popped up, whatever kind of captcha it started as
+  const puzzle = [...doc.querySelectorAll('iframe[src*="recaptcha"][src*="bframe"], iframe[src*="hcaptcha"][src*="challenge"]')].some((frame) => showing(frame) && (frame as HTMLElement).offsetHeight !== 0);
+  if (puzzle || doc.querySelector("#px-captcha, .cf-turnstile, iframe[src*='turnstile']")) return "challenge";
+  // google's: the little frame that holds either a box to tick or, when the site asked for it, nothing to see at all
+  const anchors = [...doc.querySelectorAll<HTMLIFrameElement>('iframe[src*="recaptcha"][src*="anchor"]')];
+  const widgets = [...doc.querySelectorAll(".g-recaptcha")];
+  const google = anchors.length > 0 || widgets.length > 0 || doc.querySelector(".grecaptcha-badge") !== null;
+  const googleHidden = anchors.every((frame) => /[?&]size=invisible/.test(frame.getAttribute("src") ?? "")) && widgets.every((widget) => widget.getAttribute("data-size") === "invisible");
+  // hcaptcha's, which shows a box to tick unless the site set it up to stay out of sight
+  const boxes = [...doc.querySelectorAll(".h-captcha")];
+  const other = boxes.length > 0 || doc.querySelector('iframe[src*="hcaptcha"]') !== null;
+  const otherHidden = boxes.length > 0 && boxes.every((box) => box.getAttribute("data-size") === "invisible");
+  if ((google && !googleHidden) || (other && !otherHidden)) return "challenge";
+  if (google || other) return "background";
+  // a site key with nothing else we know is some captcha we have not met
+  return doc.querySelector("[data-sitekey]") ? "challenge" : "none";
+}
+
+// true when the page has a captcha that only the person can do
 export function hasCaptcha(doc: Document): boolean {
-  return doc.querySelector('iframe[src*="recaptcha"], iframe[src*="hcaptcha"], iframe[src*="turnstile"], .g-recaptcha, .h-captcha, [data-sitekey], #px-captcha') !== null;
+  return captchaKind(doc) === "challenge";
 }
 
 // the words a person can actually see inside an element. scripts, styles and hidden parts are left out,
@@ -155,5 +189,7 @@ function visibleText(element: Element, limit: number): string {
 export function looksConfirmed(doc: Document): boolean {
   const main = doc.querySelector("main, [role='main'], body");
   const text = main ? visibleText(main, 6000).slice(0, 6000) : "";
-  return /thank you for applying|thanks for applying|application (has been |was )?(submitted|received|sent)|we('ve| have) received your application|your application is complete|successfully applied/i.test(text);
+  const THANKS = /thank(s| you) for (applying|your (application|interest in (applying|joining)))|application (has been |was )?(successfully |now )?(submitted|received|sent)|(successfully|already) (applied|submitted)|we('ve| have)? (got|received) your application|your application is (complete|in)\b/i;
+  // a line about what will happen later, like "once your application is submitted", is not a thank you
+  return text.split(/(?<=[.!?])\s+|\n/).some((line) => THANKS.test(line) && !/\b(once|when|after|if|until|before|as soon as)\b/i.test(line.slice(0, line.search(THANKS))));
 }

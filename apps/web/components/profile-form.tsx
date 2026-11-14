@@ -287,7 +287,7 @@ export function ProfileForm({ profile, back = "/settings", prefilled = 0 }: { pr
           {text("dailySendCap", `Most it may send in a day (1 to ${MAX_DAILY_SENDS})`, { type: "number" })}
           {form.autoSend !== "off" && (
             <p className="text-sm text-muted sm:col-span-2">
-              It sends on Greenhouse, Lever and Ashby forms that fit on one page, and drafts answers to general written questions from your resume. When a form needs something only you can say, it shows up under All Applications for you to answer there, and then it is sent. It never sends past a captcha, and never on LinkedIn or Indeed.
+              It sends on Greenhouse, Lever and Ashby forms that fit on one page, and drafts answers to general written questions from your resume. When a form needs something only you can say, it shows up under All Applications for you to answer there, and then it is sent. It never ticks a captcha box or solves a puzzle, those forms are left for you, and it never runs on LinkedIn or Indeed.
             </p>
           )}
         </fieldset>

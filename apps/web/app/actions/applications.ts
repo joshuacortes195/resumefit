@@ -6,6 +6,7 @@ import type { ActionResult } from "@/app/actions/scans";
 import { getCurrentUser } from "@/lib/auth";
 import { answerWaiting } from "@/lib/data/applications";
 import { saveAnswer } from "@/lib/data/profile";
+import { generalize } from "@/lib/qa-match";
 
 const answersSchema = z.object({
   applicationId: z.uuid(),
@@ -19,10 +20,11 @@ export async function answerApplication(input: z.input<typeof answersSchema>): P
   if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? "Check your answers and try again." };
   const user = await getCurrentUser();
   const { applicationId, answers } = parsed.data;
-  if (!(await answerWaiting(user.id, applicationId, answers))) return { ok: false, error: "That application could not be found." };
+  const kept = await answerWaiting(user.id, applicationId, answers);
+  if (!kept) return { ok: false, error: "That application could not be found." };
   for (const answer of answers) {
     // a saved question needs at least a few letters to be found again
-    if (answer.remember && answer.label.length >= 3) await saveAnswer(user.id, { question: answer.label.replace(/\s*[*\u2731]+\s*$/, ""), answer: answer.value });
+    if (answer.remember && answer.label.length >= 3) await saveAnswer(user.id, { question: generalize(answer.label.replace(/\s*[*\u2731]+\s*$/, ""), kept.company), answer: answer.value });
   }
   revalidatePath("/applications");
   revalidatePath("/dashboard");

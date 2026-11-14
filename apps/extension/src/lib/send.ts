@@ -73,6 +73,8 @@ export async function sendApplication(ask: Ask, pause: (ms: number) => Promise<v
     // the page may be moving to its thank you page, so a look that fails is just tried again
     const page = await ask<PageInfo>({ type: "read-page" }).catch(() => null);
     if (page?.confirmed) return { sent: true };
+    // the site answered the press with a puzzle. that one is the person's, and we do not wait around for it
+    if (page?.captcha) return { sent: false, reason: "We pressed Submit and the site asked for a captcha, which only you can do. Finish it on the page." };
   }
   return { sent: false, reason: "We pressed Submit, but the page never said the application went through. Have a look at it." };
 }

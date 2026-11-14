@@ -9,7 +9,7 @@ export const FIELD_PATTERNS: [FieldKey, RegExp][] = [
   ["eeoRace", /\brace\b|ethnic/],
   ["eeoVeteran", /veteran/],
   ["eeoDisability", /disabilit/],
-  ["pronouns", /pronoun/],
+  ["pronouns", /\bpronouns?\b/],
   ["over18", /at least 18|18 years( of age)? or older|18 or older|over (the age of )?18|of legal age/],
   ["sponsorship", /sponsor|visa status|require.*(visa|h-?1b)/],
   ["workAuthorization", /authori[sz]ed to work|work authori[sz]ation|legally (authori[sz]ed|eligible|able|permitted)|eligible to work|right to work/],

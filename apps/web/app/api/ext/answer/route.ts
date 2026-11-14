@@ -11,7 +11,7 @@ import { getJob } from "@/lib/data/jobs";
 import { getProfile } from "@/lib/data/profile";
 import { getResume, listResumes } from "@/lib/data/resumes";
 import { ExtError, extRoute, preflight } from "@/lib/ext-auth";
-import { findAnswerForField, findSavedAnswer } from "@/lib/qa-match";
+import { findAnswerForField, findSavedAnswer, generalize } from "@/lib/qa-match";
 import { rateLimit } from "@/lib/rate-limit";
 
 export const OPTIONS = preflight;
@@ -31,9 +31,12 @@ export const POST = extRoute(async (request, user) => {
   if (own) return { answer: own, source: "saved" };
   // then a saved answer, which always wins over a draft and costs nothing
   const bank = (await getProfile(user.id)).qaBank;
+  // the employer's name is taken out of the question first, so an answer saved for one company's wording fits the next one's
+  const company = parsed.data.jobId ? ((await getJob(user.id, parsed.data.jobId))?.company ?? null) : null;
+  const asked = generalize(parsed.data.question, company);
   // asked only for what the person already said, for a field that is not a written question: matched strictly, and nothing is drafted
-  if (parsed.data.savedOnly) return { answer: findAnswerForField(parsed.data.question, bank)?.answer ?? null, source: "none" };
-  const saved = findSavedAnswer(parsed.data.question, bank);
+  if (parsed.data.savedOnly) return { answer: (findAnswerForField(parsed.data.question, bank) ?? findAnswerForField(asked, bank))?.answer ?? null, source: "none" };
+  const saved = findSavedAnswer(parsed.data.question, bank) ?? findSavedAnswer(asked, bank);
   if (saved) return { answer: saved.answer, source: "saved" };
   if (parsed.data.question.length < 5) throw new ExtError("That question is too short or too long to answer.");
 

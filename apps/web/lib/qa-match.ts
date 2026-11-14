@@ -49,3 +49,12 @@ export function findAnswerForField(label: string, bank: QaEntry[]): QaEntry | nu
   if (same) return same;
   return keywords(label).size >= 3 ? findSavedAnswer(label, bank, 0.8) : null;
 }
+
+// a question with the employer's name swapped for "this company", so "Have you worked for Figma before?" answered once
+// also answers "Have you worked for Discord before?"
+export function generalize(question: string, company: string | null | undefined): string {
+  const name = company?.trim();
+  if (!name || name.length < 2) return question;
+  const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return question.replace(new RegExp(`(?<![A-Za-z0-9])${escaped}(?![A-Za-z0-9])`, "gi"), "this company");
+}

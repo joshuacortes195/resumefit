@@ -18,9 +18,39 @@ type Control = HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement;
 // input types that are never something to fill in
 const SKIP_TYPES = new Set(["hidden", "submit", "button", "reset", "image", "password", "search", "range", "color"]);
 
-// the text of an element with the extra white space squeezed out
+// the text of an element with the extra white space squeezed out.
+// a label that wraps its own control is read without the control, so a dropdown's choices do not end up in its question
 function textOf(element: Element | null | undefined): string {
-  return (element?.textContent ?? "").replace(/\s+/g, " ").trim();
+  if (!element) return "";
+  let source: Element = element;
+  if (element.querySelector("select, option, textarea, button")) {
+    source = element.cloneNode(true) as Element;
+    for (const inner of source.querySelectorAll("select, option, textarea, button, input")) inner.remove();
+  }
+  return (source.textContent ?? "").replace(/\s+/g, " ").trim();
+}
+
+// some forms tuck status lines after the star that marks a required field, like "No location found". everything after the star is dropped
+function tidyLabel(label: string): string {
+  const star = label.indexOf("\u2731");
+  return (star === -1 ? label : `${label.slice(0, star).trim()} \u2731`).replace(/\s+/g, " ").trim();
+}
+
+// answers that are a few words long: a name, a phone number, a city. a label that reads like a whole question is never asking for one of these,
+// however many of their words it uses ("have you worked on a mobile app", "if someone referred you, include their name")
+const SHORT_ANSWERS = new Set<FieldKey>(["firstName", "lastName", "fullName", "preferredName", "email", "phone", "linkedin", "github", "website", "city", "state", "zip", "address", "location", "currentCompany", "currentTitle", "school", "degree", "major", "pronouns", "gpa"]);
+const ABOUT_SOMEONE_ELSE = /pronunciation|pronounce|\breferr|\brefer you|emergency|\breference|recruiter|manager/i;
+
+// what a field is asking for, from the words around it. a whole question that happens to use a word like "mobile", "name" or "city"
+// is not asking for a phone number, a name or a city
+export function keyFromWords(texts: string[]): FieldKey | null {
+  const key = matchKey(texts);
+  return key && SHORT_ANSWERS.has(key) && readsLikeQuestion(texts[0] ?? "") ? null : key;
+}
+
+// true when a label is a question to answer in words and not the name of a short field
+function readsLikeQuestion(label: string): boolean {
+  return label.length > 60 || (label.includes("?") && label.split(/\s+/).length > 8) || ABOUT_SOMEONE_ELSE.test(label);
 }
 
 // the visible label for one control, tried from the most trustworthy source down
@@ -49,6 +79,10 @@ export function labelFor(control: Element, doc: Document): string {
     if (previous && /^(LABEL|SPAN|DIV|P)$/.test(previous.tagName) && !previous.querySelector("input, select, textarea") && textOf(previous) && textOf(previous).length < 200) return textOf(previous);
     if (previous) break;
   }
+  // the question can also sit in a box of its own inside the one that holds the field, marked as a label or a title
+  const holder = control.closest('[class*="question"], [class*="field-entry"], [class*="fieldEntry"], [class*="form-group"]');
+  const heading = holder?.querySelector('[class*="label"], [class*="title"], legend');
+  if (heading && !heading.contains(control) && textOf(heading) && textOf(heading).length < 400) return textOf(heading);
   return control.getAttribute("placeholder")?.trim() ?? "";
 }
 
@@ -76,13 +110,17 @@ function groupLabel(control: Element, doc: Document): string {
 
 // true when the form marks this field as one that has to be answered
 function isRequired(control: Element, label: string): boolean {
-  return control.hasAttribute("required") || control.getAttribute("aria-required") === "true" || /\*\s*$|\(required\)/i.test(label);
+  return control.hasAttribute("required") || control.getAttribute("aria-required") === "true" || /[*\u2731]\s*$|\(required\)/i.test(label);
 }
 
 // finds every field on the page and works out what each one is asking for
 export function findFields(doc: Document, adapter: Adapter): FormField[] {
   const controls = [...doc.querySelectorAll<Control>("input, select, textarea")].filter((control) => {
     if (control instanceof HTMLInputElement && SKIP_TYPES.has(control.type)) return false;
+    // the box a captcha writes its own answer into is not a question
+    if (/captcha/i.test(`${control.getAttribute("name") ?? ""} ${control.id}`)) return false;
+    // a search box that opens a list of choices is answered by picking from the list, which the dropdown code does
+    if (control.getAttribute("role") === "combobox") return false;
     return !control.disabled && !control.closest('[aria-hidden="true"], [hidden]');
   });
 
@@ -106,21 +144,25 @@ export function findFields(doc: Document, adapter: Adapter): FormField[] {
     // a lone checkbox is a promise only the person can make, like "I agree to the terms"
     if (type === "checkbox" && !grouped) continue;
 
-    const label = grouped ? groupLabel(control, doc) || labelFor(control, doc) : labelFor(control, doc);
+    const label = tidyLabel(grouped ? groupLabel(control, doc) || labelFor(control, doc) : labelFor(control, doc));
     // adapter hints first, then the browser's own hint, then the words around the field
     const hinted = adapter.hints.find((hint) => control.matches(hint.selector))?.key ?? null;
     const autocomplete = AUTOCOMPLETE[(control.getAttribute("autocomplete") ?? "").split(" ").at(-1) ?? ""] ?? null;
     let key: FieldKey | null = hinted ?? autocomplete ?? matchKey([label, name, control.id, control.getAttribute("placeholder") ?? ""]);
+    // a whole question that happens to use a word like "mobile" or "name" is not asking for a phone number or a name
+    if (!hinted && !autocomplete && key && SHORT_ANSWERS.has(key) && readsLikeQuestion(label)) key = null;
 
     const kind: FormField["kind"] = type === "file" ? "file" : type === "radio" ? "radio" : type === "checkbox" ? "checkbox" : type === "select" || type === "select-one" ? "select" : type === "textarea" ? "textarea" : "text";
     // file inputs we do not recognize are assumed to want the resume only when nothing else on the page does
     if (kind === "file" && key !== "resume" && key !== "coverLetter") key = null;
     // long free text questions get an answer drafted for them
-    if (!key && (kind === "textarea" || (kind === "text" && /\?\s*\*?$/.test(label) && label.length > 25))) key = "question";
+    if (!key && (kind === "textarea" || (kind === "text" && label.length > 25 && (label.includes("?") || label.length > 40)))) key = "question";
     // big text boxes are always a question to answer in words, whatever their placeholder says
     if (kind === "textarea" && !hinted) key = "question";
 
-    const field: FormField = { id: `rf-${fields.length}`, key, label: label || name || control.id || "Unlabelled field", kind, required: isRequired(control, label), elements: [control] };
+    // an upload box often has only its button's word next to it, so it is named for what goes in it
+    const shown = kind === "file" && key && label.length < 12 ? (key === "resume" ? "Resume" : "Cover letter") : label;
+    const field: FormField = { id: `rf-${fields.length}`, key, label: shown || name || control.id || "Unlabelled field", kind, required: isRequired(control, label), elements: [control] };
     for (const element of field.elements) element.setAttribute("data-resumefit-field", field.id);
     fields.push(field);
     if (grouped) groups.set(name, field);

@@ -91,7 +91,7 @@ export default function ExtensionPage() {
       <section className={`${CARD} p-6`}>
         <h2 className="text-xl font-semibold">What it never does</h2>
         <ul className="mt-3 list-disc space-y-1.5 pl-5 text-sm">
-          <li>It never sends an application unless you switched sending on. Even then it leaves a form for you when a required answer is empty, when there is a captcha, or when it is not sure which button sends it.</li>
+          <li>It never sends an application unless you switched sending on. Even then it leaves a form for you when a required answer is empty, when there is a captcha box to tick or a puzzle to solve, or when it is not sure which button sends it.</li>
           <li>It never looks at a page by itself. It reads the page you are on only while its panel is open there.</li>
           <li>It never changes anything on a page unless you asked for that application to be filled in, and then only the form&apos;s own fields.</li>
         </ul>
