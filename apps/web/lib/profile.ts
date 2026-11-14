@@ -15,6 +15,11 @@ export const REMOTE_PREFERENCES = ["No preference", "Remote", "Hybrid", "On-site
 export const PRONOUNS = ["", "He/him", "She/her", "They/them"] as const;
 export const DEGREES = ["", "High school diploma", "Associate's degree", "Bachelor's degree", "Master's degree", "MBA", "Doctorate", "Other"] as const;
 export const MONTHS = ["", "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"] as const;
+// who presses Submit on a filled in application. off: always the person. safe: we do when every answer came from the profile. all: we do even when some answers are drafts
+export const AUTO_SEND = ["off", "safe", "all"] as const;
+export type AutoSend = (typeof AUTO_SEND)[number];
+// the most applications that can be sent for one person in a day, whatever they ask for
+export const MAX_DAILY_SENDS = 25;
 export const WORK_AUTHORIZATIONS = ["", "Authorized to work in the US", "US citizen", "Permanent resident", "Work visa", "Not authorized"] as const;
 
 // short optional text, empty becomes null
@@ -98,6 +103,13 @@ export const profileSchema = z.object({
   // on means the gpa is kept here for you but never typed into a form
   gpaNeverFill: z.boolean(),
   eeoHispanic: z.enum(EEO_OPTIONS.eeoHispanic),
+  // whether auto apply presses Submit for the person, and how many times a day it may
+  autoSend: z.enum(AUTO_SEND),
+  dailySendCap: z
+    .string()
+    .trim()
+    .refine((value) => /^\d{1,2}$/.test(value) && Number(value) >= 1 && Number(value) <= MAX_DAILY_SENDS, `Pick a number from 1 to ${MAX_DAILY_SENDS}.`)
+    .transform(Number),
 });
 
 // the answers that are locked before they are stored: everything about who you are and your right to work, plus the ones that never had a column of their own.
@@ -123,6 +135,8 @@ export const SEALED_KEYS = [
   "graduationYear",
   "gpa",
   "gpaNeverFill",
+  "autoSend",
+  "dailySendCap",
 ] as const;
 export type SealedAnswers = Pick<Profile, (typeof SEALED_KEYS)[number]>;
 

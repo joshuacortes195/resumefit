@@ -386,7 +386,7 @@ function ApplicationPanel({ data }: { data: JobModalData }) {
               <Link href="/settings/application" className={LINK_BUTTON}>
                 application profile
               </Link>
-              , attaches your resume and cover letter and drafts the written questions. Then it stops. You check it and press Submit yourself. It does not run on LinkedIn or Indeed.
+              , attaches your resume and cover letter and drafts the written questions. Then it stops for you to check it and press Submit, unless you switched sending on in your application profile. It does not run on LinkedIn or Indeed.
             </p>
           </div>
           <AutoApplyButton jobId={job.id} url={job.url} resumeId={data.resume?.id ?? null} label={application ? "Open again" : "Auto Apply"} className={PRIMARY_BUTTON} />

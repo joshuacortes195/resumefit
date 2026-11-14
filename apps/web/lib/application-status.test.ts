@@ -16,5 +16,6 @@ describe("what an auto apply run is called", () => {
     expect(runLabel({ status: "needs_review", fieldsNeedingAttention: 2, updatedAt: daysAgo(7) }, NOW).text).toBe("Abandoned");
     expect(runLabel({ status: "needs_review", fieldsNeedingAttention: 2, updatedAt: daysAgo(6.9) }, NOW).text).toBe("Needs review");
     expect(runLabel({ status: "applied", fieldsNeedingAttention: 0, updatedAt: daysAgo(90) }, NOW).text).toBe("Submitted by me");
+    expect(runLabel({ status: "applied", fieldsNeedingAttention: 0, updatedAt: daysAgo(0), sentBy: "auto" }, NOW).text).toBe("Sent for me");
   });
 });

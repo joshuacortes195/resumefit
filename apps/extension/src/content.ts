@@ -6,10 +6,11 @@ import { findFields, looksLikeApplication, type FormField } from "./lib/fields";
 import { currentValue, fillField, fillForm, highlight, optionsOf } from "./lib/fill";
 import { hasCaptcha, looksConfirmed, readJob } from "./lib/job-page";
 import { isLinkedinProfile, readLinkedinProfile } from "./lib/linkedin-page";
+import { pressSubmit } from "./lib/submit";
 import type { FieldReport, PageInfo, PageRequest } from "./lib/types";
 
 // this file is put into the page only when the person asks for it. it reads the page and fills in answers.
-// it never presses submit, next or anything else that sends an application or moves it along
+// it presses the form's Submit button only when asked to, which only happens for a person who switched sending on. it never presses next or anything else
 
 declare global {
   interface Window {
@@ -102,6 +103,9 @@ if (!window.__resumefitLoaded) {
     } else if (request.type === "find-apply") {
       // where this posting's Apply button leads. the link is only read here, never clicked
       respond(findApplyLink(document, location.href));
+    } else if (request.type === "submit") {
+      // the person asked for their applications to be sent for them. this is the only way a form is ever sent from here
+      respond(pressSubmit(document, location.hostname));
     } else if (request.type === "read-linkedin") {
       // the profile on screen, read only because the person pressed the import button
       respond(readLinkedinProfile(document, location.href));

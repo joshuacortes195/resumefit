@@ -46,6 +46,8 @@ const FORM: ProfileInput = {
   graduationYear: "2027",
   gpa: "3.8",
   gpaNeverFill: true,
+  autoSend: "off",
+  dailySendCap: "10",
   eeoHispanic: "No",
 };
 
@@ -55,6 +57,11 @@ describe("application profile", () => {
     const profile = await getProfile(user.id);
     expect(profile.fullName).toBeNull();
     expect([profile.eeoGender, profile.eeoRace, profile.eeoVeteran, profile.eeoDisability, profile.eeoHispanic]).toEqual([DECLINE, DECLINE, DECLINE, DECLINE, DECLINE]);
+    // sending is never on until the person switches it on
+    expect([profile.autoSend, profile.dailySendCap]).toEqual(["off", 10]);
+    expect(profileSchema.safeParse({ ...FORM, dailySendCap: "26" }).success).toBe(false);
+    expect(profileSchema.safeParse({ ...FORM, dailySendCap: "0" }).success).toBe(false);
+    expect(profileSchema.parse({ ...FORM, autoSend: "all", dailySendCap: "25" })).toMatchObject({ autoSend: "all", dailySendCap: 25 });
     expect(profileReady(profile)).toBe(false);
     expect(await applicationAnswered(user.id)).toBe(false);
   });

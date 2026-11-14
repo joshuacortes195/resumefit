@@ -70,7 +70,7 @@ async function JobModalLoader({ user, job, tab }: { user: CurrentUser; job: JobR
         // the newest auto apply run for this job, with what was put on the form
         application: application
           ? {
-              label: runLabel(application),
+              label: runLabel({ ...application, sentBy: application.details?.sentBy }),
               ats: application.ats,
               applyUrl: application.applyUrl,
               fieldsFilled: application.fieldsFilled,

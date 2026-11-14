@@ -21,7 +21,7 @@ export default function ApplicationsPage() {
   return (
     <div className="mx-auto max-w-5xl">
       <h1 className="text-3xl font-semibold">All Applications</h1>
-      <p className="mt-1 mb-6 max-w-2xl text-muted">Every application Auto Apply filled in for you, and where each one stands. You are the one who presses Submit, so nothing here was sent without you.</p>
+      <p className="mt-1 mb-6 max-w-2xl text-muted">Every application Auto Apply filled in for you, and where each one stands. You press Submit yourself unless you switched sending on in your application profile. Anything sent for you is marked Sent for me.</p>
       <Suspense fallback={<TableSkeleton />}>
         <Runs />
       </Suspense>
@@ -36,7 +36,7 @@ async function Runs() {
 
   if (runs.length === 0) {
     return (
-      <EmptyState icon={ClipboardList} title="No applications yet" text={flags.autoApply ? "Open a job on your tracker and press Auto Apply. The extension fills in the form, you check it and press Submit." : "Auto Apply is switched off for now."}>
+      <EmptyState icon={ClipboardList} title="No applications yet" text={flags.autoApply ? "Open a job on your tracker and press Auto Apply. The extension fills in the form, and you check it and press Submit unless you asked for it to be sent for you." : "Auto Apply is switched off for now."}>
         <Link href="/tracker" className={SECONDARY_BUTTON}>
           Open the tracker
         </Link>

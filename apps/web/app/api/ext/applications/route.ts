@@ -24,6 +24,8 @@ const reportSchema = z.object({
     .optional(),
   resumeId: z.uuid().nullable().default(null),
   coverLetter: z.boolean().default(false),
+  // auto when the extension pressed Submit because the person asked it to
+  sentBy: z.enum(["me", "auto"]).default("me"),
   // the person's own date, so "date applied" matches their calendar
   today: z
     .string()
@@ -37,13 +39,13 @@ export const POST = extRoute(async (request, user) => {
   await rateLimit(user.id, "save-job");
   const parsed = reportSchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) throw new ExtError("That application report could not be read.");
-  const { today, answers, resumeId, coverLetter, ...report } = parsed.data;
+  const { today, answers, resumeId, coverLetter, sentBy, ...report } = parsed.data;
   // a job or resume id that is not the caller's own is dropped, never trusted
   const job = report.jobId ? await getJob(user.id, report.jobId) : null;
   const resume = resumeId ? await getResume(user.id, resumeId) : null;
   const applied = report.status === "applied";
   const day = today ?? new Date().toISOString().slice(0, 10);
-  const details = answers ? { answers, resumeId: resume?.id ?? null, resumeName: resume?.name ?? null, coverLetter, appliedAt: applied ? day : null } : undefined;
+  const details = answers ? { answers, resumeId: resume?.id ?? null, resumeName: resume?.name ?? null, coverLetter, appliedAt: applied ? day : null, ...(applied ? { sentBy, sentAt: new Date().toISOString() } : {}) } : undefined;
   const id = await recordApplication(user.id, { ...report, jobId: job?.id ?? null, details });
   // the card remembers when it was sent and which resume went with it
   if (job && applied) await updateJob(user.id, job.id, { status: "applied", dateApplied: job.dateApplied ?? day, ...(resume ? { resumeId: resume.id } : {}) });

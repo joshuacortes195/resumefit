@@ -82,6 +82,8 @@ export type Profile = {
   // true when the person asked for their gpa never to be typed into a form
   gpaNeverFill?: boolean;
   eeoHispanic?: string;
+  // who presses Submit. off: the person. safe: us, when every answer came from the profile. all: us, drafts included
+  autoSend?: "off" | "safe" | "all";
 };
 
 // what the web app tells us about the connected person
@@ -93,6 +95,8 @@ export type Account = {
   profile?: Profile;
   // true once the profile has a name, an email and a phone number
   profileReady?: boolean;
+  // how many more applications may be sent for the person today. 0 when they press Submit themselves
+  sendsLeft?: number;
   // title and company of the newest job on the base resume
   current?: { title: string | null; company: string | null };
 };
@@ -134,7 +138,12 @@ export type PageRequest =
   | { type: "set-field"; id: string; value: string; status: FillStatus; key?: FieldKey }
   | { type: "focus-field"; id: string }
   // where the posting's Apply button leads
-  | { type: "find-apply" };
+  | { type: "find-apply" }
+  // presses the form's own Submit button. only ever asked for when the person has switched sending on
+  | { type: "submit" };
+
+// how pressing Submit went. reason says why it was not pressed
+export type SubmitResult = { pressed: boolean; reason?: string };
 
 // a linkedin profile read off the page the person is on
 export type LinkedinImport = { headline: string; about: string; experience: string; skills: string[]; url: string };

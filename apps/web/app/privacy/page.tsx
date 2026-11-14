@@ -53,7 +53,7 @@ export default function PrivacyPage() {
         <h2>The browser extension</h2>
         <p>The extension reads the job posting on the page you have its panel open on, and your own LinkedIn profile when you press Import. </p>
         <p>
-          When you press Fill this application, it fills in the form on that page from your application profile and attaches the resume and cover letter you picked. It never presses Submit. Your work authorization, sponsorship, school and self-identification answers, and the copy of
+          When you press Fill this application, it fills in the form on that page from your application profile and attaches the resume and cover letter you picked. It presses Submit only if you switched sending on in your application profile. Your work authorization, sponsorship, school and self-identification answers, and the copy of
           the answers used on each application, are encrypted before they are stored. To draft an answer to a written question, the question, the job description and your resume go to a model, with your name and contact details taken out first. It does not run on LinkedIn or
           Indeed.
         </p>

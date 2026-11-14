@@ -79,8 +79,8 @@ export default function ExtensionPage() {
       <section className={`${CARD} p-6`}>
         <h2 className="text-xl font-semibold">How Auto Apply stays safe</h2>
         <ul className="mt-3 list-disc space-y-1.5 pl-5 text-sm">
-          <li>It never presses Submit, Next or Continue. Sending an application is always your own click.</li>
-          <li>One application at a time, and only when you press the button. Nothing is filled in the background.</li>
+          <li>It presses Submit only if you switch that on in your application profile, where it starts switched off. It never presses Next or Continue.</li>
+          <li>One application at a time. With sending switched on it can work through a list of saved jobs in background tabs, up to the daily number you set.</li>
           <li>It does not run on LinkedIn or Indeed, whose rules forbid it, and it never touches a captcha.</li>
           <li>A field outlined in yellow is a draft or a close match, so read it. One outlined in red is required and still empty.</li>
           <li>Gender, race, veteran, disability and sponsorship questions are only ever answered with what you chose in your application profile. Each one starts on &quot;Decline to self-identify&quot;.</li>
@@ -91,9 +91,9 @@ export default function ExtensionPage() {
       <section className={`${CARD} p-6`}>
         <h2 className="text-xl font-semibold">What it never does</h2>
         <ul className="mt-3 list-disc space-y-1.5 pl-5 text-sm">
-          <li>It never sends an application. It can fill a form in when you ask, and pressing Submit is left to you.</li>
+          <li>It never sends an application unless you switched sending on. Even then it leaves a form for you when a required answer is empty, when there is a captcha, or when it is not sure which button sends it.</li>
           <li>It never looks at a page by itself. It reads the page you are on only while its panel is open there.</li>
-          <li>It never changes anything on a page unless you press Fill this application, and then only the form&apos;s own fields.</li>
+          <li>It never changes anything on a page unless you asked for that application to be filled in, and then only the form&apos;s own fields.</li>
         </ul>
       </section>
 

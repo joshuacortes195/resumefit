@@ -242,3 +242,92 @@ test("fill in the application profile, then let the extension fill a form and st
   await page.getByRole("button", { name: "Save switches" }).click();
   await expect.poll(async () => (await (await request.get("/api/ext/me", { headers })).json()).autoApply).toBe(true);
 });
+
+test("with sending switched on, the extension fills a form, presses Submit once and marks it sent for the person", async ({ page, request }) => {
+  test.setTimeout(180_000);
+
+  // sending starts switched off, and the person turns it on in their application profile
+  await page.goto("/settings/application");
+  await expect(page.getByLabel("Who presses Submit?")).toHaveValue("off");
+  await page.getByLabel("Who presses Submit?").selectOption("safe");
+  await page.getByLabel(/^Most it may send in a day/).fill("99");
+  await page.getByRole("button", { name: "Finished" }).click();
+  // a number past the limit is turned away
+  await expect(page.getByText("Pick a number from 1 to 25.")).toBeVisible();
+  await page.getByLabel(/^Most it may send in a day/).fill("3");
+  await page.getByRole("button", { name: "Finished" }).click();
+  await expect(page).toHaveURL(/\/settings$/);
+
+  await page.goto("/extension");
+  await page.getByRole("button", { name: /Connect (extension|again)/ }).click();
+  const code = await page.getByLabel("Connection code").inputValue();
+  const { token } = JSON.parse(Buffer.from(code, "base64").toString()) as { token: string };
+  const headers = { Authorization: `Bearer ${token}` };
+  const before = await (await request.get("/api/ext/me", { headers })).json();
+  expect(before.profile.autoSend).toBe("safe");
+  expect(before.sendsLeft).toBe(3);
+
+  // the tracker now offers to work through every saved job, and asks before it starts
+  await request.post("/api/ext/jobs", { headers, data: { title: "Queue Test Engineer", company: "Brightside Labs", url: "https://boards.greenhouse.io/brightside/jobs/77", description: JD } });
+  await page.goto("/tracker");
+  await page.getByRole("button", { name: /^Auto Apply to all \d+ saved$/ }).click();
+  await expect(page.getByRole("dialog")).toContainText("A sent application cannot be taken back.");
+  await page.getByRole("button", { name: "Cancel" }).click();
+
+  const copy = mkdtempSync(path.join(tmpdir(), "resumefit-extension-"));
+  cpSync(EXTENSION, copy, { recursive: true });
+  const manifestPath = path.join(copy, "manifest.json");
+  const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
+  writeFileSync(manifestPath, JSON.stringify({ ...manifest, host_permissions: ["https://*/*", "http://localhost/*"] }));
+  const context = await chromium.launchPersistentContext("", { channel: "chromium", args: [`--disable-extensions-except=${copy}`, `--load-extension=${copy}`] });
+  try {
+    const worker = context.serviceWorkers()[0] ?? (await context.waitForEvent("serviceworker"));
+    const extensionId = new URL(worker.url()).host;
+
+    // the saved form, served from this machine at a greenhouse address. sending it counts the send and shows a thank you, and never leaves the machine
+    const APPLY = "https://boards.greenhouse.io/brightside/jobs/42";
+    const counting = FORM.replace(
+      "</body>",
+      `<script>window.sent = []; document.querySelector("form").addEventListener("submit", (event) => { event.preventDefault(); window.sent.push("submit"); document.querySelector("form").outerHTML = "<main><h1>Thank you for applying</h1></main>"; });</script></body>`,
+    );
+    await context.route("https://boards.greenhouse.io/**", (route) => route.fulfill({ contentType: "text/html", body: counting }));
+    const form = await context.newPage();
+    await form.goto(APPLY);
+
+    const panel = await context.newPage();
+    await panel.addInitScript(() => {
+      const real = chrome.tabs.query.bind(chrome.tabs);
+      chrome.tabs.query = (async (query: chrome.tabs.QueryInfo) => (query.active && query.currentWindow ? (await real({})).filter((tab) => tab.url?.includes("greenhouse.io")) : real(query))) as typeof chrome.tabs.query;
+    });
+    await panel.goto(`chrome-extension://${extensionId}/sidepanel.html`);
+    await panel.getByLabel("Connection code").fill(code);
+    await panel.getByRole("button", { name: "Connect" }).click();
+    await expect(panel.getByText("riley.chen@example.com").or(panel.getByText("you@resumefit.local"))).toBeVisible();
+    await panel.getByRole("button", { name: "Connect" }).click();
+
+    // the panel says up front that this one will be sent
+    await expect(panel.getByText("Then we press Submit for you, as you asked in your application profile.")).toBeVisible();
+    await panel.getByRole("button", { name: "Fill and send this application" }).click();
+    await expect(panel.getByRole("heading", { name: "Sent for you" })).toBeVisible({ timeout: 90_000 });
+
+    // sent once, and the page shows its thank you
+    expect(await form.evaluate(() => (window as unknown as { sent: string[] }).sent)).toEqual(["submit"]);
+    await expect(form.getByRole("heading", { name: "Thank you for applying" })).toBeVisible();
+  } finally {
+    await context.close();
+  }
+
+  // it is listed as sent for the person, and one of the day's sends is used up
+  await page.goto("/applications");
+  await expect(page.getByRole("row").filter({ hasText: "Sent for me" })).toHaveCount(1);
+  expect((await (await request.get("/api/ext/me", { headers })).json()).sendsLeft).toBe(2);
+
+  // switched back off, the extension is told it has nothing to send
+  await page.goto("/settings/application");
+  await page.getByLabel("Who presses Submit?").selectOption("off");
+  await page.getByRole("button", { name: "Finished" }).click();
+  await expect(page).toHaveURL(/\/settings$/);
+  expect((await (await request.get("/api/ext/me", { headers })).json()).sendsLeft).toBe(0);
+  await page.goto("/tracker");
+  await expect(page.getByRole("button", { name: /^Auto Apply to all/ })).toHaveCount(0);
+});

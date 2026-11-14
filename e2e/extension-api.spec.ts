@@ -47,7 +47,7 @@ test("connect the extension, then save and scan a job the way it does", async ({
   expect(me.user.email).toBeTruthy();
   expect(me.resumes.length).toBeGreaterThan(0);
   // who it is, their resumes, and the application profile auto apply fills forms from. the saved answers stay behind
-  expect(Object.keys(me).sort()).toEqual(["autoApply", "current", "profile", "profileReady", "resumes", "user"]);
+  expect(Object.keys(me).sort()).toEqual(["autoApply", "current", "profile", "profileReady", "resumes", "sendsLeft", "user"]);
   expect(me.profile.qaBank).toBeUndefined();
 
   // no key and a made up key are turned away

@@ -509,14 +509,15 @@ describe("never sending the form", () => {
     }
   });
 
-  it("has no code that submits a form, and clicks only through the guard", () => {
+  it("clicks only through the guard, and presses Submit in one place only", () => {
     const folder = path.join(import.meta.dirname, "..");
-    const files = ["content.ts", "background.ts", "sidepanel/App.tsx", "sidepanel/AutoApply.tsx", "sidepanel/page.ts", ...["adapters/index", "api", "apply-link", "blocked", "dropdowns", "fields", "fill", "job-page", "pending", "pipeline", "press", "synonyms", "values"].map((name) => `lib/${name}.ts`)];
+    const files = ["content.ts", "background.ts", "sidepanel/App.tsx", "sidepanel/AutoApply.tsx", "sidepanel/page.ts", ...["adapters/index", "api", "apply-link", "blocked", "dropdowns", "fields", "fill", "job-page", "pending", "pipeline", "press", "runner", "send", "submit", "synonyms", "values"].map((name) => `lib/${name}.ts`)];
     for (const file of files) {
       const code = readFileSync(path.join(folder, file), "utf8").replace(/\/\/.*$/gm, "");
       expect(code, file).not.toMatch(/\.submit\(|requestSubmit|dispatchEvent\([^)]*["']submit/);
-      // the only clicks are on a radio button or a choice in an open list, and the guard itself
-      const allowed = file === "lib/press.ts" ? 1 : file === "lib/dropdowns.ts" ? 2 : 0;
+      // the only clicks are on a radio button or a choice in an open list, the guard itself,
+      // and the one press of Submit for a person who switched sending on
+      const allowed = file === "lib/press.ts" || file === "lib/submit.ts" ? 1 : file === "lib/dropdowns.ts" ? 2 : 0;
       expect(code.match(/\.click\(\)/g)?.length ?? 0, file).toBe(allowed);
     }
   });

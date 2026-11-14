@@ -4,7 +4,7 @@ import JSZip from "jszip";
 import { describe, expect, it } from "vitest";
 import { getDb, schema } from "@/db";
 import { deleteAccount, exportAccount } from "./account";
-import { applicationForJob, listApplications, recordApplication, type ApplicationDetails } from "./applications";
+import { applicationForJob, autoSentLastDay, listApplications, recordApplication, type ApplicationDetails } from "./applications";
 import { createJob } from "./jobs";
 import { getProfile, saveProfile } from "./profile";
 
@@ -41,6 +41,23 @@ describe("auto apply runs", () => {
     expect(runs[0]).toMatchObject({ status: "applied", fieldsFilled: 11, jobTitle: "Data Analyst", company: "Acme" });
     // a report that came without the answers keeps the copy from before
     expect((await applicationForJob(id, job.id))?.details?.answers).toHaveLength(3);
+  });
+
+  it("counts what was sent for the person in the last day, and nothing they sent themselves", async () => {
+    const { id, job } = await person();
+    const now = new Date();
+    const sent = (sentBy: "me" | "auto", hoursAgo: number): ApplicationDetails => ({ ...DETAILS, appliedAt: "2026-11-13", sentBy, sentAt: new Date(now.getTime() - hoursAgo * 3_600_000).toISOString() });
+    await recordApplication(id, { jobId: job.id, ats: "Greenhouse", applyUrl: "https://boards.greenhouse.io/acme/jobs/7", status: "applied", fieldsFilled: 9, fieldsNeedingAttention: 0, details: sent("auto", 1) });
+    await recordApplication(id, { jobId: null, ats: "Lever", applyUrl: "https://jobs.lever.co/acme/8", status: "applied", fieldsFilled: 9, fieldsNeedingAttention: 0, details: sent("me", 1) });
+    await recordApplication(id, { jobId: null, ats: "Ashby", applyUrl: "https://jobs.ashbyhq.com/acme/9", status: "applied", fieldsFilled: 9, fieldsNeedingAttention: 0, details: sent("auto", 30) });
+    // filled in but not sent does not count
+    await recordApplication(id, { jobId: null, ats: "Ashby", applyUrl: "https://jobs.ashbyhq.com/acme/10", status: "needs_review", fieldsFilled: 9, fieldsNeedingAttention: 1, details: DETAILS });
+    expect(await autoSentLastDay(id, now)).toBe(1);
+    const runs = await listApplications(id);
+    expect(runs.find((run) => run.ats === "Greenhouse")?.sentBy).toBe("auto");
+    expect(runs.find((run) => run.ats === "Lever")?.sentBy).toBe("me");
+    // the locked copy never rides along in the list
+    expect(JSON.stringify(runs)).not.toContain("sealed");
   });
 
   it("stores the answers locked, and only shows them to their owner", async () => {

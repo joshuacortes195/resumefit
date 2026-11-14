@@ -18,17 +18,17 @@ type AutoApplyButtonProps = {
 };
 
 // asks the extension to open one application in a new tab, where its side panel fills the form in for the person to check.
-// nothing is sent from here or from there, pressing Submit is always the person's own click
+// pressing Submit stays the person's own click, unless they switched sending on in their application profile. then the extension works through it alone
 export function AutoApplyButton({ jobId, url, resumeId = null, label = "Auto Apply", className = SECONDARY_BUTTON }: AutoApplyButtonProps) {
-  const [state, setState] = useState<"idle" | "asking" | "opened" | "unreachable">("idle");
+  const [state, setState] = useState<"idle" | "asking" | "opened" | "alone" | "unreachable">("idle");
   // only a real, secure address is ever handed to the extension
   const usable = url !== null && /^https:\/\//.test(url);
 
   async function start() {
     if (!usable) return;
     setState("asking");
-    const opened = await startAutoApply({ jobId, url, resumeId });
-    setState(opened ? "opened" : "unreachable");
+    const reply = await startAutoApply({ jobId, url, resumeId });
+    setState(!reply.ok ? "unreachable" : reply.auto ? "alone" : "opened");
   }
 
   return (
@@ -40,6 +40,7 @@ export function AutoApplyButton({ jobId, url, resumeId = null, label = "Auto App
       {/* what happened, said out loud for screen readers too */}
       <span role="status" className="max-w-64 text-xs text-muted">
         {!usable && "Add the job's link to this card first."}
+        {state === "alone" && "Working on it in a background tab. It is filled in and sent if your rules allow, and you get a notice either way."}
         {state === "opened" && "Opened in a new tab. Click the ResumeFit icon there, then Fill this application. You press Submit yourself."}
         {state === "unreachable" && (
           <>

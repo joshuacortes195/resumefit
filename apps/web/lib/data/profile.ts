@@ -28,6 +28,9 @@ const BLANK_SEALED: SealedAnswers = {
   graduationYear: null,
   gpa: null,
   gpaNeverFill: false,
+  // sending is something a person switches on, never the starting point
+  autoSend: "off",
+  dailySendCap: 10,
 };
 
 // where the locked answers are kept, one bundle per person

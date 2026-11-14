@@ -1,4 +1,5 @@
 import { parseResume } from "@resumefit/scoring";
+import { autoSentLastDay } from "@/lib/data/applications";
 import { getProfile, profileReady } from "@/lib/data/profile";
 import { getResume, listResumes } from "@/lib/data/resumes";
 import { featureFlags } from "@/lib/data/settings";
@@ -24,5 +25,7 @@ export const GET = extRoute(async (_request, user) => {
   const latest = base?.rawText ? parseResume(base.rawText).experience[0] : undefined;
   // the saved answers stay behind, they are looked up one question at a time
   const answers = Object.fromEntries(Object.entries(profile).filter(([key]) => key !== "qaBank"));
-  return { ...account, profile: answers, profileReady: profileReady(profile), current: { title: latest?.title ?? null, company: latest?.company ?? null } };
+  // how many more it may send today, nothing when the person presses Submit themselves
+  const sendsLeft = profile.autoSend === "off" ? 0 : Math.max(0, profile.dailySendCap - (await autoSentLastDay(user.id)));
+  return { ...account, sendsLeft, profile: answers, profileReady: profileReady(profile), current: { title: latest?.title ?? null, company: latest?.company ?? null } };
 });

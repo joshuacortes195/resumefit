@@ -29,7 +29,7 @@ export default function TermsPage() {
       <section>
         <h2>The extension fills in, you submit</h2>
         <p>
-          The Chrome extension reads job postings so you can scan and save them. When you ask, it also fills in an application form from the answers you saved and drafts answers to written questions. It never submits an application. Check everything it filled in before you press
+          The Chrome extension reads job postings so you can scan and save them. When you ask, it also fills in an application form from the answers you saved and drafts answers to written questions. It submits an application only if you switched sending on in your application profile, and then you are the one responsible for what is sent in your name, drafts included. Check everything it filled in before you press
           Submit, because what you send is your own statement to that employer. Do not use it on sites whose terms forbid automated tools. It stays off LinkedIn and Indeed by itself.
         </p>
       </section>

@@ -43,7 +43,7 @@ export function FindJobs({ resumes, autoApply = false }: { resumes: ResumeOption
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   // how asking the extension to open an application went, for the job it was asked for
-  const [applied, setApplied] = useState<{ id: string; opened: boolean } | null>(null);
+  const [applied, setApplied] = useState<{ id: string; opened: boolean; alone: boolean } | null>(null);
   const [searching, startSearch] = useTransition();
   const [, startRead] = useTransition();
 
@@ -100,7 +100,10 @@ export function FindJobs({ resumes, autoApply = false }: { resumes: ResumeOption
     setSaved((all) => ({ ...all, [job.id]: result.jobId }));
     if (then === "scan") router.push(`/scans/new?job=${result.jobId}`);
     // auto apply: the job is on the tracker now, so the extension can open its application and tie the run to that card
-    if (then === "apply") setApplied({ id: job.id, opened: await startAutoApply({ jobId: result.jobId, url: job.url, resumeId: resumeId || null }) });
+    if (then === "apply") {
+      const reply = await startAutoApply({ jobId: result.jobId, url: job.url, resumeId: resumeId || null });
+      setApplied({ id: job.id, opened: reply.ok, alone: reply.auto === true });
+    }
   }
 
   return (
@@ -287,7 +290,9 @@ export function FindJobs({ resumes, autoApply = false }: { resumes: ResumeOption
                 {/* what happened after Auto Apply was pressed for this job */}
                 {applied?.id === selected.id && (
                   <p role="status" className="mt-2 text-sm text-muted">
-                    {applied.opened ? (
+                    {applied.alone ? (
+                      "Saved to your tracker. We are working on it in a background tab: it is filled in and sent if your rules allow, and you get a notice either way."
+                    ) : applied.opened ? (
                       "Saved to your tracker and opened in a new tab. Click the ResumeFit icon there, then Fill this application. You press Submit yourself."
                     ) : (
                       <>

@@ -89,6 +89,8 @@ export type ApplicationReport = {
   answers?: Pick<FieldReport, "label" | "value" | "status">[];
   resumeId?: string | null;
   coverLetter?: boolean;
+  // auto when we pressed Submit because the person asked us to
+  sentBy?: "me" | "auto";
   // the person's own date, so the date applied matches their calendar
   today?: string;
 };

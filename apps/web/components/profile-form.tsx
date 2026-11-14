@@ -6,7 +6,7 @@ import { ArrowLeft, Check, Plus, Trash2 } from "lucide-react";
 import { saveProfileAction } from "@/app/actions/profile";
 import { CARD, INPUT, PRIMARY_BUTTON, SECONDARY_BUTTON } from "@/components/ui/buttons";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { DEGREES, EEO_OPTIONS, JOB_TYPES, MONTHS, PRONOUNS, REMOTE_PREFERENCES, WORK_AUTHORIZATIONS, type Profile, type ProfileInput } from "@/lib/profile";
+import { DEGREES, EEO_OPTIONS, MAX_DAILY_SENDS, JOB_TYPES, MONTHS, PRONOUNS, REMOTE_PREFERENCES, WORK_AUTHORIZATIONS, type Profile, type ProfileInput } from "@/lib/profile";
 
 // turns the saved profile into the plain strings a form works with
 function toForm(profile: Profile): ProfileInput {
@@ -52,6 +52,8 @@ function toForm(profile: Profile): ProfileInput {
     gpa: profile.gpa ?? "",
     gpaNeverFill: profile.gpaNeverFill,
     eeoHispanic: profile.eeoHispanic,
+    autoSend: profile.autoSend,
+    dailySendCap: String(profile.dailySendCap),
   };
 }
 
@@ -263,6 +265,25 @@ export function ProfileForm({ profile, back = "/settings" }: { profile: Profile;
             <Plus className="size-4" aria-hidden />
             Add an answer
           </button>
+        </fieldset>
+
+        {/* who presses Submit. it starts on the person, and they can hand it over */}
+        <fieldset className="grid gap-4 sm:grid-cols-2">
+          <legend className="mb-1 font-semibold">Sending applications</legend>
+          <p className="mb-2 text-sm text-muted sm:col-span-2">
+            Auto Apply fills in the form. Here you choose whether it also presses Submit. Once an application is sent it cannot be taken back, and most forms have you confirm that every answer is true, so only hand this over if you trust what is in this profile.
+          </p>
+          {select("autoSend", "Who presses Submit?", [
+            ["off", "I do, after checking the form"],
+            ["safe", "ResumeFit, when every answer came from my profile"],
+            ["all", "ResumeFit, even when some answers are drafts I have not read"],
+          ])}
+          {text("dailySendCap", `Most it may send in a day (1 to ${MAX_DAILY_SENDS})`, { type: "number" })}
+          {form.autoSend !== "off" && (
+            <p className="text-sm text-muted sm:col-span-2">
+              It sends on Greenhouse, Lever and Ashby forms that fit on one page. It never sends when a required answer is empty, when the form has a captcha or needs you to sign in, or on LinkedIn and Indeed. Those are left filled in for you, and everything it sends is listed under All Applications.
+            </p>
+          )}
         </fieldset>
 
         <div className="flex items-center gap-4 border-t border-border pt-5">

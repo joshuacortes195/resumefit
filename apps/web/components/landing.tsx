@@ -36,7 +36,7 @@ const ALSO = [
   { icon: FileSearch, title: "Find Jobs", text: "Open roles from company job boards, with an estimate of how well each fits your resume." },
   { icon: UserSearch, title: "LinkedIn check", text: "Scores your profile against the jobs you want and lists the keywords it is missing." },
   { icon: Briefcase, title: "Interview practice", text: "Questions for a specific job and feedback on your answers." },
-  { icon: Puzzle, title: "Chrome extension", text: "Scan or save the posting you are looking at, and have application forms filled in for you to check. It never sends an application, pressing Submit is always you." },
+  { icon: Puzzle, title: "Chrome extension", text: "Scan or save the posting you are looking at, and have application forms filled in for you to check. Pressing Submit stays with you unless you hand it over." },
 ];
 
 // the page signed out visitors land on: what the app is, what it looks like, a sample to try and the way in

@@ -1,4 +1,4 @@
-import { and, desc, eq, or } from "drizzle-orm";
+import { and, desc, eq, gte, or } from "drizzle-orm";
 import type { ApplicationStatus } from "@resumefit/shared";
 import { getDb, schema } from "@/db";
 import { decrypt, encrypt } from "@/lib/ai/crypto";
@@ -10,10 +10,10 @@ export type ApplicationRow = typeof schema.applications.$inferSelect;
 export type UsedAnswer = { label: string; value: string; status: "filled" | "review" | "missing" | "skipped" };
 
 // what was used on one application: the answers, the resume and whether a cover letter went with it
-export type ApplicationDetails = { answers: UsedAnswer[]; resumeId: string | null; resumeName: string | null; coverLetter: boolean; appliedAt: string | null };
+export type ApplicationDetails = { answers: UsedAnswer[]; resumeId: string | null; resumeName: string | null; coverLetter: boolean; appliedAt: string | null; sentBy?: "me" | "auto"; sentAt?: string };
 
 // an application with the job it is for
-export type ApplicationItem = Pick<ApplicationRow, "id" | "ats" | "applyUrl" | "status" | "fieldsFilled" | "fieldsNeedingAttention" | "createdAt" | "updatedAt" | "jobId"> & { jobTitle: string | null; company: string | null };
+export type ApplicationItem = Pick<ApplicationRow, "id" | "ats" | "applyUrl" | "status" | "fieldsFilled" | "fieldsNeedingAttention" | "createdAt" | "updatedAt" | "jobId"> & { jobTitle: string | null; company: string | null; sentBy: "me" | "auto" };
 
 // the copy of the answers holds things like work authorization, so it is locked the same way the application profile is
 function seal(details: ApplicationDetails): { sealed: string } | null {
@@ -33,7 +33,7 @@ export function openDetails(stored: unknown): ApplicationDetails | null {
 // every auto apply run, newest first
 export async function listApplications(userId: string): Promise<ApplicationItem[]> {
   const db = await getDb();
-  return db
+  const rows = await db
     .select({
       id: schema.applications.id,
       ats: schema.applications.ats,
@@ -46,11 +46,27 @@ export async function listApplications(userId: string): Promise<ApplicationItem[
       jobId: schema.applications.jobId,
       jobTitle: schema.jobs.title,
       company: schema.jobs.company,
+      aiAnswers: schema.applications.aiAnswers,
     })
     .from(schema.applications)
     .leftJoin(schema.jobs, eq(schema.applications.jobId, schema.jobs.id))
     .where(eq(schema.applications.userId, userId))
     .orderBy(desc(schema.applications.updatedAt));
+  // the locked copy of the answers stays behind, only who pressed Submit comes out of it
+  return rows.map(({ aiAnswers, ...row }) => ({ ...row, sentBy: openDetails(aiAnswers)?.sentBy ?? "me" }));
+}
+
+// how many applications were sent for this person, by us and not by them, in the last 24 hours
+export async function autoSentLastDay(userId: string, now = new Date()): Promise<number> {
+  const db = await getDb();
+  const rows = await db
+    .select({ aiAnswers: schema.applications.aiAnswers })
+    .from(schema.applications)
+    .where(and(eq(schema.applications.userId, userId), eq(schema.applications.status, "applied"), gte(schema.applications.updatedAt, new Date(now.getTime() - 86_400_000))));
+  return rows.filter((row) => {
+    const details = openDetails(row.aiAnswers);
+    return details?.sentBy === "auto" && details.sentAt !== undefined && now.getTime() - new Date(details.sentAt).getTime() < 86_400_000;
+  }).length;
 }
 
 // the newest run for one tracker card, with the answers that were used on it

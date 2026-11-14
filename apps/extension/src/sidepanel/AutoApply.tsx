@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { api, type ApplicationReport } from "../lib/api";
 import { getPending, type PendingApply } from "../lib/pending";
 import { fillEverything, pickResume, tally } from "../lib/pipeline";
+import { sendApplication, whyNotSend } from "../lib/send";
 import type { Account, FieldReport, PageInfo } from "../lib/types";
 import { activeTab, askPage, localToday, readPage } from "./page";
 
@@ -24,15 +25,15 @@ type AutoApplyProps = {
   onPage: (page: PageInfo) => void;
 };
 
-// auto apply for the form on this page: fill it from the application profile, show what needs a look, and stop.
-// the person reads it over and presses the site's own Submit button
+// auto apply for the form on this page: fill it from the application profile and show what needs a look.
+// it stops there for the person to press Submit, unless they switched sending on in their profile
 export function AutoApply({ page, account, jobId: cardId, open, onPage }: AutoApplyProps) {
   // set when the web app opened this tab for one of the tracker's jobs
   const [pending, setPending] = useState<PendingApply | null>(null);
   const jobId = pending?.jobId ?? cardId;
   const [resumeId, setResumeId] = useState("");
   const [withLetter, setWithLetter] = useState(true);
-  const [busy, setBusy] = useState<"fill" | "find" | "applied" | null>(null);
+  const [busy, setBusy] = useState<"fill" | "find" | "send" | "applied" | null>(null);
   const [error, setError] = useState<string | null>(null);
   // the fields as the last fill left them. before any fill, whatever the page already shows
   const [fields, setFields] = useState<FieldReport[]>(page.fields);
@@ -40,6 +41,11 @@ export function AutoApply({ page, account, jobId: cardId, open, onPage }: AutoAp
   const [sentByMe, setSentByMe] = useState(false);
   const [applied, setApplied] = useState(false);
   const [letterUsed, setLetterUsed] = useState(false);
+  // true when the person asked for their applications to be sent for them
+  const sends = (account.profile?.autoSend ?? "off") !== "off";
+  // why the last fill was not sent, and whether it was us who sent it
+  const [held, setHeld] = useState<string | null>(null);
+  const [sentForMe, setSentForMe] = useState(false);
 
   // which job this tab was opened for, if any, and the resume that goes with it
   useEffect(() => {
@@ -71,6 +77,26 @@ export function AutoApply({ page, account, jobId: cardId, open, onPage }: AutoAp
       setFilled(true);
       setLetterUsed(result.coverLetter !== null && result.fields.some((field) => field.key === "coverLetter" && field.status === "filled"));
       void report("needs_review", result.fields, { coverLetter: result.coverLetter !== null });
+      // the person asked for it to be sent: do that now when their rules allow, and say why when they do not
+      if (sends && !onlyNew) {
+        // how many sends are left is read fresh, the panel may have been open a while
+        const fresh = await api.me().catch(() => account);
+        const why = whyNotSend(await readPage().catch(() => page), result.fields, fresh);
+        if (why) {
+          setHeld(why);
+        } else {
+          setBusy("send");
+          const send = await sendApplication(askPage);
+          if (send.sent) {
+            await report("applied", result.fields, { fieldsNeedingAttention: 0, coverLetter: result.coverLetter !== null, sentBy: "auto" });
+            setSentForMe(true);
+            setApplied(true);
+            if (!document.hasFocus()) void chrome.notifications?.create({ type: "basic", iconUrl: "icon-128.png", title: "Application sent", message: "It is on your tracker under Applied, with the answers that went out." });
+            return;
+          }
+          setHeld(send.reason ?? "The form was not sent.");
+        }
+      }
       // a heads up for when the person has moved on to something else while it worked
       const { needs } = tally(result.fields);
       if (!document.hasFocus()) void chrome.notifications?.create({ type: "basic", iconUrl: "icon-128.png", title: "Application filled in", message: `${needs === 0 ? "Everything we could answer is in." : `${needs} ${needs === 1 ? "field needs" : "fields need"} a look.`} Nothing was sent, that part is yours.` });
@@ -133,7 +159,7 @@ export function AutoApply({ page, account, jobId: cardId, open, onPage }: AutoAp
     return (
       <div className="card">
         <p className="muted small">Auto Apply</p>
-        <h2 style={{ marginTop: 2 }}>Marked as applied</h2>
+        <h2 style={{ marginTop: 2 }}>{sentForMe ? "Sent for you" : "Marked as applied"}</h2>
         <p className="muted small" style={{ marginTop: 6 }}>
           {jobId ? "The card is in Applied on your tracker, with today's date, the resume you sent and the answers you used." : "It is in your list of applications with the answers you used."}
         </p>
@@ -163,7 +189,7 @@ export function AutoApply({ page, account, jobId: cardId, open, onPage }: AutoAp
         <p className="muted small">Auto Apply</p>
         <p style={{ marginTop: 4 }}>{pending ? "This is the posting. The form comes next." : "Want this one filled in for you?"}</p>
         <p className="muted small" style={{ marginTop: 6 }}>
-          Open the application form and we fill in what we can from your application profile. You check it and press Submit yourself.
+          Open the application form and we fill in what we can from your application profile. {sends ? "Then we send it, when your rules allow." : "You check it and press Submit yourself."}
         </p>
         <button className="primary" style={{ marginTop: 10 }} onClick={goToForm} disabled={busy !== null}>
           {busy === "find" ? "Looking for the form..." : "Go to the application form"}
@@ -197,7 +223,8 @@ export function AutoApply({ page, account, jobId: cardId, open, onPage }: AutoAp
 
       {!filled && (
         <p className="muted small" style={{ marginTop: 6 }}>
-          We type in your answers, attach your resume and draft the written questions. Then we stop. You read it over and press the site&apos;s own Submit button.
+          We type in your answers, attach your resume and draft the written questions.{" "}
+          {sends ? "Then we press Submit for you, as you asked in your application profile. If anything is in the way we stop and tell you why." : "Then we stop. You read it over and press the site's own Submit button."}
         </p>
       )}
 
@@ -223,7 +250,7 @@ export function AutoApply({ page, account, jobId: cardId, open, onPage }: AutoAp
 
       <div className="row" style={{ marginTop: 10 }}>
         <button className="primary" onClick={() => fill(false)} disabled={busy !== null}>
-          {busy === "fill" ? "Filling in and drafting answers..." : filled ? "Fill again" : "Fill this application"}
+          {busy === "fill" ? "Filling in and drafting answers..." : busy === "send" ? "Sending..." : filled ? (sends ? "Fill and send again" : "Fill again") : sends ? "Fill and send this application" : "Fill this application"}
         </button>
         {/* a long form shows its next page after the person presses Next. only what is new gets filled then */}
         {filled && page.multiPage && (
@@ -278,7 +305,7 @@ export function AutoApply({ page, account, jobId: cardId, open, onPage }: AutoAp
       {filled && (
         <div style={{ marginTop: 14, borderTop: "1px solid var(--border)", paddingTop: 10 }}>
           <p className="small">
-            <strong>Nothing has been sent.</strong> <span className="muted">Check the form, then press its Submit button yourself.</span>
+            <strong>Nothing has been sent.</strong> <span className="muted">{held ? `${held} Check the form, then press its Submit button yourself.` : "Check the form, then press its Submit button yourself."}</span>
           </p>
           <div className="row" style={{ marginTop: 8 }}>
             <button onClick={async () => onPage(await readPage())} disabled={busy !== null}>
