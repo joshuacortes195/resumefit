@@ -26,7 +26,7 @@ test("the report explains its score, shows what an applicant system reads, and s
   await expect(page).toHaveURL(/\/scans\/[0-9a-f-]{36}$/);
   const rules = page.getByRole("region", { name: "Can you apply?" });
   await expect(rules).toContainText("This role asks for US citizenship");
-  await expect(rules).toContainText('The posting says: "Must be a U.S. citizen."');
+  await expect(rules).toContainText('"Must be a U.S. citizen."');
   await expect(rules).toContainText("does not sponsor visas");
   await expect(rules).toContainText("expects you in person");
 });
@@ -44,7 +44,7 @@ test("the results page adds the tracker up and offers a follow up note for an ap
   await request.post("/api/ext/applications", { headers, data: { jobId: job.jobId, ats: "Lever", applyUrl: "https://jobs.lever.co/stillwater/55/apply", status: "applied", fieldsFilled: 8, fieldsNeedingAttention: 0, today: daysAgo(20) } });
 
   await page.goto("/tracker");
-  await page.getByRole("link", { name: "Results" }).click();
+  await page.getByRole("link", { name: "See your results" }).click();
   await expect(page).toHaveURL(/\/stats$/);
   await expect(page.getByRole("heading", { name: "Applications per week" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "By match score" })).toBeVisible();

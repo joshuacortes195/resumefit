@@ -112,7 +112,7 @@ export const api = {
   answer: (input: { question: string; jdText: string; resumeId?: string; jobId?: string }) => call<{ answer: string; source: "saved" | "ai"; remaining?: number | null }>("answer", input),
   // only an answer the person gave before, for this job or saved for every job. null when there is none, and nothing is drafted
   savedAnswer: (input: { question: string; jobId?: string }) => call<{ answer: string | null }>("answer", { ...input, jdText: "", savedOnly: true }),
-  // tells the web app how a fill went, so it shows on the tracker and under All Applications
+  // tells the web app how a fill went, so it shows on the tracker and on the Auto Apply page
   reportApplication: (report: ApplicationReport) => call<{ id: string }>("applications", report),
 };
 

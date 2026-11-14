@@ -79,7 +79,7 @@ export default function DashboardPage() {
       </section>
 
       <div className="stagger grid gap-6 md:grid-cols-2">
-        <section className={`${CARD} p-6`}>
+        <section className={`${CARD} min-w-0 p-6`}>
           <h2 className="font-semibold">Latest resume scan</h2>
           <Suspense fallback={<Skeleton className="mt-4 h-24" />}>
             <LatestScan />
@@ -87,7 +87,7 @@ export default function DashboardPage() {
         </section>
 
         {/* linkedin card */}
-        <section className={`${CARD} p-6`}>
+        <section className={`${CARD} min-w-0 p-6`}>
           <h2 className="font-semibold">LinkedIn report</h2>
           <Suspense fallback={<Skeleton className="mt-4 h-16" />}>
             <LinkedinCard />

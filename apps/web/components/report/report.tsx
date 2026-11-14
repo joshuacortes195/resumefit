@@ -114,7 +114,14 @@ export function Report({ data, resumes }: { data: ReportData; resumes: ResumeOpt
                   {item.verdict === "ok" ? "Fine" : item.verdict === "problem" ? "Problem" : "Check"}
                 </span>
                 <span>
-                  {item.text} <span className="text-muted">The posting says: &quot;{item.quote}&quot;</span>
+                  {item.text}{" "}
+                  {/* we could tell for sure with one more answer on the profile */}
+                  {item.missing && !readOnly && (
+                    <Link href="/settings/application" className={LINK_BUTTON}>
+                      Add yours to check.
+                    </Link>
+                  )}{" "}
+                  <span className="text-muted">&quot;{item.quote}&quot;</span>
                 </span>
               </li>
             ))}

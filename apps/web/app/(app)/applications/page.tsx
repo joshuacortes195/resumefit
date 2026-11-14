@@ -16,7 +16,7 @@ import { getProfile, profileReady } from "@/lib/data/profile";
 import { listResumes } from "@/lib/data/resumes";
 import { featureFlags } from "@/lib/data/settings";
 
-export const metadata = { title: "All Applications" };
+export const metadata = { title: "Auto Apply" };
 
 // the color each kind of run wears
 const TONES: Record<RunLabel["tone"], string> = { good: "bg-success/10 text-success", warn: "bg-warning/10 text-warning", muted: "bg-border/60 text-muted", bad: "bg-danger/10 text-danger" };
@@ -25,8 +25,8 @@ const TONES: Record<RunLabel["tone"], string> = { good: "bg-success/10 text-succ
 export default function ApplicationsPage() {
   return (
     <div className="mx-auto max-w-5xl">
-      <h1 className="text-3xl font-semibold">All Applications</h1>
-      <p className="mt-1 mb-6 max-w-2xl text-muted">Every application Auto Apply filled in for you, and where each one stands. You press Submit yourself unless you switched sending on in your application profile. Anything sent for you is marked Sent for me.</p>
+      <h1 className="text-3xl font-semibold">Auto Apply</h1>
+      <p className="mt-1 mb-6 max-w-2xl text-muted">Every application filled in for you, and where each one stands. Anything that needs an answer from you is at the top.</p>
       <Suspense fallback={<TableSkeleton />}>
         <Runs />
       </Suspense>

@@ -2,7 +2,8 @@ import type { Profile } from "@/lib/profile";
 
 // one rule a posting sets about who can apply, and how it lines up with the person's own answers.
 // ok: their profile meets it. problem: it does not. check: we cannot tell, so they should look before applying
-export type EligibilityItem = { rule: "citizenship" | "clearance" | "sponsorship" | "graduation" | "onsite" | "relocation"; verdict: "ok" | "problem" | "check"; text: string; quote: string };
+export type EligibilityItem = { rule: "citizenship" | "clearance" | "sponsorship" | "graduation" | "onsite" | "relocation"; verdict: "ok" | "problem" | "check"; text: string; quote: string; missing?: boolean };
+// missing is set when the only reason we cannot tell is an answer the application profile does not have yet
 
 // the answers the check needs. all of them can be missing
 export type EligibilityProfile = Partial<Pick<Profile, "workAuthorization" | "needsSponsorship" | "graduationYear" | "willingToRelocate">>;
@@ -42,7 +43,7 @@ export function checkEligibility(jdText: string, profile: EligibilityProfile = {
     const meets = auth === "US citizen" || (persons && auth === "Permanent resident");
     items.push(
       auth === null
-        ? { rule: "citizenship", verdict: "check", text: `This role asks for ${persons ? "US person status" : "US citizenship"}. Add your work authorization to your application profile and we will check it for you.`, quote }
+        ? { rule: "citizenship", verdict: "check", text: `This role asks for ${persons ? "US person status" : "US citizenship"}.`, quote, missing: true }
         : meets
           ? { rule: "citizenship", verdict: "ok", text: `This role asks for ${persons ? "US person status" : "US citizenship"}, and your profile says ${auth}.`, quote }
           : { rule: "citizenship", verdict: "problem", text: `This role asks for ${persons ? "US person status" : "US citizenship"}, and your profile says ${auth}.`, quote },
@@ -68,7 +69,7 @@ export function checkEligibility(jdText: string, profile: EligibilityProfile = {
     const needs = profile.needsSponsorship ?? null;
     items.push(
       needs === null
-        ? { rule: "sponsorship", verdict: "check", text: "This employer says it does not sponsor visas. Add your sponsorship answer to your application profile and we will check it for you.", quote }
+        ? { rule: "sponsorship", verdict: "check", text: "This employer says it does not sponsor visas.", quote, missing: true }
         : needs
           ? { rule: "sponsorship", verdict: "problem", text: "This employer says it does not sponsor visas, and your profile says you will need sponsorship.", quote }
           : { rule: "sponsorship", verdict: "ok", text: "This employer says it does not sponsor visas, and your profile says you do not need it.", quote },
@@ -85,7 +86,7 @@ export function checkEligibility(jdText: string, profile: EligibilityProfile = {
     const window = first === last ? String(first) : `${first} to ${last}`;
     items.push(
       mine === null
-        ? { rule: "graduation", verdict: "check", text: `This role names a graduation date (${window}). Add your graduation year to your application profile and we will check it for you.`, quote }
+        ? { rule: "graduation", verdict: "check", text: `This role names a graduation date (${window}).`, quote, missing: true }
         : mine >= first && mine <= last
           ? { rule: "graduation", verdict: "ok", text: `This role wants a graduation date in ${window}, and yours is ${mine}.`, quote }
           : { rule: "graduation", verdict: "problem", text: `This role wants a graduation date in ${window}, and yours is ${mine}.`, quote },

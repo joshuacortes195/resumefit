@@ -26,11 +26,8 @@ export default function TrackerLayout({ children }: { children: React.ReactNode 
       <h1 className="text-3xl font-semibold">Application Tracker</h1>
       <p className="mt-1 mb-6 text-muted">
         Drag jobs from Saved to Offer and keep notes on each one.{" "}
-        <Link href="/applications" className={LINK_BUTTON}>
-          All applications
-        </Link>{" "}
         <Link href="/stats" className={LINK_BUTTON}>
-          Results
+          See your results
         </Link>
       </p>
       <Suspense fallback={null}>
