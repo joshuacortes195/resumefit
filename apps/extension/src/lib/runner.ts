@@ -17,6 +17,9 @@ export type RunHooks = {
   pause?: (ms: number) => Promise<void>;
 };
 
+// how many seconds a page gets to draw its form before we decide there is none
+export const FORM_WAIT_SECONDS = 8;
+
 // how a run ended. reason is why it was left for the person, null when it was sent
 export type RunOutcome = { sent: boolean; reason: string | null; filled: number; needs: number };
 
@@ -30,14 +33,23 @@ const answersOf = (fields: FieldReport[]) =>
 // works through one application without anyone watching: finds the form, fills it, and sends it when the person's own rules allow.
 // anything it is not sure about is left filled in, with the reason, for the person to finish
 export async function runApplication(account: Account, job: RunJob, hooks: RunHooks): Promise<RunOutcome> {
-  let page = await hooks.ask<PageInfo>({ type: "read-page" });
+  const pause = hooks.pause ?? ((ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms)));
+  // many forms are drawn by the page's own code a few seconds after it loads, so an empty first look is not the last word
+  const look = async (patient: boolean): Promise<PageInfo> => {
+    let seen = await hooks.ask<PageInfo>({ type: "read-page" });
+    for (let tries = 0; patient && tries < FORM_WAIT_SECONDS && !seen.hasForm && !seen.fillBlocked; tries++) {
+      await pause(1000);
+      seen = await hooks.ask<PageInfo>({ type: "read-page" }).catch(() => seen);
+    }
+    return seen;
+  };
+  let page = await look(false);
   // a posting, not the form: follow its own Apply link
   if (!page.hasForm && !page.fillBlocked) {
     const link = await hooks.ask<string | null>({ type: "find-apply" });
-    if (link) {
-      await hooks.goTo(link);
-      page = await hooks.ask<PageInfo>({ type: "read-page" });
-    }
+    if (link) await hooks.goTo(link);
+    // either way the form may still be on its way, on the new page or on this one
+    page = await look(true);
   }
   if (page.fillBlocked) return { sent: false, reason: "This site does not allow tools to fill in applications.", filled: 0, needs: 0 };
   if (!page.hasForm) return { sent: false, reason: "We could not find the application form on this page.", filled: 0, needs: 0 };

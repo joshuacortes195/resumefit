@@ -106,6 +106,20 @@ function biggestBlock(doc: Document): string {
 }
 
 // reads the job posting off the page the person is looking at, null when it does not look like one
+// the company named in a tab title like "Engineer @ Acme", "Job Application for Engineer at Acme" or "Acme - Engineer"
+export function companyFromTitle(pageTitle: string, jobTitle: string): string {
+  const text = pageTitle.replace(/\s+/g, " ").trim();
+  const at = text.match(/(?:\s@\s|\sat\s)([^|@]+?)\s*(?:\||$)/i);
+  if (at?.[1] && ((jobTitle && text.includes(jobTitle)) || /^job application for/i.test(text))) return at[1].trim();
+  // "Company - Title" or "Title - Company": whichever side is not the job's own title
+  const parts = text.split(/\s+[-|–]\s+/).map((part) => part.trim()).filter(Boolean);
+  if (jobTitle && parts.length === 2) {
+    const other = parts.find((part) => part.toLowerCase() !== jobTitle.toLowerCase());
+    if (other && parts.some((part) => part.toLowerCase() === jobTitle.toLowerCase())) return other;
+  }
+  return "";
+}
+
 export function readJob(doc: Document, url: string): PageJob | null {
   const hostname = new URL(url).hostname;
   const site = SITES.find((entry) => entry.hosts.test(hostname));
@@ -117,7 +131,8 @@ export function readJob(doc: Document, url: string): PageJob | null {
 
   return {
     title: title.slice(0, 200),
-    company: (structured?.company || (site && read(doc, site.company)) || read(doc, 'meta[property="og:site_name"]')).slice(0, 200),
+    // a logo's description often ends in the word logo, and when the page names no company its tab title usually does
+    company: ((structured?.company || (site && read(doc, site.company)) || read(doc, 'meta[property="og:site_name"]')).replace(/\s+logo$/i, "") || companyFromTitle(doc.title, title)).slice(0, 200),
     location: (structured?.location || (site && read(doc, site.location)) || "").slice(0, 200),
     description: description.slice(0, 40_000),
     url,

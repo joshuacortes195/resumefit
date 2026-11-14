@@ -244,6 +244,26 @@ describe("working through one application alone", () => {
     expect(captcha.asked).not.toContain("submit");
   });
 
+  it("waits for a form that the page draws a few seconds after it loads", async () => {
+    let looks = 0;
+    const asked: string[] = [];
+    const ask = (async (request: PageRequest) => {
+      asked.push(request.type);
+      // the form shows up on the fourth look
+      if (request.type === "read-page") return { ...PAGE, hasForm: ++looks >= 4, confirmed: asked.includes("submit") };
+      if (request.type === "find-apply") return null;
+      if (request.type === "autofill") return [field("a")];
+      if (request.type === "submit") return { pressed: true };
+      return null;
+    }) as Ask;
+    const outcome = await runApplication(account("safe"), JOB, { ask, goTo: async () => undefined, report: async () => undefined, today: "2026-11-14", pause: async () => undefined, source: { resumeFile: async () => null as never, coverLetterFile: async () => null as never, answer: async () => ({ answer: "", source: "ai" as const }) } });
+    expect(outcome.sent).toBe(true);
+    // and a page that never shows one is given up on, not waited on forever
+    looks = -1000;
+    const none = await runApplication(account("safe"), JOB, { ask, goTo: async () => undefined, report: async () => undefined, today: "2026-11-14", pause: async () => undefined });
+    expect(none).toMatchObject({ sent: false, reason: "We could not find the application form on this page." });
+  });
+
   it("does not touch a site that forbids it, and does not call an unconfirmed send sent", async () => {
     const blocked = world({ page: { fillBlocked: true, hasForm: false } });
     expect(await runApplication(account("all"), JOB, blocked.hooks)).toMatchObject({ sent: false, filled: 0 });

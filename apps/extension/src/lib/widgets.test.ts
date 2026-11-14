@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { generic } from "./adapters";
 import { fillDropdowns, findYesNo, setDropdown } from "./dropdowns";
 import { findFields } from "./fields";
-import { captchaKind, hasCaptcha, looksConfirmed } from "./job-page";
+import { captchaKind, companyFromTitle, hasCaptcha, looksConfirmed } from "./job-page";
 import { pressAnswer, wouldSubmit } from "./press";
 
 // a search box that opens a list of choices, built the way the newer greenhouse forms build theirs:
@@ -201,5 +201,17 @@ describe("knowing an application went through", () => {
   });
   it("does not take a form, or a promise about the future, for a thank you", () => {
     for (const text of ["Submit application", "Apply for this job", "Once your application is submitted we will review it", "Applications are received until May", "Thank you for your interest in Acme"]) expect(says(text), text).toBe(false);
+  });
+});
+
+describe("the company in a tab title", () => {
+  it("is read from the ways job sites title their pages", () => {
+    expect(companyFromTitle("Software Engineer, iOS @ Ramp", "Software Engineer, iOS")).toBe("Ramp");
+    expect(companyFromTitle("Job Application for Engineering Manager, Machine Learning (Safety) at Discord", "Engineering Manager, Machine Learning (Safety)")).toBe("Discord");
+    expect(companyFromTitle("Palantir Technologies - American Tech Fellowship", "American Tech Fellowship")).toBe("Palantir Technologies");
+    expect(companyFromTitle("Data Analyst - Northwind Health", "Data Analyst")).toBe("Northwind Health");
+    // nothing to go on is nothing, not a guess
+    expect(companyFromTitle("Careers", "Data Analyst")).toBe("");
+    expect(companyFromTitle("Great place to work at scale", "")).toBe("");
   });
 });
