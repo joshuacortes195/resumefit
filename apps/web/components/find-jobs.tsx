@@ -61,8 +61,10 @@ export function FindJobs({ resumes, autoApply = false }: { resumes: ResumeOption
       setResults(result.jobs);
       setSelected(null);
       setDescription(null);
+      // with nothing typed, the job sites were asked for the newest title on the resume, and the line says so
+      const asked = result.lookedFor && result.sources.length > 0 ? ` We also asked ${result.sources.join(", ")} for "${result.lookedFor}", the newest title on your resume.` : "";
       setSummary(
-        `${result.jobs.length} shown, from ${result.total.toLocaleString("en-US")} open jobs${result.resumeName ? `, ranked for ${result.resumeName}` : ""}.${result.gathering ? " We are still gathering jobs from more companies, so this list will grow over the next few minutes." : ""}`,
+        `${result.jobs.length} shown, from ${result.total.toLocaleString("en-US")} open jobs${result.resumeName ? `, ranked for ${result.resumeName}` : ""}.${asked}${result.gathering ? " We are still gathering jobs, so this list will grow over the next few minutes." : ""}`,
       );
     });
   }
@@ -260,7 +262,7 @@ export function FindJobs({ resumes, autoApply = false }: { resumes: ResumeOption
                   <CompanyLogo company={selected.company} domain={selected.domain} size={48} />
                   <div className="min-w-0 flex-1">
                     <h2 className="text-xl font-semibold">{selected.title}</h2>
-                    <p className="mt-0.5 text-muted">{[selected.company, selected.location, age(selected.postedAt)].filter(Boolean).join(", ")}</p>
+                    <p className="mt-0.5 text-muted">{[selected.company, selected.location, age(selected.postedAt), selected.via ? `found on ${selected.via}` : ""].filter(Boolean).join(", ")}</p>
                     <p className="mt-2">
                       <FitBadge fit={selected.fit} />
                     </p>

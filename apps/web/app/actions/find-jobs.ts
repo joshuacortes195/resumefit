@@ -9,13 +9,15 @@ import { createJob, findCard } from "@/lib/data/jobs";
 import { getResume, listResumes } from "@/lib/data/resumes";
 import { featureFlags } from "@/lib/data/settings";
 import { withinLimit } from "@/lib/rate-limit";
-import { BOARDS, fieldJobs, jobDescription, profileResume, refreshFeed, savedJobs, searchJobs, type FeedJob, type JobResult } from "@/lib/jobs-feed";
+import { parseResume } from "@resumefit/scoring";
+import { findLiveJob, liveJobs, liveSources } from "@/lib/job-search";
+import { BOARDS, fieldJobs, jobDescription, profileResume, refreshFeed, savedJobs, searchJobs, skillsIn, type FeedJob, type JobResult } from "@/lib/jobs-feed";
 
 type Result<T = object> = ({ ok: true } & T) | { ok: false; error: string };
 
 const OFF = { ok: false as const, error: "Find Jobs is switched off." };
-// how long a search waits for the wider job site before answering without it
-const WIDER_WAIT_MS = 2500;
+// how long a search waits for the job sites it asks live before answering without them
+const WIDER_WAIT_MS = 3500;
 const SLOW_DOWN = { ok: false as const, error: "That is a lot of requests in a short time. Wait a minute and try again." };
 
 const searchSchema = z.object({
@@ -30,7 +32,7 @@ const searchSchema = z.object({
 });
 
 // searches the saved openings, ranked by how well each one suits the chosen resume
-export async function findJobs(input: z.input<typeof searchSchema>): Promise<Result<{ jobs: JobResult[]; total: number; resumeName: string | null; gathering: boolean }>> {
+export async function findJobs(input: z.input<typeof searchSchema>): Promise<Result<{ jobs: JobResult[]; total: number; resumeName: string | null; gathering: boolean; lookedFor: string | null; sources: string[] }>> {
   const parsed = searchSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: "Check the search and try again." };
   const user = await getCurrentUser();
@@ -67,8 +69,15 @@ export async function findJobs(input: z.input<typeof searchSchema>): Promise<Res
     await timed("first fill", refreshFeed(6000));
     pool = await savedJobs();
   }
-  // and keep topping it up after the answer has gone out, without making anyone wait
-  if (pool.boards < BOARDS.length) after(() => refreshFeed(25_000).catch(() => undefined));
+  // and keep it current after the answer has gone out, without making anyone wait: every search refetches the companies whose openings have gone stale
+  after(() => refreshFeed(25_000).catch(() => undefined));
+
+  // the job sites are asked for a title: the one typed in, or with nothing typed, the newest title on the resume
+  const typed = parsed.data.query;
+  const lookedFor = typed || (chosen?.rawText ? (parseResume(chosen.rawText).experience[0]?.title ?? "") : "");
+  const live = liveJobs({ what: lookedFor, where: parsed.data.location, remoteOnly: parsed.data.remoteOnly, internOnly: parsed.data.internOnly, days: parsed.data.days })
+    .then((found) => found.map(({ description, ...job }) => ({ ...job, skills: skillsIn(job.title, description) })))
+    .catch(() => [] as FeedJob[]);
 
   // openings from the wider job site, in the fields the resume points at. that site can take many seconds to answer,
   // so a search only waits a short while for it. when it is slower, the answer goes out without it and its openings are there for the next search
@@ -84,12 +93,20 @@ export async function findJobs(input: z.input<typeof searchSchema>): Promise<Res
       after(() => asked);
     }
   }
+  // the live search started before the wider site was asked, so by now it has had the same wait
+  const found = await timed("live search", Promise.race([live, new Promise<null>((resolve) => setTimeout(() => resolve(null), Math.max(0, WIDER_WAIT_MS - (Date.now() - started))))]));
+  if (found) wider = [...found, ...wider];
+  else {
+    widerLate = true;
+    after(() => live);
+  }
 
+  // an opening found by its description may not have every typed word in its title, the job site already matched it
   const jobs = searchJobs([...pool.jobs, ...wider], parsed.data, profile);
   took.total = Date.now() - started;
   // where the time went, in the server log, so a slow search can be explained afterwards
   if (took.total > 3000) console.info(`find jobs took ${took.total} ms: ${Object.entries(took).map(([name, at]) => `${name} done at ${at}`).join(", ")}, ${pool.jobs.length} saved openings${widerLate ? ", wider site left out" : ""}`);
-  return { ok: true, jobs, total: pool.jobs.length + wider.length, resumeName: profile ? (chosen?.name ?? null) : null, gathering: pool.boards < BOARDS.length || widerLate };
+  return { ok: true, jobs, total: pool.jobs.length + wider.length, resumeName: profile ? (chosen?.name ?? null) : null, gathering: pool.boards < BOARDS.length || widerLate, lookedFor: typed ? null : lookedFor || null, sources: liveSources() };
 }
 
 // the full text of one opening
@@ -99,7 +116,7 @@ export async function readJob(id: string): Promise<Result<{ description: string 
   const user = await getCurrentUser();
   if (!(await featureFlags()).findJobs) return OFF;
   if (!(await withinLimit(user.id, "find-jobs"))) return SLOW_DOWN;
-  const description = await jobDescription(id.slice(0, 200));
+  const description = (await findLiveJob(id.slice(0, 200)))?.description || (await jobDescription(id.slice(0, 200)));
   return description ? { ok: true, description } : { ok: false, error: "We could not load this job's description. Open it on the job site instead." };
 }
 
@@ -128,7 +145,7 @@ export async function saveFoundJob(input: z.input<typeof foundJobSchema>): Promi
 
   // only a resume that is really theirs gets attached
   const resume = found.resumeId ? await getResume(user.id, found.resumeId) : null;
-  const description = (await jobDescription(found.id)) ?? "";
+  const description = (await findLiveJob(found.id))?.description || ((await jobDescription(found.id)) ?? "");
   const job = await createJob(user.id, { title: found.title, company: found.company, location: found.location, url: found.url, description, detectedAts: detectAts(found.url, "")?.name ?? null, resumeId: resume?.id ?? null });
   revalidatePath("/tracker", "layout");
   revalidatePath("/dashboard");

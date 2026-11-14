@@ -1,0 +1,20 @@
+name: Refresh jobs
+
+# visits the live app once an hour so the saved job openings stay current. the host's own schedule only runs once a day
+on:
+  schedule:
+    - cron: "17 * * * *"
+  workflow_dispatch:
+
+# it only makes one web request. it cannot read or change anything in the repo
+permissions: {}
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      # the app refetches only the companies whose openings have gone stale. a visit that is turned away is not a failure worth an email
+      - name: Ask the app to refresh its openings
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: curl -sS -m 90 -H "Authorization: Bearer ${CRON_SECRET}" https://resumefit-three.vercel.app/api/cron/feed || true

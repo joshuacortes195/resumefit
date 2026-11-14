@@ -23,6 +23,8 @@ export type FeedJob = {
   skills: string[];
   // true for internships and other roles aimed at students
   intern: boolean;
+  // the job site a live search found it on, when it did not come from a company's own board
+  via?: string;
 };
 
 // the character a numbered code like &#39; stands for, nothing when the number is not a real character
@@ -109,7 +111,7 @@ function pick<T>(list: T[], title: (item: T) => string): T[] {
 }
 
 // the skills an opening asks for, by the names on our own skill list
-function skillsIn(title: string, description: string): string[] {
+export function skillsIn(title: string, description: string): string[] {
   return [...countSkills(`${title}\n${description.slice(0, 12_000)}`, HARD_SKILLS).keys()].slice(0, 40);
 }
 
@@ -158,12 +160,13 @@ export async function fetchBoard(board: Board): Promise<FeedJob[]> {
 // lets the browser tests run without reaching out to real job sites
 const OFFLINE = () => process.env.JOB_FEED_OFFLINE === "1";
 
-const STALE_AFTER = 20 * 60 * 60 * 1000;
-const RETRY_AFTER = 2 * 60 * 60 * 1000;
+// a company's openings are fetched again once they are this old. short, so a posting from this morning is here by lunch
+const STALE_AFTER = 3 * 60 * 60 * 1000;
+const RETRY_AFTER = 60 * 60 * 1000;
 const feedKey = (board: Board) => `feed:${board.source}:${board.token}`;
 
 // fetches the companies whose saved openings are oldest or missing, until the time allowed runs out.
-// called once a day by a scheduled visit, and in the background when someone searches, so the pool fills up and stays current
+// called every hour by a scheduled visit, and in the background when someone searches, so the pool fills up and stays current
 export async function refreshFeed(budgetMs: number, boards: Board[] = BOARDS): Promise<{ refreshed: number; waiting: number }> {
   if (OFFLINE()) return { refreshed: 0, waiting: 0 };
   const started = Date.now();
@@ -376,7 +379,8 @@ export function searchJobs(jobs: FeedJob[], search: JobSearch, profile: ResumePr
   const kept: JobResult[] = [];
   for (const job of jobs) {
     const haystack = `${job.title} ${job.company}`.toLowerCase();
-    if (words.length > 0 && !words.every((word) => haystack.includes(word))) continue;
+    // an opening a job site found for these very words already matched, often on its description, so it is not asked to match again
+    if (!job.via && words.length > 0 && !words.every((word) => haystack.includes(word))) continue;
     if (place && !job.location.toLowerCase().includes(place)) continue;
     if (search.remoteOnly && !job.remote) continue;
     if (search.internOnly && !job.intern) continue;

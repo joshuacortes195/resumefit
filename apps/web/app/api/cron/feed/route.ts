@@ -1,5 +1,6 @@
 import { timingSafeEqual } from "node:crypto";
 import { serverEnv } from "@/lib/env";
+import { sweepSearches } from "@/lib/job-search";
 import { refreshFeed, savedJobs } from "@/lib/jobs-feed";
 import { RATE_LIMITS, sweepRateLimits, withinLimit } from "@/lib/rate-limit";
 
@@ -16,7 +17,7 @@ function fromScheduler(request: Request, secret: string): boolean {
   return sent.length === wanted.length && timingSafeEqual(sent, wanted);
 }
 
-// visited once a day to refresh the saved job openings. it only refetches companies whose openings have gone stale,
+// visited every hour to refresh the saved job openings. it only refetches companies whose openings have gone stale,
 // so visiting it more often does no harm and no extra work
 export async function GET(request: Request): Promise<Response> {
   try {
@@ -26,6 +27,8 @@ export async function GET(request: Request): Promise<Response> {
     if (secret ? !fromScheduler(request, secret) : !(await withinLimit("everyone", "feed-refresh", RATE_LIMITS["feed-refresh"], Date.now(), OPEN_WINDOW_MS))) return Response.json({ ok: false }, { status: secret ? 401 : 429 });
     // the daily visit is also when old rate limit counters get cleared out. a failure here never stops the refresh
     await sweepRateLimits().catch(() => 0);
+    // and searches nobody has repeated in a week
+    await sweepSearches().catch(() => undefined);
     const result = await refreshFeed(50_000);
     // how much is saved now, handy when checking that the feed is healthy
     const pool = await savedJobs();

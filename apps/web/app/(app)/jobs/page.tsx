@@ -20,7 +20,7 @@ export default function JobsPage() {
   return (
     <div className="mx-auto max-w-6xl">
       <h1 className="text-3xl font-semibold">Find Jobs</h1>
-      <p className="mt-1 mb-6 max-w-2xl text-muted">Open roles from {BOARDS.length} company job boards and a wider job site, ranked by how well each one suits the resume you pick.</p>
+      <p className="mt-1 mb-6 max-w-2xl text-muted">Open roles from {BOARDS.length} company job boards, checked every few hours, plus a live search of job sites for the title you are after. Ranked by how well each one suits the resume you pick.</p>
       <Suspense fallback={<Skeleton className="h-64" />}>
         <JobsLoader />
       </Suspense>

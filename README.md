@@ -97,7 +97,10 @@ The migrations switch on row level security for every table with no policies, wh
    | `INVITE_ONLY` | optional. Left out, new people need an invite code. Set it to `false` to let anyone sign up |
    | `GOOGLE_SIGN_IN` | optional. Set it to `true` to show the Google button on the sign in page, once Google is switched on in Supabase |
    | `ADMIN_EMAIL` | optional, your own email. Whoever signs in with it needs no invite code and is always an admin. It is the way back in if the admin account is ever deleted |
-   | `CRON_SECRET` | optional, 16 or more random characters. Vercel sends it with its scheduled visits, and with it set nobody else can set off the daily job refresh. Without it that address answers one visit every ten minutes |
+   | `CRON_SECRET` | optional, 16 or more random characters. Vercel sends it with its scheduled visits, and with it set nobody else can set off the job refresh. The hourly refresh in `.github/workflows/feed.yml` sends the same value from a repository secret of the same name, so set it in both places or neither. Without it that address answers one visit every ten minutes |
+   | `ADZUNA_APP_ID`, `ADZUNA_APP_KEY` | optional, a free key from developer.adzuna.com. Find Jobs then also searches Adzuna's general job index by title and location |
+   | `RAPIDAPI_KEY` | optional, a free key from rapidapi.com with the JSearch API switched on (200 searches a month free). Find Jobs then also shows openings gathered from across the web, the big job sites included |
+   | `USAJOBS_API_KEY`, `USAJOBS_EMAIL` | optional, a free key from developer.usajobs.gov and the email it was asked for with. Adds United States government openings |
    | `GEMINI_API_KEY` | optional, a free key from Google AI Studio that everyone shares |
    | `GROQ_API_KEY` | optional fallback, free at console.groq.com |
    | `CF_ACCOUNT_ID`, `CF_API_TOKEN` | optional fallback, Cloudflare Workers AI |
