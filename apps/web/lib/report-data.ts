@@ -2,6 +2,7 @@ import { blankInstructions, findSkillSpans, inHouseHost, type ScanResult, type S
 import { HARD_SKILLS, SOFT_SKILLS } from "@resumefit/skills-data";
 import type { CustomSkill, SavedScan } from "@/lib/data/scans";
 import { runScan } from "@/lib/data/scans";
+import { checkEligibility, type EligibilityItem, type EligibilityProfile } from "@/lib/eligibility";
 import { SAMPLE_COMPANY, SAMPLE_JD, SAMPLE_JOB_TITLE, SAMPLE_RESUME } from "@/lib/sample-scan";
 
 // everything the report page needs, in a shape that can be handed to the browser
@@ -21,6 +22,8 @@ export type ReportData = {
   jobId: string | null;
   // the posting's own site, when it is not one of the applicant systems we know and so is most likely the company's own
   inHouse: string | null;
+  // the rules the posting sets about who can apply, each compared with the person's application profile
+  eligibility: EligibilityItem[];
   // the scan of the same posting before this one, for the score change
   previous: { id: string; matchRate: number } | null;
   createdAt: string;
@@ -42,7 +45,7 @@ function buildSpans(report: ScanResult, jdText: string, resumeText: string): Rep
 }
 
 // packs a saved scan up for the report page
-export function toReportData(scan: SavedScan, previous: ReportData["previous"]): ReportData {
+export function toReportData(scan: SavedScan, previous: ReportData["previous"], profile: EligibilityProfile = {}): ReportData {
   return {
     id: scan.id,
     readOnly: false,
@@ -56,6 +59,7 @@ export function toReportData(scan: SavedScan, previous: ReportData["previous"]):
     targetTitle: scan.jobTitleOverride,
     jobId: scan.jobId,
     inHouse: inHouseHost(scan.jobUrl, scan.jdText),
+    eligibility: checkEligibility(scan.jdText, profile),
     previous,
     createdAt: scan.createdAt.toISOString(),
     spans: buildSpans(scan.report, scan.jdText, scan.resumeTextSnapshot),
@@ -81,6 +85,7 @@ export function sampleReportData(): ReportData {
     targetTitle: null,
     jobId: null,
     inHouse: null,
+    eligibility: checkEligibility(SAMPLE_JD),
     previous: null,
     createdAt: today.toISOString(),
     spans: buildSpans(report, SAMPLE_JD, SAMPLE_RESUME),

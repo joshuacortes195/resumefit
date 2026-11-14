@@ -13,6 +13,7 @@ import { HighlightedText, HighlightLegend } from "@/components/report/highlighte
 import { SkillsSection } from "@/components/report/skills-section";
 import { Tour, type TourStep } from "@/components/report/tour";
 import { ScanForm, type ResumeOption } from "@/components/scan-form";
+import { WhyScore } from "@/components/report/why-score";
 import { ScoreRing } from "@/components/score-ring";
 import { CARD, INPUT, LINK_BUTTON, PRIMARY_BUTTON, SECONDARY_BUTTON } from "@/components/ui/buttons";
 import { Tabs } from "@/components/ui/tabs";
@@ -101,6 +102,25 @@ export function Report({ data, resumes }: { data: ReportData; resumes: ResumeOpt
         </div>
       </header>
 
+      {/* the rules about who can apply, checked against the application profile, before any time goes into the rest */}
+      {data.eligibility.length > 0 && (
+        <section aria-label="Can you apply?" className="mt-5 rounded-xl border border-border bg-surface px-4 py-3 text-sm">
+          <h2 className="font-semibold">Can you apply?</h2>
+          <ul className="mt-2 space-y-2">
+            {data.eligibility.map((item) => (
+              <li key={item.rule} className="flex items-start gap-2.5">
+                <span className={`mt-0.5 shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${item.verdict === "ok" ? "bg-success/10 text-success" : item.verdict === "problem" ? "bg-danger/10 text-danger" : "bg-warning/10 text-warning"}`}>
+                  {item.verdict === "ok" ? "Fine" : item.verdict === "problem" ? "Problem" : "Check"}
+                </span>
+                <span>
+                  {item.text} <span className="text-muted">The posting says: &quot;{item.quote}&quot;</span>
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
       {/* a company's own careers site: say so, the way a known system gets named */}
       {!report.jd.ats && data.inHouse && (
         <div className="mt-5 flex flex-wrap items-center gap-3 rounded-xl border border-border bg-surface px-4 py-3 text-sm">
@@ -181,6 +201,8 @@ export function Report({ data, resumes }: { data: ReportData; resumes: ResumeOpt
                 );
               })}
             </ul>
+
+            <WhyScore report={report} onJump={() => setTab("report")} />
 
             <button type="button" onClick={() => setTouring(true)} className={`mt-5 inline-flex items-center gap-1.5 text-sm print:hidden ${LINK_BUTTON}`}>
               <Compass className="size-4" aria-hidden />
