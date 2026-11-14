@@ -17,4 +17,5 @@ jobs:
       - name: Ask the app to refresh its openings
         env:
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
-        run: curl -sS -m 90 -H "Authorization: Bearer ${CRON_SECRET}" https://resumefit-three.vercel.app/api/cron/feed || true
+        run: |
+          curl -sS -m 90 -H "Authorization: Bearer ${CRON_SECRET}" https://resumefit-three.vercel.app/api/cron/feed || true
