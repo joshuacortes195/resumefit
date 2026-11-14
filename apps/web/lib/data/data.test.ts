@@ -1,9 +1,11 @@
+import { randomUUID } from "node:crypto";
 import { describe, expect, it } from "vitest";
+import { getDb, schema } from "@/db";
 import { getCurrentUser } from "@/lib/auth";
 import { createJob, findCard, latestScores, listJobs, samePosting, tidyCompany } from "./jobs";
 import { addedOn } from "@/lib/job-tabs";
 import { duplicateResume, getResume, listManagedResumes, listResumes, saveResume, setBaseResume } from "./resumes";
-import { addToDictionary, createScan, deleteScans, ensureCard, getScan, hashJd, listScans, previewOf, previousScan, scansToday, setScansArchived, updateScan } from "./scans";
+import { addToDictionary, createScan, deleteScans, ensureCard, getScan, hashJd, listScans, previewOf, previousScan, rankResumes, scansToday, setScansArchived, updateScan } from "./scans";
 
 const RESUME = `Jordan Lee
 Austin, TX | jordan.lee@example.com | (512) 555-0142
@@ -294,5 +296,27 @@ describe("company names from career sites", () => {
     const job = await createJob(user.id, { title: "Validation Intern", company: "100 Intel Corporation", url });
     const scan = await createScan(user.id, { resumeId: null, resumeText: RESUME, layout: null, jdText: `${JD}\nintel validation`, jobTitle: "Validation Intern", company: "100 Intel Corporation", jobUrl: url, jobId: job.id });
     expect([job.company, scan.company]).toEqual(["Intel Corporation", "Intel Corporation"]);
+  });
+});
+
+describe("the best resume for a job", () => {
+  it("scores every saved resume against the posting, best first, and only the person's own", async () => {
+    const db = await getDb();
+    const id = randomUUID();
+    const other = randomUUID();
+    await db.insert(schema.users).values([{ id, email: `rank-${id}@example.com` }, { id: other, email: `rank-${other}@example.com` }]);
+    const plain = await saveResume(id, { name: "Plain", text: RESUME });
+    const tailored = await saveResume(id, { name: "Tailored", text: `${RESUME}\nSkills\nTypeScript, React, Storybook\n` });
+    await saveResume(id, { name: "Off topic", text: "Sam Park\nsam@example.com\n\nWork Experience\nLine Cook, Corner Diner\nJan 2020 - Present\n• Ran the grill on weekend shifts\n" });
+    await saveResume(other, { name: "Someone else", text: `${RESUME}\nSkills\nTypeScript, React, Storybook, GraphQL\n` });
+    const scan = await createScan(id, { resumeId: plain.id, resumeText: RESUME, layout: null, jdText: JD });
+
+    const ranked = await rankResumes(id, scan);
+    expect(ranked.map((entry) => entry.name)).toEqual(["Tailored", "Plain", "Off topic"]);
+    expect(ranked[0]?.matchRate).toBeGreaterThan(ranked[1]?.matchRate ?? 0);
+    expect(ranked[1]?.matchRate).toBeGreaterThan(ranked[2]?.matchRate ?? 0);
+    // the one this scan used is marked, and scoring its text gives the scan's own number
+    expect(ranked.find((entry) => entry.current)).toMatchObject({ resumeId: plain.id, matchRate: scan.report.matchRate });
+    expect(ranked.some((entry) => entry.resumeId === tailored.id && !entry.current)).toBe(true);
   });
 });

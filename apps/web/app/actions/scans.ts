@@ -7,7 +7,7 @@ import { JOB_STATUSES } from "@resumefit/shared";
 import { and, eq } from "drizzle-orm";
 import { getDb, schema } from "@/db";
 import { getCurrentUser } from "@/lib/auth";
-import { addToDictionary, deleteScans, ensureCard, getScan, setScansArchived, updateScan } from "@/lib/data/scans";
+import { addToDictionary, deleteScans, ensureCard, getScan, rankResumes, setScansArchived, updateScan, type RankedResume } from "@/lib/data/scans";
 
 // what every action hands back, so the page can show a message when something is off
 export type ActionResult = { ok: true } | { ok: false; error: string };
@@ -151,4 +151,13 @@ export async function removeScans(scanIds: string[]): Promise<ActionResult> {
   await deleteScans(user.id, parsed.data);
   refresh();
   return { ok: true };
+}
+
+// scores every saved resume against this scan's posting, so the person can see which version fits the job best
+export async function compareResumes(scanId: string): Promise<({ ok: true; resumes: RankedResume[] }) | { ok: false; error: string }> {
+  if (!id.safeParse(scanId).success) return fail("That scan could not be found.") as { ok: false; error: string };
+  const user = await getCurrentUser();
+  const scan = await getScan(user.id, scanId);
+  if (!scan) return { ok: false, error: "That scan could not be found." };
+  return { ok: true, resumes: await rankResumes(user.id, scan) };
 }

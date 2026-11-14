@@ -372,3 +372,28 @@ export async function deleteScans(userId: string, ids: string[]): Promise<void> 
   const db = await getDb();
   await db.delete(schema.scans).where(and(eq(schema.scans.userId, userId), inArray(schema.scans.id, ids)));
 }
+
+// one saved resume scored against a posting
+export type RankedResume = { resumeId: string; name: string; matchRate: number; isBase: boolean; current: boolean };
+
+// the most resumes one comparison will score. each is a full scan, so this keeps a click quick
+const MAX_COMPARED = 60;
+
+// scores every saved resume against the posting of one scan and puts the best fit first.
+// it uses each resume's text only, with the same skills and settings as the scan itself, so the numbers can be compared with each other
+export async function rankResumes(userId: string, scan: SavedScan): Promise<RankedResume[]> {
+  const db = await getDb();
+  const [rows, dictionary, hints] = await Promise.all([
+    db.select({ id: schema.resumes.id, name: schema.resumes.name, isBase: schema.resumes.isBase, rawText: schema.resumes.rawText }).from(schema.resumes).where(eq(schema.resumes.userId, userId)).orderBy(desc(schema.resumes.updatedAt)).limit(MAX_COMPARED),
+    getDictionary(userId),
+    cachedHints(hashJd(scan.jdText)),
+  ]);
+  const ranked = rows
+    .flatMap((row) => (row.rawText?.trim() ? [{ ...row, rawText: row.rawText }] : []))
+    .map((row) => {
+      const result = runScan({ resumeText: row.rawText, jdText: scan.jdText, jobTitle: scan.jobTitleOverride ?? scan.jobTitle, jobUrl: scan.jobUrl, educationOverride: scan.educationOverride, customSkills: scan.customSkills, layout: null, today: scan.createdAt, hints }, dictionary);
+      return { resumeId: row.id, name: row.name, matchRate: result.matchRate, isBase: row.isBase, current: row.id === scan.resumeId };
+    });
+  // best first, and on a tie the one this scan already used, then the base resume
+  return ranked.sort((a, b) => b.matchRate - a.matchRate || Number(b.current) - Number(a.current) || Number(b.isBase) - Number(a.isBase));
+}

@@ -14,6 +14,7 @@ import { SkillsSection } from "@/components/report/skills-section";
 import { Tour, type TourStep } from "@/components/report/tour";
 import { ScanForm, type ResumeOption } from "@/components/scan-form";
 import { AtsView } from "@/components/report/ats-view";
+import { BestResume } from "@/components/report/best-resume";
 import { WhyScore } from "@/components/report/why-score";
 import { ScoreRing } from "@/components/score-ring";
 import { CARD, INPUT, LINK_BUTTON, PRIMARY_BUTTON, SECONDARY_BUTTON } from "@/components/ui/buttons";
@@ -211,6 +212,8 @@ export function Report({ data, resumes }: { data: ReportData; resumes: ResumeOpt
             </ul>
 
             <WhyScore report={report} onJump={() => setTab("report")} />
+            {/* which saved resume to send for this job. not on the sample, which has no account behind it */}
+            {!readOnly && <BestResume scanId={data.id} jdText={data.jdText} matchRate={report.matchRate} />}
 
             <button type="button" onClick={() => setTouring(true)} className={`mt-5 inline-flex items-center gap-1.5 text-sm print:hidden ${LINK_BUTTON}`}>
               <Compass className="size-4" aria-hidden />

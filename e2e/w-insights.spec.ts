@@ -29,6 +29,19 @@ test("the report explains its score, shows what an applicant system reads, and s
   await expect(rules).toContainText('"Must be a U.S. citizen."');
   await expect(rules).toContainText("does not sponsor visas");
   await expect(rules).toContainText("expects you in person");
+
+  // every saved resume scored against this job in one press, and a better one can be switched to
+  await page.getByRole("button", { name: "Which of my resumes fits best?" }).click();
+  const mine = page.getByRole("region", { name: "Your resumes for this job" });
+  await expect(mine.getByRole("listitem").first()).toContainText("%");
+  await expect(mine).toContainText("(this scan)");
+  const other = mine.getByRole("button", { name: "Use it" }).first();
+  if (await other.count()) {
+    const before = page.url();
+    await other.click();
+    await expect(page).not.toHaveURL(before);
+    await expect(page).toHaveURL(/\/scans\/[0-9a-f-]{36}$/);
+  }
 });
 
 test("the results page adds the tracker up and offers a follow up note for an application gone quiet", async ({ page, request, context }) => {
