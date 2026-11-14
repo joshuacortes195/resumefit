@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { BOARDS } from "./job-boards";
-import { fitLabel, fitScore, htmlToText, profileResume, searchJobs, yearsWanted, type FeedJob } from "./jobs-feed";
+import { fitLabel, fitScore, htmlToText, inPlace, profileResume, searchJobs, yearsWanted, type FeedJob } from "./jobs-feed";
 
 const SKILLS = [{ name: "SQL" }, { name: "Tableau" }, { name: "Python" }, { name: "React" }, { name: "TypeScript" }, { name: "Excel" }];
 
@@ -183,6 +183,46 @@ describe("searchJobs", () => {
     ]);
     expect(searchJobs(JOBS, ANY, null).map((result) => result.id)).toEqual(["c", "b", "e", "a", "d"]);
     expect(searchJobs(JOBS, ANY, null)[0]?.fit).toBeNull();
+  });
+
+  it("finds a job by the other words people use for it, and falls back to close matches when nothing fits every word", () => {
+    const pool = [
+      job({ id: "f1", title: "Embedded Software Engineer Intern", company: "Skydio", intern: true }),
+      job({ id: "f2", title: "Flight Software Intern", company: "Rocket Lab", intern: true }),
+      job({ id: "f3", title: "Firmware Engineer", company: "Zoox" }),
+      job({ id: "f4", title: "Account Executive", company: "Ramp" }),
+      job({ id: "f5", title: "Software Engineer, Early Career", company: "Nuro", intern: true }),
+      job({ id: "f6", title: "Backend Engineer", company: "Linear", skills: ["Embedded C"] }),
+    ];
+    const ids = (query: string) => searchJobs(pool, { ...ANY, query }, null).map((result) => `${result.id}${result.close ? "~" : ""}`).sort();
+    // firmware and embedded are the same job, and a role marked as an internship counts as one whatever its title says
+    // an internship that is not about firmware only shares the word intern, which is not enough to be close
+    expect(ids("firmware intern")).toEqual(["f1", "f3~", "f6~"]);
+    expect(ids("embedded")).toEqual(["f1", "f3", "f6"]);
+    expect(ids("frontend developer")).toEqual([]);
+    // only the level matching is not a match
+    expect(ids("senior engineer zzz")).toEqual([]);
+    expect(ids("account")).toEqual(["f4"]);
+  });
+
+  it("reads a state either way, and never takes a short word for part of a longer one", () => {
+    expect(inPlace("San Mateo, California, United States", "CA")).toBe(true);
+    expect(inPlace("Long Beach, CA", "california")).toBe(true);
+    expect(inPlace("Vancouver, Canada", "CA")).toBe(false);
+    expect(inPlace("Chicago, IL", "ca")).toBe(false);
+    expect(inPlace("Portland, OR", "or")).toBe(true);
+    expect(inPlace("New York, NY", "york")).toBe(true);
+    expect(inPlace("Anywhere", "")).toBe(true);
+  });
+
+  it("keeps a list sorted by date to jobs that suit the resume, when enough of them do", () => {
+    const suited = Array.from({ length: 12 }, (_, index) => job({ id: `s${index}`, title: `Data Analyst ${index}`, company: `Co ${index}`, skills: ["SQL", "Tableau", "Excel"], postedAt: `2026-09-${String(index + 1).padStart(2, "0")}T00:00:00Z` }));
+    const newest = job({ id: "vp", title: "Regional Vice President, Sales", company: "Elsewhere", postedAt: "2026-10-30T00:00:00Z" });
+    const byDate = searchJobs([newest, ...suited], { ...ANY, sort: "date" }, profile).map((result) => result.id);
+    expect(byDate).not.toContain("vp");
+    expect(byDate[0]).toBe("s11");
+    // with no resume there is nothing to judge by, so newest is simply newest
+    expect(searchJobs([newest, ...suited], { ...ANY, sort: "date" }, null)[0]?.id).toBe("vp");
   });
 
   it("shows a role once even when it is posted in several cities, and does not let one company fill the page", () => {

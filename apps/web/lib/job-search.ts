@@ -43,7 +43,7 @@ function job(provider: string, id: string, fields: { title: string; company: str
     id: `${provider}:jobs:${id.replace(/[^\w-]/g, "_").slice(0, 120)}`,
     // some sites put bold tags around the words that matched
     title: htmlToText(fields.title).replace(/\s+/g, " ").trim(),
-    company: fields.company.trim(),
+    company: htmlToText(fields.company).replace(/\s+/g, " ").trim(),
     domain: "",
     location: fields.location.trim(),
     remote: fields.remote ?? /\bremote\b/i.test(`${fields.location} ${fields.title}`),

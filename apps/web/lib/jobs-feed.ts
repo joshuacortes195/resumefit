@@ -293,6 +293,8 @@ export function profileResume(resumeText: string, skills: SkillTerm[] = HARD_SKI
 
 // a posting has to name this many skills before matching all of them counts in full. three matching buzzwords are thin proof of a fit
 const FULL_SKILL_EVIDENCE = 4;
+// the lowest fit that still counts as a job for this person, used when a list is sorted by date
+const FIT_FLOOR = 20;
 
 // how well an opening suits a resume, 0 to 100. it starts from the share of the posting's skills the resume has and how close the title is to ones already held,
 // then is cut down when the job is a different kind of work, or asks for far more (or far fewer) years than the resume shows. nothing is ever added, so there is no floor
@@ -366,37 +368,93 @@ export async function fieldJobs(categories: string[], level: string | null, page
 
 export type JobSearch = { query: string; location: string; remoteOnly: boolean; internOnly: boolean; days: number | null; sort: "relevance" | "date" };
 
-// a search result, with how well it suits the resume when one was given
-export type JobResult = FeedJob & { fit: number | null };
+// a search result, with how well it suits the resume when one was given.
+// close is set on a result that matched most of the words typed but not all of them, shown when nothing matched every word
+export type JobResult = FeedJob & { fit: number | null; close?: boolean };
+
+// words people use for the same kind of job. typing one finds postings that say another
+const ALIKE: string[][] = [
+  ["firmware", "embedded"],
+  ["frontend", "front-end", "front end"],
+  ["backend", "back-end", "back end"],
+  ["fullstack", "full-stack", "full stack"],
+  ["ml", "machine learning"],
+  ["ai", "artificial intelligence"],
+  ["qa", "quality assurance", "test"],
+  ["devops", "sre", "site reliability", "infrastructure"],
+  ["intern", "internship", "co-op", "coop"],
+  ["developer", "engineer"],
+  ["swe", "software engineer"],
+  ["pm", "product manager"],
+  ["ux", "user experience", "product designer"],
+  ["ios", "android", "mobile"],
+];
+// words that say what level or family a job is, not what it is about. matching only these is not a match
+const BROAD = new Set(["engineer", "engineering", "developer", "software", "intern", "internship", "senior", "junior", "staff", "lead", "manager", "associate", "analyst", "specialist", "new", "grad", "remote"]);
+
+// true when a job's own words cover one typed word, in any of the ways that word gets said
+function covers(haystack: string, job: Pick<FeedJob, "intern">, word: string): boolean {
+  if (haystack.includes(word)) return true;
+  const group = ALIKE.find((entry) => entry.includes(word));
+  if (!group) return false;
+  // "intern" also finds a role marked as one, whatever its title calls it
+  return (group.includes("intern") && job.intern) || group.some((other) => haystack.includes(other));
+}
+
+// the fifty states, so "CA" finds California and never Canada
+const STATES: Record<string, string> = { al: "alabama", ak: "alaska", az: "arizona", ar: "arkansas", ca: "california", co: "colorado", ct: "connecticut", de: "delaware", fl: "florida", ga: "georgia", hi: "hawaii", id: "idaho", il: "illinois", in: "indiana", ia: "iowa", ks: "kansas", ky: "kentucky", la: "louisiana", me: "maine", md: "maryland", ma: "massachusetts", mi: "michigan", mn: "minnesota", ms: "mississippi", mo: "missouri", mt: "montana", ne: "nebraska", nv: "nevada", nh: "new hampshire", nj: "new jersey", nm: "new mexico", ny: "new york", nc: "north carolina", nd: "north dakota", oh: "ohio", ok: "oklahoma", or: "oregon", pa: "pennsylvania", ri: "rhode island", sc: "south carolina", sd: "south dakota", tn: "tennessee", tx: "texas", ut: "utah", vt: "vermont", va: "virginia", wa: "washington", wv: "west virginia", wi: "wisconsin", wy: "wyoming", dc: "district of columbia" };
+
+// true when a posting's location is the place asked for. a state can be typed either way, and a short word has to stand on its own
+export function inPlace(location: string, place: string): boolean {
+  const wanted = place.trim().toLowerCase();
+  if (!wanted) return true;
+  const where = location.toLowerCase();
+  const whole = (word: string) => new RegExp(`(^|[^a-z])${word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}([^a-z]|$)`).test(where);
+  const full = STATES[wanted];
+  const short = Object.keys(STATES).find((code) => STATES[code] === wanted);
+  if (full) return whole(wanted) || where.includes(full);
+  if (short) return where.includes(wanted) || whole(short);
+  return wanted.length <= 3 ? whole(wanted) : where.includes(wanted);
+}
 
 // filters and ranks openings. with a resume the best fits come first, without one the newest do
 export function searchJobs(jobs: FeedJob[], search: JobSearch, profile: ResumeProfile | null, limit = 60): JobResult[] {
   const words = search.query.toLowerCase().split(/\s+/).filter(Boolean);
-  const place = search.location.trim().toLowerCase();
   const since = search.days ? Date.now() - search.days * 86_400_000 : null;
 
   const seen = new Set<string>();
   const kept: JobResult[] = [];
+  const near: JobResult[] = [];
   for (const job of jobs) {
-    const haystack = `${job.title} ${job.company}`.toLowerCase();
-    // an opening a job site found for these very words already matched, often on its description, so it is not asked to match again
-    if (!job.via && words.length > 0 && !words.every((word) => haystack.includes(word))) continue;
-    if (place && !job.location.toLowerCase().includes(place)) continue;
+    if (!inPlace(job.location, search.location)) continue;
     if (search.remoteOnly && !job.remote) continue;
     if (search.internOnly && !job.intern) continue;
     if (since && (!job.postedAt || new Date(job.postedAt).getTime() < since)) continue;
+    // an opening a job site found for these very words already matched, often on its description, so it is not asked to match again
+    const haystack = `${job.title} ${job.company} ${job.skills.join(" ")}`.toLowerCase();
+    const matched = job.via ? words : words.filter((word) => covers(haystack, job, word));
+    const all = matched.length === words.length;
+    // most of the words, and at least one that says what the job is about, is close enough to show when nothing matches them all
+    const almost = !all && matched.length * 2 >= words.length && matched.some((word) => !BROAD.has(word));
+    if (!all && !almost) continue;
     // the same role is often posted once per city, one card is enough
     const twin = `${job.company}|${job.title}`.toLowerCase();
     if (seen.has(twin)) continue;
     seen.add(twin);
-    kept.push({ ...job, fit: profile ? fitScore(job, profile) : null });
+    (all ? kept : near).push({ ...job, fit: profile ? fitScore(job, profile) : null, ...(all ? {} : { close: true }) });
   }
 
   const byDate = (a: JobResult, b: JobResult) => (b.postedAt ?? "").localeCompare(a.postedAt ?? "");
-  kept.sort((a, b) => (search.sort === "date" || !profile ? byDate(a, b) : (b.fit ?? -1) - (a.fit ?? -1) || byDate(a, b)));
+  const byFit = (a: JobResult, b: JobResult) => (b.fit ?? -1) - (a.fit ?? -1) || byDate(a, b);
+  // newest first still means newest of the jobs that suit the resume, when enough of them do. nobody wants the newest sales job on an engineer's list
+  const suited = search.sort === "date" && profile ? kept.filter((job) => (job.fit ?? 0) >= FIT_FLOOR) : kept;
+  const pool = suited.length >= 10 ? suited : kept;
+  pool.sort(search.sort === "date" || !profile ? byDate : byFit);
+  // close matches only come in when the exact ones are few, and always after them
+  const ranked = pool.length >= 10 ? pool : [...pool, ...near.sort(profile ? byFit : byDate)];
   // no more than a handful from any one company near the top, so one big employer does not fill the page
   const perCompany = new Map<string, number>();
-  const spread = kept.filter((job) => {
+  const spread = ranked.filter((job) => {
     const count = (perCompany.get(job.company) ?? 0) + 1;
     perCompany.set(job.company, count);
     return count <= 6;

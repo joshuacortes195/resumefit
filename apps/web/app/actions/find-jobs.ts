@@ -32,7 +32,7 @@ const searchSchema = z.object({
 });
 
 // searches the saved openings, ranked by how well each one suits the chosen resume
-export async function findJobs(input: z.input<typeof searchSchema>): Promise<Result<{ jobs: JobResult[]; total: number; resumeName: string | null; gathering: boolean; lookedFor: string | null; sources: string[] }>> {
+export async function findJobs(input: z.input<typeof searchSchema>): Promise<Result<{ jobs: JobResult[]; total: number; resumeName: string | null; gathering: boolean; lookedFor: string | null; sources: string[]; elsewhere: boolean; close: number }>> {
   const parsed = searchSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: "Check the search and try again." };
   const user = await getCurrentUser();
@@ -102,11 +102,14 @@ export async function findJobs(input: z.input<typeof searchSchema>): Promise<Res
   }
 
   // an opening found by its description may not have every typed word in its title, the job site already matched it
-  const jobs = searchJobs([...pool.jobs, ...wider], parsed.data, profile);
+  let jobs = searchJobs([...pool.jobs, ...wider], parsed.data, profile);
+  // nothing in the place asked for: show the same search everywhere and say so, which beats an empty page
+  const elsewhere = jobs.length === 0 && parsed.data.location !== "";
+  if (elsewhere) jobs = searchJobs([...pool.jobs, ...wider], { ...parsed.data, location: "" }, profile);
   took.total = Date.now() - started;
   // where the time went, in the server log, so a slow search can be explained afterwards
   if (took.total > 3000) console.info(`find jobs took ${took.total} ms: ${Object.entries(took).map(([name, at]) => `${name} done at ${at}`).join(", ")}, ${pool.jobs.length} saved openings${widerLate ? ", wider site left out" : ""}`);
-  return { ok: true, jobs, total: pool.jobs.length + wider.length, resumeName: profile ? (chosen?.name ?? null) : null, gathering: pool.boards < BOARDS.length || widerLate, lookedFor: typed ? null : lookedFor || null, sources: liveSources() };
+  return { ok: true, jobs, total: pool.jobs.length + wider.length, resumeName: profile ? (chosen?.name ?? null) : null, gathering: pool.boards < BOARDS.length || widerLate, lookedFor: typed ? null : lookedFor || null, sources: liveSources(), elsewhere, close: jobs.filter((job) => job.close).length };
 }
 
 // the full text of one opening

@@ -63,8 +63,11 @@ export function FindJobs({ resumes, autoApply = false }: { resumes: ResumeOption
       setDescription(null);
       // with nothing typed, the job sites were asked for the newest title on the resume, and the line says so
       const asked = result.lookedFor && result.sources.length > 0 ? ` We also asked ${result.sources.join(", ")} for "${result.lookedFor}", the newest title on your resume.` : "";
+      // when the search had to be widened, the line says how, so the list is never a surprise
+      const exact = result.jobs.length - result.close;
+      const widened = `${result.elsewhere ? ` Nothing in ${location.trim()} right now, so these are from everywhere.` : ""}${result.close > 0 ? (exact === 0 ? ` Nothing matched every word of "${query.trim()}", so these are the closest.` : ` ${exact} matched every word, the rest are close.`) : ""}`;
       setSummary(
-        `${result.jobs.length} shown, from ${result.total.toLocaleString("en-US")} open jobs${result.resumeName ? `, ranked for ${result.resumeName}` : ""}.${asked}${result.gathering ? " We are still gathering jobs, so this list will grow over the next few minutes." : ""}`,
+        `${result.jobs.length} shown, from ${result.total.toLocaleString("en-US")} open jobs${result.resumeName ? `, ranked for ${result.resumeName}` : ""}.${widened}${asked}${result.gathering ? " We are still gathering jobs, so this list will grow over the next few minutes." : ""}`,
       );
     });
   }
@@ -246,6 +249,8 @@ export function FindJobs({ resumes, autoApply = false }: { resumes: ResumeOption
                     <span className="mt-0.5 block truncate text-sm text-muted">{[job.company, job.location].filter(Boolean).join(", ")}</span>
                     <span className="mt-1.5 flex flex-wrap items-center gap-2 text-xs text-muted">
                       <FitBadge fit={job.fit} />
+                      {/* matched most of the words typed, not all of them */}
+                      {job.close && <span className="rounded-full border border-border px-2 py-0.5 text-xs text-muted">Close match</span>}
                       {[age(job.postedAt), job.remote ? "Remote" : ""].filter(Boolean).join(", ")}
                     </span>
                   </span>
