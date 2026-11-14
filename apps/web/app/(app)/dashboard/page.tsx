@@ -8,8 +8,10 @@ import { JobScore, ScoreRing } from "@/components/score-ring";
 import { CARD, LINK_BUTTON } from "@/components/ui/buttons";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getCurrentUser } from "@/lib/auth";
+import { FollowUps } from "@/components/follow-ups";
 import { listWaiting } from "@/lib/data/applications";
-import { getCoverLetter, listJobs, nextInterview } from "@/lib/data/jobs";
+import { summarize } from "@/lib/stats";
+import { getCoverLetter, listJobs, nextInterview, statJobs } from "@/lib/data/jobs";
 import { featureFlags } from "@/lib/data/settings";
 import { listLinkedinReports } from "@/lib/data/practice";
 import { LocalTime } from "@/components/local-time";
@@ -43,6 +45,11 @@ export default function DashboardPage() {
       {/* applications that are filled in and waiting on one answer */}
       <Suspense fallback={null}>
         <WaitingNote />
+      </Suspense>
+
+      {/* applications that have gone two weeks without an answer */}
+      <Suspense fallback={null}>
+        <FollowUpNote />
       </Suspense>
 
       {/* the scan form, right on the dashboard */}
@@ -246,4 +253,11 @@ async function WaitingNote() {
       <span className="shrink-0 font-semibold text-primary">Answer now</span>
     </Link>
   );
+}
+
+// the applications worth a nudge, with a note ready to copy. nothing shows until one has waited two weeks
+async function FollowUpNote() {
+  const user = await getCurrentUser();
+  const { followUps } = summarize(await statJobs(user.id));
+  return <FollowUps jobs={followUps} name={user.name} limit={3} />;
 }

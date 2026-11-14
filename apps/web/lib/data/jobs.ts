@@ -1,4 +1,5 @@
 import { and, asc, count, desc, eq, gte, inArray, max } from "drizzle-orm";
+import type { StatJob } from "@/lib/stats";
 import type { JobStatus } from "@resumefit/shared";
 import { getDb, schema } from "@/db";
 import { isUuid } from "@/lib/ids";
@@ -278,4 +279,16 @@ export async function saveCoverLetter(userId: string, jobId: string, content: st
   }
   const [row] = await db.insert(schema.coverLetters).values({ userId, jobId, content, tone }).returning({ id: schema.coverLetters.id });
   if (row) await db.update(schema.jobs).set({ coverLetterId: row.id }).where(eq(schema.jobs.id, jobId));
+}
+
+// every job the person has, archived ones too, with its latest score and the name of the resume that went with it. for the numbers page
+export async function statJobs(userId: string): Promise<StatJob[]> {
+  const db = await getDb();
+  const rows = await db
+    .select({ id: schema.jobs.id, title: schema.jobs.title, company: schema.jobs.company, status: schema.jobs.status, dateApplied: schema.jobs.dateApplied, createdAt: schema.jobs.createdAt, archived: schema.jobs.archived, resumeName: schema.resumes.name })
+    .from(schema.jobs)
+    .leftJoin(schema.resumes, eq(schema.jobs.resumeId, schema.resumes.id))
+    .where(eq(schema.jobs.userId, userId));
+  const scores = await latestScores(userId, rows.map((row) => row.id));
+  return rows.map((row) => ({ ...row, matchRate: scores.get(row.id)?.matchRate ?? null }));
 }

@@ -1,7 +1,7 @@
 import { expect, test } from "./fixtures";
 
 // pages that show dates or times. by this point in the run the earlier tests have left scans, resumes, jobs and sessions behind
-const PAGES = ["/scans", "/resumes", "/tracker", "/dashboard", "/interview", "/linkedin", "/extension", "/admin", "/settings", "/jobs"];
+const PAGES = ["/scans", "/resumes", "/tracker", "/dashboard", "/interview", "/linkedin", "/extension", "/admin", "/settings", "/jobs", "/stats", "/applications"];
 
 // two timezones at the far ends of the clock. whatever the time is when this runs, in at least one of them
 // today's date is not the same as the server's, which is exactly when the server and the browser used to write different text

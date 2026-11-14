@@ -13,6 +13,7 @@ import { HighlightedText, HighlightLegend } from "@/components/report/highlighte
 import { SkillsSection } from "@/components/report/skills-section";
 import { Tour, type TourStep } from "@/components/report/tour";
 import { ScanForm, type ResumeOption } from "@/components/scan-form";
+import { AtsView } from "@/components/report/ats-view";
 import { WhyScore } from "@/components/report/why-score";
 import { ScoreRing } from "@/components/score-ring";
 import { CARD, INPUT, LINK_BUTTON, PRIMARY_BUTTON, SECONDARY_BUTTON } from "@/components/ui/buttons";
@@ -34,7 +35,7 @@ const TOUR: TourStep[] = [
 export function Report({ data, resumes }: { data: ReportData; resumes: ResumeOption[] }) {
   const router = useRouter();
   const { report, readOnly } = data;
-  const [tab, setTab] = useState<"report" | "jd">("report");
+  const [tab, setTab] = useState<"report" | "ats" | "jd">("report");
   const [dialog, setDialog] = useState<Dialog>(null);
   const [touring, setTouring] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -220,6 +221,7 @@ export function Report({ data, resumes }: { data: ReportData; resumes: ResumeOpt
             onChange={setTab}
             tabs={[
               { key: "report", label: "Resume report" },
+              { key: "ats", label: "What the ATS sees" },
               { key: "jd", label: "Job description" },
             ]}
           />
@@ -269,6 +271,11 @@ export function Report({ data, resumes }: { data: ReportData; resumes: ResumeOpt
                 </div>
               </section>
             ))}
+          </div>
+
+          {/* the resume as an applicant system reads it into its form */}
+          <div className={`animate-swap pt-6 ${tab === "ats" ? "" : "hidden"} print:hidden`}>
+            <AtsView resume={report.resume} />
           </div>
 
           {/* the job description with every skill marked */}

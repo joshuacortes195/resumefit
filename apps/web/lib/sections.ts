@@ -8,6 +8,8 @@ export const SECTIONS = [
   { key: "tracker", prefix: "/tracker" },
   // the list of filled in applications belongs with the tracker
   { key: "tracker", prefix: "/applications" },
+  // and so do the numbers the tracker adds up to
+  { key: "tracker", prefix: "/stats" },
   { key: "jobs", prefix: "/jobs" },
   { key: "builder", prefix: "/builder" },
   { key: "resumes", prefix: "/resumes" },
