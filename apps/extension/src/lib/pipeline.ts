@@ -6,10 +6,12 @@ import { profileValues } from "./values";
 export type Ask = <T>(request: PageRequest) => Promise<T>;
 
 // the calls a fill needs from the web app, swapped out in tests
-export type FillSource = Pick<typeof api, "resumeFile" | "coverLetterFile" | "answer">;
+export type FillSource = Pick<typeof api, "resumeFile" | "coverLetterFile" | "answer"> & Partial<Pick<typeof api, "savedAnswer">>;
 
 // how many written answers one fill will draft, so a long form does not eat the day's allowance
 export const MAX_DRAFTS = 6;
+// how many empty required answers one fill will look up in what the person answered before
+export const MAX_LOOKUPS = 12;
 
 // true for a written question worth answering without being asked: one that has to be answered, or really is a question
 export function worthDrafting(field: FieldReport): boolean {
@@ -55,6 +57,19 @@ export async function fillEverything(ask: Ask, account: Account, options: FillOp
       swap(await ask<FieldReport | null>({ type: "set-field", id: question.id, value: result.answer, status: result.source === "saved" ? "filled" : "review" }));
     } catch {
       // no answer this time, the field stays red for the person
+    }
+  }
+  // required answers the profile had nothing for: use what the person answered before, for this job or saved for all of them.
+  // nothing is drafted here, a choice like "how did you hear about us" is never guessed
+  const lookup = source.savedAnswer;
+  if (lookup) {
+    for (const empty of fields.filter((field) => field.status === "missing" && field.kind !== "file" && field.fresh !== false && field.label.trim().length > 1).slice(0, MAX_LOOKUPS)) {
+      try {
+        const { answer } = await lookup({ question: empty.label.slice(0, 500), jobId: options.jobId ?? undefined });
+        if (answer) swap(await ask<FieldReport | null>({ type: "set-field", id: empty.id, value: answer, status: "filled", key: empty.key ?? undefined }));
+      } catch {
+        // still empty, and still the person's to answer
+      }
     }
   }
   return { fields, resume, coverLetter };

@@ -8,7 +8,12 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { TableSkeleton } from "@/components/ui/skeleton";
 import { runLabel, type RunLabel } from "@/lib/application-status";
 import { getCurrentUser } from "@/lib/auth";
-import { listApplications } from "@/lib/data/applications";
+import { AutoApplySetup } from "@/components/auto-apply-setup";
+import { NeedsYou } from "@/components/needs-you";
+import { listApplications, listWaiting } from "@/lib/data/applications";
+import { extensionStatus } from "@/lib/data/extension";
+import { getProfile, profileReady } from "@/lib/data/profile";
+import { listResumes } from "@/lib/data/resumes";
 import { featureFlags } from "@/lib/data/settings";
 
 export const metadata = { title: "All Applications" };
@@ -32,19 +37,28 @@ export default function ApplicationsPage() {
 // the list itself
 async function Runs() {
   const user = await getCurrentUser();
-  const [runs, flags] = await Promise.all([listApplications(user.id), featureFlags()]);
+  const [runs, flags, waiting, profile, resumes, extension] = await Promise.all([listApplications(user.id), featureFlags(), listWaiting(user.id), getProfile(user.id), listResumes(user.id), extensionStatus(user.id)]);
+  // the one time setup, shown until it is done
+  const setup = flags.autoApply ? <AutoApplySetup hasResume={resumes.length > 0} profileReady={profileReady(profile)} sending={profile.autoSend !== "off"} everConnected={extension.connected} /> : null;
 
   if (runs.length === 0) {
     return (
+      <>
+      {setup}
       <EmptyState icon={ClipboardList} title="No applications yet" text={flags.autoApply ? "Open a job on your tracker and press Auto Apply. The extension fills in the form, and you check it and press Submit unless you asked for it to be sent for you." : "Auto Apply is switched off for now."}>
         <Link href="/tracker" className={SECONDARY_BUTTON}>
           Open the tracker
         </Link>
       </EmptyState>
+      </>
     );
   }
 
   return (
+    <>
+    {setup}
+    {/* what is waiting on the person comes first */}
+    {flags.autoApply && <NeedsYou runs={waiting} />}
     <div className={CARD}>
       {/* on a phone the form and date columns step aside, so the table never runs off the screen */}
       <table className="w-full table-fixed text-sm sm:table-auto">
@@ -77,6 +91,8 @@ async function Runs() {
                 </th>
                 <td className="px-4 py-3">
                   <span className={`inline-block rounded-full px-2.5 py-1 text-xs font-medium sm:whitespace-nowrap ${TONES[label.tone]}`}>{label.text}</span>
+                  {/* a form we cannot send says why, so it is clear this one is finished on the job site */}
+                  {run.stuck && run.stuck !== "Sending is switched off in your application profile." && <span className="mt-1 block text-xs text-muted">Yours to finish. {run.stuck}</span>}
                 </td>
                 <td className="hidden px-4 py-3 text-muted md:table-cell">
                   {run.ats ? `${run.ats}, ` : ""}
@@ -103,5 +119,6 @@ async function Runs() {
         </tbody>
       </table>
     </div>
+    </>
   );
 }

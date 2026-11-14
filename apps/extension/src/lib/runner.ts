@@ -1,6 +1,6 @@
 import type { ApplicationReport } from "./api";
 import { fillEverything, pickResume, tally, type Ask, type FillSource } from "./pipeline";
-import { sendApplication, whyNotSend } from "./send";
+import { sendApplication, stuckOn, waitingOn, whyNotSend } from "./send";
 import type { Account, FieldReport, PageInfo } from "./types";
 
 // one application to work through: the posting or the form, and the tracker card and resume it is for
@@ -48,15 +48,17 @@ export async function runApplication(account: Account, job: RunJob, hooks: RunHo
   const { filled, needs } = tally(result.fields);
   const coverLetter = result.coverLetter !== null && result.fields.some((field) => field.key === "coverLetter" && field.status === "filled");
   const filledIn = { ...base, fieldsFilled: filled, fieldsNeedingAttention: needs, answers: answersOf(result.fields), coverLetter };
-  await hooks.report({ ...filledIn, status: "needs_review" }).catch(() => undefined);
-
   // the form may have changed while it was filled, a captcha can show up late
   const now = await hooks.ask<PageInfo>({ type: "read-page" }).catch(() => page);
-  const held = whyNotSend({ ...page, captcha: now.captcha }, result.fields, account);
+  const after = { ...page, captcha: now.captcha };
+  // a form we can never send is the person's to finish. any other is only waiting on their answers
+  const stuck = stuckOn(after, account);
+  await hooks.report({ ...filledIn, status: "needs_review", stuck, waiting: stuck ? [] : waitingOn(result.fields, account, page.job?.company) }).catch(() => undefined);
+  const held = whyNotSend(after, result.fields, account);
   if (held) return { sent: false, reason: held, filled, needs };
 
   const send = await sendApplication(hooks.ask, hooks.pause);
   if (!send.sent) return { sent: false, reason: send.reason ?? "The form was not sent.", filled, needs };
-  await hooks.report({ ...filledIn, status: "applied", fieldsNeedingAttention: 0, sentBy: "auto" }).catch(() => undefined);
+  await hooks.report({ ...filledIn, status: "applied", fieldsNeedingAttention: 0, sentBy: "auto", waiting: [], stuck: null }).catch(() => undefined);
   return { sent: true, reason: null, filled, needs };
 }

@@ -65,7 +65,12 @@ chrome.runtime.onMessageExternal.addListener((message: { type?: string; token?: 
     return true;
   }
   // says we are here, and that this version knows how to fill in applications
-  if (message.type === "resumefit-ping") respond({ ok: true, version: chrome.runtime.getManifest().version, autoApply: true, autoSend: true });
+  if (message.type === "resumefit-ping") {
+    void Promise.all([getConnection(), chrome.permissions.contains({ origins: ["https://*/*"] })]).then(([connection, allowed]) =>
+      respond({ ok: true, version: chrome.runtime.getManifest().version, autoApply: true, autoSend: true, connected: connection?.apiBase === origin, allowed }),
+    );
+    return true;
+  }
   return false;
 });
 
@@ -181,7 +186,9 @@ async function runOne(job: RunJob): Promise<RunOutcome> {
     if (tabId !== undefined) void chrome.tabs.remove(tabId).catch(() => undefined);
     note("Application sent", "It is on your tracker under Applied, with the answers that went out.");
   } else {
-    note("Application left for you", `${outcome.reason ?? "It was not sent."} The tab is open with what we filled in.`);
+    // a job on the tracker can be answered and sent again from the app, so its tab does not pile up
+    if (tabId !== undefined && job.jobId) void chrome.tabs.remove(tabId).catch(() => undefined);
+    note("One application needs you", `${outcome.reason ?? "It was not sent."} Click to answer it in ResumeFit.`);
   }
   return outcome;
 }
@@ -190,6 +197,12 @@ async function runOne(job: RunJob): Promise<RunOutcome> {
 function note(title: string, message: string): void {
   void chrome.notifications?.create({ type: "basic", iconUrl: "icon-128.png", title, message });
 }
+
+// clicking a notice opens the list of applications, where anything waiting on the person can be answered
+chrome.notifications?.onClicked.addListener((id) => {
+  void chrome.notifications.clear(id);
+  void getConnection().then((connection) => connection && chrome.tabs.create({ url: `${connection.apiBase}/applications` }));
+});
 
 // the worker can be put to sleep mid line, so anything still waiting is picked up when it wakes
 void drain();

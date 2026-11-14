@@ -91,6 +91,10 @@ export type ApplicationReport = {
   coverLetter?: boolean;
   // auto when we pressed Submit because the person asked us to
   sentBy?: "me" | "auto";
+  // what the form is waiting on the person for, so they can answer it from the web app
+  waiting?: { label: string; written: boolean; options?: string[] }[];
+  // set when the form can never be sent for the person, so answering in the app would not help
+  stuck?: string | null;
   // the person's own date, so the date applied matches their calendar
   today?: string;
 };
@@ -106,6 +110,8 @@ export const api = {
   coverLetterFile: (jobId: string) => call<FileData>(`cover-letter?jobId=${encodeURIComponent(jobId)}`),
   // an answer to a written question: the person's saved one when it fits, otherwise a draft to check
   answer: (input: { question: string; jdText: string; resumeId?: string; jobId?: string }) => call<{ answer: string; source: "saved" | "ai"; remaining?: number | null }>("answer", input),
+  // only an answer the person gave before, for this job or saved for every job. null when there is none, and nothing is drafted
+  savedAnswer: (input: { question: string; jobId?: string }) => call<{ answer: string | null }>("answer", { ...input, jdText: "", savedOnly: true }),
   // tells the web app how a fill went, so it shows on the tracker and under All Applications
   reportApplication: (report: ApplicationReport) => call<{ id: string }>("applications", report),
 };

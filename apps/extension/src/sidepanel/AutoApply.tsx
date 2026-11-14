@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { api, type ApplicationReport } from "../lib/api";
 import { getPending, type PendingApply } from "../lib/pending";
 import { fillEverything, pickResume, tally } from "../lib/pipeline";
-import { sendApplication, whyNotSend } from "../lib/send";
+import { sendApplication, stuckOn, waitingOn, whyNotSend } from "../lib/send";
 import type { Account, FieldReport, PageInfo } from "../lib/types";
 import { activeTab, askPage, localToday, readPage } from "./page";
 
@@ -64,7 +64,7 @@ export function AutoApply({ page, account, jobId: cardId, open, onPage }: AutoAp
   // tells the web app how the run is going. a failed report never gets in the way of the fill
   const report = (status: ApplicationReport["status"], now: FieldReport[], extra: Partial<ApplicationReport> = {}) =>
     api
-      .reportApplication({ jobId, ats: page.ats?.name ?? null, applyUrl: page.url, status, ...{ fieldsFilled: tally(now).filled, fieldsNeedingAttention: tally(now).needs }, answers: now.filter((field) => field.kind !== "file" && field.value).map(({ label, value, status: how }) => ({ label: label.slice(0, 300), value: value.slice(0, 3000), status: how })).slice(0, 120), resumeId: resumeId || null, today: localToday(), ...extra })
+      .reportApplication({ jobId, ats: page.ats?.name ?? null, applyUrl: page.url, status, ...{ fieldsFilled: tally(now).filled, fieldsNeedingAttention: tally(now).needs }, answers: now.filter((field) => field.kind !== "file" && field.value).map(({ label, value, status: how }) => ({ label: label.slice(0, 300), value: value.slice(0, 3000), status: how })).slice(0, 120), resumeId: resumeId || null, today: localToday(), stuck: status === "applied" ? null : stuckOn(page, account), waiting: status === "applied" || stuckOn(page, account) ? [] : waitingOn(now, account, page.job?.company), ...extra })
       .catch(() => undefined);
 
   // fills the form that is showing. onlyNew is for the next step of a long form

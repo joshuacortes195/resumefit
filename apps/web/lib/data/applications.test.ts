@@ -4,7 +4,7 @@ import JSZip from "jszip";
 import { describe, expect, it } from "vitest";
 import { getDb, schema } from "@/db";
 import { deleteAccount, exportAccount } from "./account";
-import { applicationForJob, autoSentLastDay, listApplications, recordApplication, type ApplicationDetails } from "./applications";
+import { answerWaiting, applicationForJob, autoSentLastDay, listApplications, listWaiting, providedFor, recordApplication, type ApplicationDetails } from "./applications";
 import { createJob } from "./jobs";
 import { getProfile, saveProfile } from "./profile";
 
@@ -58,6 +58,33 @@ describe("auto apply runs", () => {
     expect(runs.find((run) => run.ats === "Lever")?.sentBy).toBe("me");
     // the locked copy never rides along in the list
     expect(JSON.stringify(runs)).not.toContain("sealed");
+  });
+
+  it("lists what a filled in application is waiting on, keeps the person's answers, and stops asking once it is sent", async () => {
+    const { id, job } = await person();
+    const other = await person();
+    const waiting = [
+      { label: "Why do you want to work here?", written: true },
+      { label: "How did you hear about us?", written: false, options: ["LinkedIn", "A friend"] },
+    ];
+    const run = await recordApplication(id, { jobId: job.id, ats: "Greenhouse", applyUrl: "https://boards.greenhouse.io/acme/jobs/7", status: "needs_review", fieldsFilled: 9, fieldsNeedingAttention: 2, details: { ...DETAILS, waiting } });
+    expect(await listWaiting(id)).toMatchObject([{ id: run, jobId: job.id, jobTitle: "Data Analyst", questions: waiting }]);
+    expect(await listWaiting(other.id)).toEqual([]);
+    // nobody else can answer it
+    expect(await answerWaiting(other.id, run, [{ label: "Why do you want to work here?", value: "Not mine." }])).toBe(false);
+    expect(await answerWaiting(id, run, [{ label: "Why do you want to work here?", value: "I use the product every day." }])).toBe(true);
+    expect((await listWaiting(id))[0]?.questions.map((question) => question.label)).toEqual(["How did you hear about us?"]);
+    // the answer is found again by the question, whatever its spacing or capitals, and is stored locked
+    expect((await providedFor(id, job.id))["why do you want to work here"]).toBe("I use the product every day.");
+    const db = await getDb();
+    const [row] = await db.select().from(schema.applications).where(eq(schema.applications.id, run));
+    expect(JSON.stringify(row)).not.toContain("every day");
+    // the extension reporting the form again does not lose what the person answered
+    await recordApplication(id, { jobId: job.id, ats: "Greenhouse", applyUrl: "https://boards.greenhouse.io/acme/jobs/7", status: "needs_review", fieldsFilled: 10, fieldsNeedingAttention: 1, details: { ...DETAILS, waiting } });
+    expect(Object.keys(await providedFor(id, job.id))).toEqual(["why do you want to work here"]);
+    // sent: nothing left to ask
+    await recordApplication(id, { jobId: job.id, ats: "Greenhouse", applyUrl: "https://boards.greenhouse.io/acme/jobs/7", status: "applied", fieldsFilled: 11, fieldsNeedingAttention: 0, details: { ...DETAILS, waiting: [], sentBy: "auto", sentAt: new Date().toISOString() } });
+    expect(await listWaiting(id)).toEqual([]);
   });
 
   it("stores the answers locked, and only shows them to their owner", async () => {

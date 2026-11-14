@@ -46,6 +46,9 @@ test("fill in the application profile, then let the extension fill a form and st
   await page.goto("/settings");
   await page.getByRole("link", { name: "Edit application profile" }).click();
   await expect(page).toHaveURL(/\/settings\/application$/);
+  // the first visit starts from what the resume already says, so there is less to type
+  await expect(page.getByText(/We filled in \d+ answers? from your resume\./)).toBeVisible();
+  await expect(page.getByLabel("Full legal name")).not.toHaveValue("");
   // self-identification starts on decline
   await expect(page.getByRole("combobox", { name: /^Gender/ })).toHaveValue("Decline to self-identify");
   await page.getByLabel("Full legal name").fill("Riley Chen");
@@ -330,4 +333,54 @@ test("with sending switched on, the extension fills a form, presses Submit once 
   expect((await (await request.get("/api/ext/me", { headers })).json()).sendsLeft).toBe(0);
   await page.goto("/tracker");
   await expect(page.getByRole("button", { name: /^Auto Apply to all/ })).toHaveCount(0);
+});
+
+test("a form that needs the person shows up in the app, and their answer is what gets used", async ({ page, request }) => {
+  await page.goto("/extension");
+  await page.getByRole("button", { name: /Connect (extension|again)/ }).click();
+  const code = await page.getByLabel("Connection code").inputValue();
+  const { token } = JSON.parse(Buffer.from(code, "base64").toString()) as { token: string };
+  const headers = { Authorization: `Bearer ${token}` };
+
+  // the extension filled a form and reports the two things only the person can answer
+  const job = await (await request.post("/api/ext/jobs", { headers, data: { title: "Waiting Room Engineer", company: "Brightside Labs", url: "https://jobs.ashbyhq.com/brightside/88", description: JD } })).json();
+  const waiting = [
+    { label: "What excites you about Brightside Labs?", written: true },
+    { label: "How did you hear about this job?", written: false, options: ["LinkedIn", "A friend", "Other"] },
+  ];
+  const report = { jobId: job.jobId, ats: "Ashby", applyUrl: "https://jobs.ashbyhq.com/brightside/88/application", status: "needs_review", fieldsFilled: 7, fieldsNeedingAttention: 2, answers: [{ label: "Email", value: "riley.chen@example.com", status: "filled" }], waiting };
+  expect((await request.post("/api/ext/applications", { headers, data: report })).status()).toBe(200);
+  // nothing saved for either yet, and nothing is drafted for a plain lookup
+  expect(await (await request.post("/api/ext/answer", { headers, data: { question: "How did you hear about this job?", savedOnly: true, jobId: job.jobId } })).json()).toMatchObject({ answer: null });
+
+  // the dashboard says so, and leads to where it is answered
+  await page.goto("/dashboard");
+  await page.getByRole("link", { name: /1 application is filled in and waiting on you/ }).click();
+  await expect(page).toHaveURL(/\/applications$/);
+  const card = page.getByRole("region", { name: "Applications that need you" });
+  await expect(card.getByRole("heading", { name: "1 application needs you" })).toBeVisible();
+  await card.getByLabel("What excites you about Brightside Labs?").fill("I have used the checkout as a customer for years.");
+  await card.getByLabel("How did you hear about this job?").selectOption("A friend");
+  // a picked answer is remembered unless the person says no, a written one is not unless they say yes
+  await expect(card.getByLabel("Use this answer on other applications too").nth(0)).not.toBeChecked();
+  await expect(card.getByLabel("Use this answer on other applications too").nth(1)).toBeChecked();
+  await card.getByRole("button", { name: "Save and send" }).click();
+  // this browser has no extension, so it says the answers are kept and how to send
+  await expect(card.getByText("Your answers are saved, but we could not reach the extension to send it.")).toBeVisible();
+
+  // when the extension fills the form again, it gets the person's own words for this job
+  expect(await (await request.post("/api/ext/answer", { headers, data: { question: "What excites you about Brightside Labs?", jdText: JD, jobId: job.jobId } })).json()).toMatchObject({ source: "saved", answer: "I have used the checkout as a customer for years." });
+  expect(await (await request.post("/api/ext/answer", { headers, data: { question: "How did you hear about this job?", savedOnly: true, jobId: job.jobId } })).json()).toMatchObject({ answer: "A friend" });
+  // the remembered one answers the same question on any other job, the written one stays with this job
+  expect(await (await request.post("/api/ext/answer", { headers, data: { question: "How did you hear about this job?", savedOnly: true } })).json()).toMatchObject({ answer: "A friend" });
+  expect(await (await request.post("/api/ext/answer", { headers, data: { question: "What excites you about Brightside Labs?", savedOnly: true } })).json()).toMatchObject({ answer: null });
+
+  // back on the page it is ready to go, with nothing left to ask
+  await page.goto("/applications");
+  await expect(card.getByText("Your answers are saved. It is ready to go.")).toBeVisible();
+  // and once the extension reports it sent, it leaves the list
+  await request.post("/api/ext/applications", { headers, data: { ...report, status: "applied", fieldsNeedingAttention: 0, sentBy: "auto", waiting: [] } });
+  await page.goto("/applications");
+  await expect(page.getByRole("region", { name: "Applications that need you" })).toHaveCount(0);
+  await expect(page.getByRole("row", { name: /Waiting Room Engineer/ })).toContainText("Sent for me");
 });

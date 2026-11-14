@@ -6,18 +6,19 @@ import { SCREENING_SYSTEM, screeningPrompt } from "@/lib/ai/prompts/screening";
 import { tidy } from "@/lib/ai/prompts/style";
 import { redact } from "@/lib/ai/redact";
 import { AiBusyError, AiLimitError, AiUnavailableError, generateText } from "@/lib/ai/router";
+import { providedFor, questionKey } from "@/lib/data/applications";
 import { getJob } from "@/lib/data/jobs";
 import { getProfile } from "@/lib/data/profile";
 import { getResume, listResumes } from "@/lib/data/resumes";
 import { ExtError, extRoute, preflight } from "@/lib/ext-auth";
-import { findSavedAnswer } from "@/lib/qa-match";
+import { findAnswerForField, findSavedAnswer } from "@/lib/qa-match";
 import { rateLimit } from "@/lib/rate-limit";
 
 export const OPTIONS = preflight;
 
 export const maxDuration = 60;
 
-const answerSchema = z.object({ question: z.string().trim().min(5).max(500), jdText: z.string().max(60_000).default(""), resumeId: z.uuid().optional(), jobId: z.uuid().optional() });
+const answerSchema = z.object({ question: z.string().trim().min(2).max(500), jdText: z.string().max(60_000).default(""), resumeId: z.uuid().optional(), jobId: z.uuid().optional(), savedOnly: z.boolean().default(false) });
 
 // answers a written question on an application: from the person's saved answers when one fits, otherwise a draft for them to check
 export const POST = extRoute(async (request, user) => {
@@ -25,9 +26,16 @@ export const POST = extRoute(async (request, user) => {
   const parsed = answerSchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) throw new ExtError("That question is too short or too long to answer.");
 
-  // a saved answer always wins, and costs nothing
-  const saved = findSavedAnswer(parsed.data.question, (await getProfile(user.id)).qaBank);
+  // what the person answered for this very job comes first
+  const own = parsed.data.jobId ? (await providedFor(user.id, parsed.data.jobId))[questionKey(parsed.data.question)] : undefined;
+  if (own) return { answer: own, source: "saved" };
+  // then a saved answer, which always wins over a draft and costs nothing
+  const bank = (await getProfile(user.id)).qaBank;
+  // asked only for what the person already said, for a field that is not a written question: matched strictly, and nothing is drafted
+  if (parsed.data.savedOnly) return { answer: findAnswerForField(parsed.data.question, bank)?.answer ?? null, source: "none" };
+  const saved = findSavedAnswer(parsed.data.question, bank);
   if (saved) return { answer: saved.answer, source: "saved" };
+  if (parsed.data.question.length < 5) throw new ExtError("That question is too short or too long to answer.");
 
   // a draft is a call to a model, so it has the same per minute limit as the other writing features
   await rateLimit(user.id, "ai");

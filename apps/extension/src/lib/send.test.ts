@@ -4,7 +4,8 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 import type { Ask } from "./pipeline";
 import { runApplication } from "./runner";
-import { sendApplication, whyNotSend } from "./send";
+import { fillEverything } from "./pipeline";
+import { aboutCompany, sendApplication, waitingOn, whyNotSend } from "./send";
 import { findSubmit, pressSubmit } from "./submit";
 import type { Account, FieldReport, PageInfo, PageRequest } from "./types";
 
@@ -94,10 +95,60 @@ describe("deciding whether to send", () => {
     expect(whyNotSend(PAGE, [field("a"), field("r", { key: "resume", kind: "file", status: "skipped" })], all)).toMatch(/resume/);
   });
 
-  it("sends drafts only for a person who asked for that", () => {
-    const fields = [field("a"), field("q", { key: "question", status: "review", value: "A draft." })];
-    expect(whyNotSend(PAGE, fields, account("safe"))).toBe("1 answer is a draft you have not read.");
-    expect(whyNotSend(PAGE, fields, account("all"))).toBeNull();
+  it("tells a question about the employer from a general one", () => {
+    for (const label of ["Why do you want to work here?", "Why are you interested in this role?", "What excites you about our mission?", "Why Acme?", "What interests you about working at Brightside Labs?", "Tell us why you want to join Stripe"]) expect(aboutCompany(label), label).toBe(true);
+    expect(aboutCompany("How would you improve Checkout?", "Checkout")).toBe(true);
+    for (const label of ["Describe a project you are proud of.", "How many years of experience do you have with SQL?", "What is your greatest strength?", "Tell us about a time you disagreed with a teammate.", "Are you willing to relocate?"]) expect(aboutCompany(label), label).toBe(false);
+  });
+
+  it("sends a general draft, and keeps a drafted answer about the employer for the person unless they handed that over too", () => {
+    const general = [field("a"), field("q", { key: "question", label: "Describe a project you are proud of.", status: "review", value: "A draft." })];
+    expect(whyNotSend(PAGE, general, account("safe"))).toBeNull();
+    const theirs = [field("a"), field("q", { key: "question", label: "Why do you want to work here?", status: "review", value: "A draft." })];
+    expect(whyNotSend(PAGE, theirs, account("safe"))).toBe("1 question is about this company, and that answer should be yours.");
+    expect(whyNotSend(PAGE, theirs, account("all"))).toBeNull();
+    // an answer the person saved or wrote is not a draft, so it goes
+    expect(whyNotSend(PAGE, [field("a"), field("q", { key: "question", label: "Why do you want to work here?", status: "filled", value: "Mine." })], account("safe"))).toBeNull();
+  });
+
+  it("lists what a held form is waiting on, with the choices when it had some", () => {
+    const fields = [
+      field("a"),
+      field("b", { key: "howHeard", kind: "select", label: "How did you hear about us?", status: "missing", value: "", options: ["LinkedIn", "A friend"] }),
+      field("q", { key: "question", kind: "textarea", label: "Why do you want to work here?", status: "review", value: "A draft." }),
+      field("g", { key: "question", kind: "textarea", label: "Describe a project you are proud of.", status: "review", value: "A draft." }),
+      field("r", { key: "resume", kind: "file", label: "Resume", status: "missing", value: "" }),
+    ];
+    expect(waitingOn(fields, account("safe"))).toEqual([
+      { label: "How did you hear about us?", written: false, options: ["LinkedIn", "A friend"] },
+      { label: "Why do you want to work here?", written: true },
+    ]);
+    // hands-off: only what is truly empty
+    expect(waitingOn(fields, account("all")).map((entry) => entry.label)).toEqual(["How did you hear about us?"]);
+  });
+
+  it("fills an empty required answer from what the person said before, and never drafts one", async () => {
+    const page = [field("a"), field("b", { key: "howHeard", kind: "select", label: "How did you hear about us?", status: "missing", value: "" }), field("c", { key: null, kind: "select", label: "Shirt size", status: "missing", value: "" })];
+    const asked: string[] = [];
+    const ask = (async (request: PageRequest) => {
+      if (request.type === "autofill") return page;
+      if (request.type === "set-field") return { ...page.find((entry) => entry.id === request.id), value: request.value, status: request.status };
+      return null;
+    }) as Ask;
+    const source = {
+      resumeFile: async () => ({ name: "resume.pdf", type: "application/pdf", base64: "" }),
+      coverLetterFile: async () => null as never,
+      answer: async () => {
+        throw new Error("nothing here should be drafted");
+      },
+      savedAnswer: async ({ question }: { question: string }) => {
+        asked.push(question);
+        return { answer: question.startsWith("How did") ? "LinkedIn" : null };
+      },
+    };
+    const result = await fillEverything(ask, account("safe"), { resumeId: null, jobId: "job-1", jdText: "" }, source);
+    expect(asked).toEqual(["How did you hear about us?", "Shirt size"]);
+    expect(result.fields.map((entry) => [entry.status, entry.value])).toEqual([["filled", "jordan.lee@example.com"], ["filled", "LinkedIn"], ["missing", ""]]);
   });
 });
 

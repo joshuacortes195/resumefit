@@ -8,7 +8,9 @@ import { JobScore, ScoreRing } from "@/components/score-ring";
 import { CARD, LINK_BUTTON } from "@/components/ui/buttons";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getCurrentUser } from "@/lib/auth";
+import { listWaiting } from "@/lib/data/applications";
 import { getCoverLetter, listJobs, nextInterview } from "@/lib/data/jobs";
+import { featureFlags } from "@/lib/data/settings";
 import { listLinkedinReports } from "@/lib/data/practice";
 import { LocalTime } from "@/components/local-time";
 import { latestScan } from "@/lib/data/scans";
@@ -37,6 +39,11 @@ export default function DashboardPage() {
         <h1 className="text-3xl font-semibold sm:text-4xl">Welcome to ResumeFit</h1>
         <p className="mt-2 max-w-xl text-muted">See how well your resume fits a job, fix what is missing and keep every application in one place.</p>
       </div>
+
+      {/* applications that are filled in and waiting on one answer */}
+      <Suspense fallback={null}>
+        <WaitingNote />
+      </Suspense>
 
       {/* the scan form, right on the dashboard */}
       <section className={`${CARD} p-6`}>
@@ -220,5 +227,23 @@ async function TrackerSummary() {
         )}
       </p>
     </>
+  );
+}
+
+// a line at the top when filled in applications are waiting on the person, with the way to answer them
+async function WaitingNote() {
+  const user = await getCurrentUser();
+  const [waiting, flags] = await Promise.all([listWaiting(user.id), featureFlags()]);
+  if (!flags.autoApply || waiting.length === 0) return null;
+  return (
+    <Link href="/applications" className={`${CARD} flex items-center justify-between gap-3 p-4 text-sm transition-colors duration-150 hover:border-primary/60`}>
+      <span>
+        <strong>
+          {waiting.length} {waiting.length === 1 ? "application is" : "applications are"} filled in and waiting on you.
+        </strong>{" "}
+        <span className="text-muted">Answer what is left and we send {waiting.length === 1 ? "it" : "them"}.</span>
+      </span>
+      <span className="shrink-0 font-semibold text-primary">Answer now</span>
+    </Link>
   );
 }

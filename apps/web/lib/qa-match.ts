@@ -40,3 +40,12 @@ export function findSavedAnswer(question: string, bank: QaEntry[], threshold = 0
   }
   return best;
 }
+
+// the saved answer for a form field we had nothing for, like "how did you hear about us".
+// a short label has to be the same question word for word, so "Country" never picks up the answer to "Country of citizenship"
+export function findAnswerForField(label: string, bank: QaEntry[]): QaEntry | null {
+  const plain = (text: string) => text.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+  const same = bank.find((entry) => plain(entry.question) === plain(label));
+  if (same) return same;
+  return keywords(label).size >= 3 ? findSavedAnswer(label, bank, 0.8) : null;
+}

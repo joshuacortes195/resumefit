@@ -61,7 +61,7 @@ function toForm(profile: Profile): ProfileInput {
 const EEO_LABELS: Record<keyof typeof EEO_OPTIONS, string> = { eeoGender: "Gender", eeoHispanic: "Are you Hispanic or Latino?", eeoRace: "Race or ethnicity", eeoVeteran: "Veteran status", eeoDisability: "Disability" };
 
 // the application profile form, this is what Auto Apply types into real applications
-export function ProfileForm({ profile, back = "/settings" }: { profile: Profile; back?: string }) {
+export function ProfileForm({ profile, back = "/settings", prefilled = 0 }: { profile: Profile; back?: string; prefilled?: number }) {
   const router = useRouter();
   const [form, setForm] = useState<ProfileInput>(() => toForm(profile));
   // what the form looked like when it was last saved, to tell whether anything changed
@@ -140,6 +140,12 @@ export function ProfileForm({ profile, back = "/settings" }: { profile: Profile;
             Fill this in once, like a job application, and Auto Apply types the same answers into every real one for you to check. Anything you leave empty is left for you to fill in on the form. Your work authorization, sponsorship, school and self-identification
             answers are locked before they are stored.
           </p>
+          {/* said once, the first time, when the resume gave us a head start */}
+          {prefilled > 0 && (
+            <p role="status" className="mt-3 rounded-lg bg-primary-soft px-3 py-2 text-sm">
+              We filled in {prefilled} {prefilled === 1 ? "answer" : "answers"} from your resume. Check them, add what is missing and press Finished.
+            </p>
+          )}
         </div>
 
         <fieldset className="grid gap-4 sm:grid-cols-2">
@@ -275,13 +281,13 @@ export function ProfileForm({ profile, back = "/settings" }: { profile: Profile;
           </p>
           {select("autoSend", "Who presses Submit?", [
             ["off", "I do, after checking the form"],
-            ["safe", "ResumeFit, when every answer came from my profile"],
-            ["all", "ResumeFit, even when some answers are drafts I have not read"],
+            ["safe", "ResumeFit. It only asks me about questions specific to that company"],
+            ["all", "ResumeFit, and it answers those for me too"],
           ])}
           {text("dailySendCap", `Most it may send in a day (1 to ${MAX_DAILY_SENDS})`, { type: "number" })}
           {form.autoSend !== "off" && (
             <p className="text-sm text-muted sm:col-span-2">
-              It sends on Greenhouse, Lever and Ashby forms that fit on one page. It never sends when a required answer is empty, when the form has a captcha or needs you to sign in, or on LinkedIn and Indeed. Those are left filled in for you, and everything it sends is listed under All Applications.
+              It sends on Greenhouse, Lever and Ashby forms that fit on one page, and drafts answers to general written questions from your resume. When a form needs something only you can say, it shows up under All Applications for you to answer there, and then it is sent. It never sends past a captcha, and never on LinkedIn or Indeed.
             </p>
           )}
         </fieldset>

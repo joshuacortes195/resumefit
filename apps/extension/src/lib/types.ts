@@ -82,7 +82,7 @@ export type Profile = {
   // true when the person asked for their gpa never to be typed into a form
   gpaNeverFill?: boolean;
   eeoHispanic?: string;
-  // who presses Submit. off: the person. safe: us, when every answer came from the profile. all: us, drafts included
+  // who presses Submit. off: the person. safe: us, except a drafted answer about the employer waits for the person. all: us, those included
   autoSend?: "off" | "safe" | "all";
 };
 

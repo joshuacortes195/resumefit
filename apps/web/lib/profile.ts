@@ -15,7 +15,7 @@ export const REMOTE_PREFERENCES = ["No preference", "Remote", "Hybrid", "On-site
 export const PRONOUNS = ["", "He/him", "She/her", "They/them"] as const;
 export const DEGREES = ["", "High school diploma", "Associate's degree", "Bachelor's degree", "Master's degree", "MBA", "Doctorate", "Other"] as const;
 export const MONTHS = ["", "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"] as const;
-// who presses Submit on a filled in application. off: always the person. safe: we do when every answer came from the profile. all: we do even when some answers are drafts
+// who presses Submit on a filled in application. off: always the person. safe: we do, except a drafted answer to a question about the employer waits for them. all: we do, those included
 export const AUTO_SEND = ["off", "safe", "all"] as const;
 export type AutoSend = (typeof AUTO_SEND)[number];
 // the most applications that can be sent for one person in a day, whatever they ask for

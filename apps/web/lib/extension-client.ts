@@ -41,6 +41,29 @@ export function askExtension(message: Record<string, unknown>, extensionId = sav
   });
 }
 
+// how ready the extension is, as it tells us itself. installed is false when nothing answered
+export type ExtensionState = { installed: boolean; connected: boolean; allowed: boolean; version: string | null };
+
+// asks the extension whether it is there, connected to this copy of the app and allowed onto job pages
+export function extensionState(extensionId = savedExtensionId()): Promise<ExtensionState> {
+  const none: ExtensionState = { installed: false, connected: false, allowed: false, version: null };
+  const runtime = (globalThis as unknown as { chrome?: { runtime?: ChromeRuntime } }).chrome?.runtime;
+  if (!runtime?.sendMessage || !/^[a-p]{32}$/.test(extensionId)) return Promise.resolve(none);
+  return new Promise((resolve) => {
+    const timer = setTimeout(() => resolve(none), 1500);
+    try {
+      runtime.sendMessage(extensionId, { type: "resumefit-ping" }, (response) => {
+        clearTimeout(timer);
+        const reply = (response ?? {}) as { ok?: boolean; connected?: boolean; allowed?: boolean; version?: string };
+        resolve(reply.ok ? { installed: true, connected: reply.connected === true, allowed: reply.allowed === true, version: reply.version ?? null } : none);
+      });
+    } catch {
+      clearTimeout(timer);
+      resolve(none);
+    }
+  });
+}
+
 // sends the extension a message, false when it is not there or does not answer
 export async function tellExtension(message: Record<string, unknown>, extensionId = savedExtensionId()): Promise<boolean> {
   return (await askExtension(message, extensionId)).ok;
