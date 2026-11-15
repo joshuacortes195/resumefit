@@ -143,8 +143,16 @@ test("manage saved resumes", async ({ page }) => {
   await page.getByLabel("Resume name").press("Enter");
   await expect(page.getByRole("row", { name: /Analyst resume/ })).toBeVisible();
 
-  // preview shows its text
+  // every row shows the first page of the resume as a real pdf, drawn with ink on it
+  const thumbnail = page.getByRole("button", { name: "Open Analyst resume as a PDF" }).locator("canvas");
+  await expect(thumbnail).toBeVisible({ timeout: 20_000 });
+  expect(await thumbnail.evaluate((canvas: HTMLCanvasElement) => canvas.getContext("2d")!.getImageData(0, 0, canvas.width, canvas.height).data.filter((value, index) => index % 4 === 0 && value < 120).length)).toBeGreaterThan(200);
+
+  // preview shows the pdf an employer would open, with the text a scanner reads underneath
   await page.getByRole("button", { name: "Preview Analyst resume" }).click();
+  await expect(page.getByRole("dialog").locator("canvas").first()).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByRole("dialog")).toContainText("This resume is saved as text");
+  await page.getByRole("dialog").getByText("The text a scanner reads").click();
   await expect(page.getByRole("dialog").getByText("SQL, Tableau, Python")).toBeVisible();
   await page.getByRole("dialog").getByRole("button", { name: "Close" }).click();
 

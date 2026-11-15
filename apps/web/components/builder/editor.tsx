@@ -339,7 +339,7 @@ function StylePanel({ settings, onChange }: { settings: TemplateSettings; onChan
       <fieldset>
         <legend className="text-sm font-semibold">Template</legend>
         <div className="mt-2 grid grid-cols-2 gap-2">
-          {TEMPLATES.map((template) => (
+          {[...TEMPLATES].sort((a, b) => Number(b.popular ?? false) - Number(a.popular ?? false)).map((template) => (
             <button
               key={template.id}
               type="button"

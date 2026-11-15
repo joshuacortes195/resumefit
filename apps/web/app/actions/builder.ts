@@ -11,7 +11,7 @@ import { redact, redactor } from "@/lib/ai/redact";
 import { AiBusyError, AiLimitError, AiUnavailableError, aiAvailable, generateJSON, generateText } from "@/lib/ai/router";
 import { getCurrentUser } from "@/lib/auth";
 import { builderToText } from "@/lib/builder/layout";
-import { builderDataSchema, templateSettingsSchema } from "@/lib/builder/types";
+import { builderDataSchema, TEMPLATE_IDS, templateSettingsSchema } from "@/lib/builder/types";
 import { createBuilderResume, saveBuilderResume } from "@/lib/data/builder";
 import { deleteResume } from "@/lib/data/resumes";
 import { savedJobs } from "@/lib/jobs-feed";
@@ -30,9 +30,11 @@ function problem(error: unknown): { ok: false; error: string } {
 }
 
 // starts an empty resume and says where to find it
-export async function startBlankResume(): Promise<Result<{ id: string }>> {
+export async function startBlankResume(template?: string): Promise<Result<{ id: string }>> {
   const user = await getCurrentUser();
-  const id = await createBuilderResume(user.id);
+  // only a template we really have, anything else starts on the usual one
+  const picked = TEMPLATE_IDS.find((entry) => entry === template);
+  const id = await createBuilderResume(user.id, picked ? { template: picked } : {});
   revalidatePath("/resumes");
   return { ok: true, id };
 }

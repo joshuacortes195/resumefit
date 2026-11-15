@@ -156,3 +156,20 @@ test("upload a resume into the builder", async ({ page }) => {
   await page.getByRole("button", { name: "Next: Core Skills" }).click();
   await expect(page.getByLabel("Your skills")).toContainText("PostgreSQL");
 });
+
+test("start a resume from a popular template", async ({ page }) => {
+  // the resume manager leads to the templates, even with a resume still open in the builder
+  await page.goto("/resumes");
+  await page.getByRole("link", { name: "Start from a template" }).click();
+  await expect(page).toHaveURL(/\/builder\?templates=1#templates$/);
+  const gallery = page.getByRole("region", { name: "Or start from a template" });
+  // the popular ones come first, each shown as a filled in page
+  await expect(gallery.getByRole("listitem")).toHaveCount(10);
+  await expect(gallery.getByRole("listitem").first()).toContainText("Tech one page");
+  await expect(gallery.getByRole("listitem").first()).toContainText("Popular");
+  await gallery.getByRole("button", { name: "Use the Ivy template" }).click();
+  await expect(page).toHaveURL(/\/builder\/[0-9a-f-]{36}\?new=1$/);
+  // the new resume opens in the template that was picked, and its pdf is what the manager shows
+  await page.goto("/resumes");
+  await expect(page.getByRole("row", { name: /Untitled resume/ }).first()).toBeVisible();
+});

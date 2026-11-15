@@ -63,7 +63,7 @@ export type BuilderData = z.infer<typeof builderDataSchema>;
 export type BuilderExperience = z.infer<typeof experienceSchema>;
 export type BuilderEducation = z.infer<typeof educationSchema>;
 
-export const TEMPLATE_IDS = ["classic", "modern", "student", "minimal", "timeless", "technical", "academic", "career-change"] as const;
+export const TEMPLATE_IDS = ["classic", "modern", "student", "minimal", "timeless", "technical", "academic", "career-change", "tech-one-page", "ivy"] as const;
 export type TemplateId = (typeof TEMPLATE_IDS)[number];
 
 export const ACCENTS = { black: "#111111", navy: "#1f3a6e", "slate-purple": "#4b4370", sage: "#4d6b57" } as const;

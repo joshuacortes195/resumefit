@@ -24,10 +24,11 @@ export function toBuilderResume(row: ResumeRow): BuilderResume {
 }
 
 // starts a new resume in the builder, empty or filled from text we already read
-export async function createBuilderResume(userId: string, input: { data?: BuilderData; source?: ResumeSource; name?: string } = {}): Promise<string> {
+export async function createBuilderResume(userId: string, input: { data?: BuilderData; source?: ResumeSource; name?: string; template?: TemplateSettings["template"] } = {}): Promise<string> {
   const db = await getDb();
   const data = input.data ?? emptyBuilder();
-  const settings = defaultSettings();
+  // a resume started from the template gallery opens in the template that was picked
+  const settings = { ...defaultSettings(), ...(input.template ? { template: input.template } : {}) };
   const text = builderToText(data, settings.template);
   const hasAny = (await db.select({ id: schema.resumes.id }).from(schema.resumes).where(eq(schema.resumes.userId, userId)).limit(1)).length > 0;
   const [row] = await db

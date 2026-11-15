@@ -17,13 +17,39 @@ export type Template = {
   // skills as one flowing line or as a few columns of words
   skills: "inline" | "grid";
   order: SectionKey[];
+  // true for the ones people reach for most, shown first where templates are picked
+  popular?: boolean;
 };
 
 const STANDARD: SectionKey[] = ["summary", "experience", "skills", "education", "projects", "certifications", "awards", "volunteer", "languages"];
 
 export const TEMPLATES: Template[] = [
-  { id: "classic", name: "Classic", blurb: "The safe choice. Works for any field.", font: "serif", header: "center", heading: "rule", skills: "inline", order: STANDARD },
-  { id: "modern", name: "Modern", blurb: "Clean and current, with a touch of color.", font: "sans", header: "left", heading: "bar", skills: "inline", order: STANDARD },
+  // the one page layout most software engineering resumes are built on: name centered, ruled headings, school and projects before skills
+  {
+    id: "tech-one-page",
+    name: "Tech one page",
+    blurb: "The one page layout most software and engineering resumes use.",
+    font: "serif",
+    header: "center",
+    heading: "rule",
+    skills: "inline",
+    order: ["summary", "education", "experience", "projects", "skills", "certifications", "awards", "volunteer", "languages"],
+    popular: true,
+  },
+  { id: "classic", name: "Classic", blurb: "The safe choice. Works for any field.", font: "serif", header: "center", heading: "rule", skills: "inline", order: STANDARD, popular: true },
+  { id: "modern", name: "Modern", blurb: "Clean and current, with a touch of color.", font: "sans", header: "left", heading: "bar", skills: "inline", order: STANDARD, popular: true },
+  // the layout university career offices hand out: school first, capital letter headings, activities ahead of skills
+  {
+    id: "ivy",
+    name: "Ivy",
+    blurb: "The format university career offices teach. School first, then experience and activities.",
+    font: "serif",
+    header: "center",
+    heading: "caps",
+    skills: "inline",
+    order: ["summary", "education", "experience", "volunteer", "projects", "skills", "awards", "certifications", "languages"],
+    popular: true,
+  },
   {
     id: "student",
     name: "Student",
@@ -68,9 +94,9 @@ export const TEMPLATES: Template[] = [
   },
 ];
 
-// looks a template up, falling back to the first one
+// looks a template up, falling back to the classic one
 export function getTemplate(id: string): Template {
-  return TEMPLATES.find((template) => template.id === id) ?? (TEMPLATES[0] as Template);
+  return TEMPLATES.find((template) => template.id === id) ?? (TEMPLATES.find((template) => template.id === "classic") as Template);
 }
 
 // the heading printed above each section

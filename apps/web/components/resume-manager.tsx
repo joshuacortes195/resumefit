@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, ChevronRight, Copy, Download, Eye, Files, PenLine, Search, Star, Trash2, Upload } from "lucide-react";
+import { ChevronLeft, ChevronRight, Copy, Download, Eye, Files, LayoutTemplate, PenLine, Search, Star, Trash2, Upload } from "lucide-react";
 import { deleteResumeAction, duplicateResumeAction, makeBaseResume, renameResumeAction } from "@/app/actions/resumes";
 import type { ActionResult } from "@/app/actions/scans";
 import { Dropzone } from "@/components/scan/dropzone";
@@ -12,6 +12,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { LocalTime } from "@/components/local-time";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Modal } from "@/components/ui/modal";
+import { PdfPages, type PdfSource } from "@/components/pdf-pages";
 import type { ManagedResume } from "@/lib/data/resumes";
 
 // rows per page
@@ -27,7 +28,9 @@ export function ResumeManager({ resumes }: { resumes: ManagedResume[] }) {
   const [page, setPage] = useState(1);
   const [renaming, setRenaming] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<ManagedResume | null>(null);
-  const [preview, setPreview] = useState<{ name: string; text: string } | null>(null);
+  const [preview, setPreview] = useState<{ id: string; name: string; text: string } | null>(null);
+  // whether the pdf on show is the file that was uploaded, a builder template, or a plain page made from the text
+  const [source, setSource] = useState<PdfSource | null>(null);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -42,10 +45,11 @@ export function ResumeManager({ resumes }: { resumes: ManagedResume[] }) {
     });
   }
 
-  // loads a resume's text and shows it
+  // opens a resume as the pdf an employer would see, with its plain text underneath for what a scanner reads
   async function openPreview(id: string) {
+    setSource(null);
     const response = await fetch(`/api/resumes/${id}/text`);
-    if (response.ok) setPreview((await response.json()) as { name: string; text: string });
+    if (response.ok) setPreview({ id, ...((await response.json()) as { name: string; text: string }) });
     else setError("We could not open that resume.");
   }
 
@@ -72,7 +76,12 @@ export function ResumeManager({ resumes }: { resumes: ManagedResume[] }) {
             className={`${INPUT} bg-surface pl-9`}
           />
         </label>
-        <button type="button" onClick={() => setUploading(true)} className={`${PRIMARY_BUTTON} ml-auto`}>
+        {/* a new resume in one of the ready made layouts */}
+        <Link href="/builder?templates=1#templates" className={`${SECONDARY_BUTTON} ml-auto`}>
+          <LayoutTemplate className="size-4" aria-hidden />
+          Start from a template
+        </Link>
+        <button type="button" onClick={() => setUploading(true)} className={PRIMARY_BUTTON}>
           <Upload className="size-4" aria-hidden />
           Upload resume
         </button>
@@ -94,10 +103,13 @@ export function ResumeManager({ resumes }: { resumes: ManagedResume[] }) {
       ) : (
         <div className={`${CARD} overflow-x-auto`}>
           {/* the two date columns give way first as the window narrows, so the actions never slide out of view */}
-          <table className="w-full min-w-[34rem] text-sm">
+          <table className="w-full min-w-[38rem] text-sm">
             <thead>
               <tr className="border-b border-border text-left text-muted">
                 <th className="w-14 py-3 pl-4 font-medium">Base</th>
+                <th className="w-24 py-3 font-medium">
+                  <span className="sr-only">Page</span>
+                </th>
                 <th className="py-3 font-medium">Resume</th>
                 <th className="py-3 font-medium">Job opportunity</th>
                 <th className="hidden py-3 font-medium 2xl:table-cell">Created</th>
@@ -119,6 +131,12 @@ export function ResumeManager({ resumes }: { resumes: ManagedResume[] }) {
                       className="rounded-lg p-2 transition-transform duration-150 hover:scale-110 disabled:hover:scale-100"
                     >
                       <Star className={`size-4 ${resume.isBase ? "fill-current text-warning" : "text-muted"}`} aria-hidden />
+                    </button>
+                  </td>
+                  {/* the first page as a real pdf, small. pressing it opens the whole thing */}
+                  <td className="py-2 pr-3">
+                    <button type="button" aria-label={`Open ${resume.name} as a PDF`} onClick={() => openPreview(resume.id)} className="block w-20 overflow-hidden rounded-sm shadow-sm ring-1 ring-black/10 transition-transform duration-150 hover:scale-105">
+                      <PdfPages url={`/api/resumes/${resume.id}/pdf`} pages={1} label={`First page of ${resume.name}`} />
                     </button>
                   </td>
                   <td className="max-w-48 py-2 pr-4 lg:max-w-64">
@@ -192,7 +210,24 @@ export function ResumeManager({ resumes }: { resumes: ManagedResume[] }) {
       )}
 
       <Modal open={preview !== null} onClose={() => setPreview(null)} title={preview?.name ?? "Resume"} size="wide">
-        <div className="max-h-[60vh] overflow-y-auto whitespace-pre-wrap rounded-lg bg-background p-4 text-sm leading-6">{preview?.text}</div>
+        {preview && (
+          <div className="max-h-[70vh] space-y-4 overflow-y-auto">
+            {/* the pdf itself, every page, the way it opens on the other end */}
+            <div className="rounded-lg bg-background p-3 sm:p-5">
+              <PdfPages key={preview.id} url={`/api/resumes/${preview.id}/pdf`} label={`${preview.name} as a PDF`} onSource={setSource} className="mx-auto max-w-2xl shadow-lg ring-1 ring-black/10" />
+            </div>
+            <p className="text-sm text-muted">
+              {source === "original" && "This is the file you uploaded, exactly as an employer opens it."}
+              {source === "builder" && "This is the PDF the builder makes from your template, the same one that is downloaded and attached."}
+              {source === "text" && "This resume is saved as text, so this is the plain PDF made from it. Open it in the builder to give it a template."}
+            </p>
+            {/* what a scanner reads is the words, not the page */}
+            <details>
+              <summary className="cursor-pointer text-sm font-medium text-primary">The text a scanner reads</summary>
+              <div className="mt-2 whitespace-pre-wrap rounded-lg bg-background p-4 text-sm leading-6">{preview.text}</div>
+            </details>
+          </div>
+        )}
       </Modal>
 
       <UploadModal
