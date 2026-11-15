@@ -35,7 +35,10 @@ export const mockCall: ProviderCall = async ({ system, prompt }) => {
     const interviewer = prompt.match(/Interviewer: (.*)/)?.[1] ?? "there";
     text = `Hi ${interviewer},\n\nThank you for the conversation today. I am still very interested in the role.\n\nBest,\nThe applicant`;
   }
-  else if (system.startsWith("Task: answer an application question.")) {
+  else if (system.startsWith("You read job descriptions")) {
+    // an honest "nothing more to add", so the scan is scored on our own read of the posting, the same as when no model answers
+    text = JSON.stringify({ job_title: null, company: null, seniority: null, years_required_min: null, years_required_max: null, education_required: null, education_preferred: null, hard_skills: [], soft_skills: [], certifications: [], tools: [], responsibilities_summary: "", detected_ats_hint: null });
+  } else if (system.startsWith("Task: answer an application question.")) {
     text = "I enjoy this kind of work and have done it before. [Add a specific example here.]";
   } else if (system.startsWith("Task: write linkedin headlines.")) {
     text = JSON.stringify({ options: ["Data Analyst | SQL and Tableau | Healthcare", "Data Analyst turning messy data into clear answers", "SQL and Tableau analyst for care teams"] });
