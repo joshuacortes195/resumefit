@@ -4,8 +4,7 @@ import { getDb, schema } from "@/db";
 import { htmlToText, type FeedJob } from "@/lib/jobs-feed";
 
 // live job search: asks job sites for the title someone is after, right when they search.
-// the company boards we keep a copy of only cover the companies on our list. these sites cover everyone else,
-// including openings that were first posted on the big job sites, through search services that are allowed to pass them on
+// the company boards we keep a copy of only cover the companies on our list. these sites, all free to ask, cover some of everyone else
 
 // an opening found by a live search, with its description kept so it can be shown without asking again
 export type LiveJob = FeedJob & { description: string; via: string };
@@ -56,51 +55,6 @@ function job(provider: string, id: string, fields: { title: string; company: str
     via: fields.via,
   };
 }
-
-// a general job index with a location search. free key from developer.adzuna.com
-export const adzuna: Provider = {
-  id: "adzuna",
-  name: "Adzuna",
-  keepMs: 60 * 60_000,
-  ready: (env) => Boolean(env.ADZUNA_APP_ID && env.ADZUNA_APP_KEY),
-  async search(query, env, get) {
-    const params = new URLSearchParams({ app_id: env.ADZUNA_APP_ID ?? "", app_key: env.ADZUNA_APP_KEY ?? "", results_per_page: "50", what: `${query.what}${query.internOnly ? " intern" : ""}`.trim(), sort_by: "date" });
-    if (query.where) params.set("where", query.where);
-    if (query.days) params.set("max_days_old", String(query.days));
-    const data = (await get(`https://api.adzuna.com/v1/api/jobs/us/search/1?${params}`)) as { results?: Raw[] };
-    return (data.results ?? []).map((entry) =>
-      job("adzuna", text(entry.id), { title: text(entry.title), company: text((entry.company as Raw | undefined)?.display_name), location: text((entry.location as Raw | undefined)?.display_name), url: text(entry.redirect_url), postedAt: text(entry.created) || null, description: text(entry.description), via: "Adzuna" }),
-    );
-  },
-};
-
-// a search service that gathers openings from across the web, the big job sites included. free key from rapidapi.com (JSearch)
-export const jsearch: Provider = {
-  id: "jsearch",
-  name: "JSearch",
-  // the free plan is small, so one answer is kept for a good while
-  keepMs: 6 * 60 * 60_000,
-  ready: (env) => Boolean(env.RAPIDAPI_KEY),
-  async search(query, env, get) {
-    const params = new URLSearchParams({ query: `${query.what}${query.internOnly ? " intern" : ""}${query.where ? ` in ${query.where}` : ""}`.trim(), page: "1", num_pages: "1", country: "us" });
-    params.set("date_posted", query.days === 1 ? "today" : query.days === 7 ? "week" : query.days === 30 ? "month" : "all");
-    if (query.remoteOnly) params.set("work_from_home", "true");
-    const data = (await get(`https://jsearch.p.rapidapi.com/search?${params}`, { "X-RapidAPI-Key": env.RAPIDAPI_KEY ?? "", "X-RapidAPI-Host": "jsearch.p.rapidapi.com" })) as { data?: Raw[] };
-    return (data.data ?? []).map((entry) =>
-      job("jsearch", text(entry.job_id), {
-        title: text(entry.job_title),
-        company: text(entry.employer_name),
-        location: [text(entry.job_city), text(entry.job_state)].filter(Boolean).join(", ") || text(entry.job_country),
-        url: text(entry.job_apply_link),
-        postedAt: text(entry.job_posted_at_datetime_utc) || null,
-        description: text(entry.job_description),
-        remote: entry.job_is_remote === true,
-        // the site the opening was first posted on, like LinkedIn or Indeed
-        via: text(entry.job_publisher) || "JSearch",
-      }),
-    );
-  },
-};
 
 // united states government openings. free key from developer.usajobs.gov, asked for with an email address
 export const usajobs: Provider = {
@@ -158,7 +112,7 @@ export const jobicy: Provider = {
   },
 };
 
-export const PROVIDERS: Provider[] = [adzuna, jsearch, usajobs, remotive, jobicy];
+export const PROVIDERS: Provider[] = [usajobs, remotive, jobicy];
 
 // the places a search can reach right now, by name, for the line under the search box
 export function liveSources(env: NodeJS.ProcessEnv = process.env): string[] {

@@ -21,10 +21,7 @@ const serverSchema = z.object({
   ADMIN_EMAIL: z.email().optional(),
   // sent by the host with its scheduled visits, so nobody else can set off the daily job refresh
   CRON_SECRET: z.string().min(16).optional(),
-  // job search sites that need a free key. each one is skipped while its key is missing
-  ADZUNA_APP_ID: z.string().min(1).optional(),
-  ADZUNA_APP_KEY: z.string().min(1).optional(),
-  RAPIDAPI_KEY: z.string().min(1).optional(),
+  // united states government openings, free with a key that is asked for by email. skipped while it is missing
   USAJOBS_API_KEY: z.string().min(1).optional(),
   USAJOBS_EMAIL: z.email().optional(),
   // free ai providers, all optional so the app runs without them
