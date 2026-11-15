@@ -353,6 +353,10 @@ test("a form that needs the person shows up in the app, and their answer is what
   // nothing saved for either yet, and nothing is drafted for a plain lookup
   expect(await (await request.post("/api/ext/answer", { headers, data: { question: "How did you hear about this job?", savedOnly: true, jobId: job.jobId } })).json()).toMatchObject({ answer: null });
 
+  // the job's own card asks the same two questions, so it can be answered wherever the person happens to be
+  await page.goto(`/tracker/${job.jobId}/application`);
+  await expect(page.getByRole("region", { name: "Applications that need you" }).getByLabel("What excites you about Brightside Labs?")).toBeVisible();
+
   // the dashboard says so, and leads to where it is answered
   await page.goto("/dashboard");
   await page.getByRole("link", { name: /1 application is filled in and waiting on you/ }).click();

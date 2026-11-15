@@ -18,6 +18,8 @@ import { LENGTHS, TONES, type Length, type Tone } from "@/lib/ai/prompts/letters
 import { googleCalendarUrl, icsFile } from "@/lib/calendar";
 import { JOB_TABS, localToday, type JobTab } from "@/lib/job-tabs";
 import { AutoApplyButton } from "@/components/auto-apply-button";
+import { NeedsYou } from "@/components/needs-you";
+import type { WaitingRun } from "@/lib/data/applications";
 import type { RunLabel } from "@/lib/application-status";
 
 
@@ -57,6 +59,9 @@ export type JobModalData = {
     resumeName: string | null;
     coverLetter: boolean;
     answers: { label: string; value: string; status: "filled" | "review" | "missing" | "skipped" }[];
+    // what the form is still waiting on the person for, and why it can never be sent for them, when either is so
+    waiting: WaitingRun | null;
+    stuck: string | null;
   } | null;
   // practice sessions done for this job
   practice: { id: string; date: string; answered: number; score: number | null }[];
@@ -394,6 +399,10 @@ function ApplicationPanel({ data }: { data: JobModalData }) {
       ) : (
         <p className="rounded-xl bg-background p-4 text-sm text-muted">Auto Apply is switched off for now.</p>
       )}
+
+      {/* the form is filled in and only needs an answer: it can be given right here, and it is sent */}
+      {data.autoApply && application?.waiting && <NeedsYou runs={[application.waiting]} />}
+      {application?.stuck && application.stuck !== "Sending is switched off in your application profile." && <p className="rounded-xl bg-background p-4 text-sm text-muted">This one is yours to finish on the job site. {application.stuck}</p>}
 
       {application ? (
         <>

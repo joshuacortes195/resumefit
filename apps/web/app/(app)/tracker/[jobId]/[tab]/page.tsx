@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { JobModal } from "@/components/tracker/job-modal";
 import { runLabel } from "@/lib/application-status";
 import { getCurrentUser, type CurrentUser } from "@/lib/auth";
-import { applicationForJob } from "@/lib/data/applications";
+import { applicationForJob, questionKey } from "@/lib/data/applications";
 import { featureFlags } from "@/lib/data/settings";
 import { getCoverLetter, getJob, latestScores, listInterviews, type JobRow } from "@/lib/data/jobs";
 import { listPracticeSessions, sessionScore } from "@/lib/data/practice";
@@ -80,6 +80,12 @@ async function JobModalLoader({ user, job, tab }: { user: CurrentUser; job: JobR
               resumeName: application.details?.resumeName ?? null,
               coverLetter: application.details?.coverLetter ?? false,
               answers: application.details?.answers ?? [],
+              // what the form still needs from the person, so it can be answered right on the card. only for a run that was not sent
+              waiting:
+                application.status === "needs_review" && application.details?.waiting?.length
+                  ? { id: application.id, jobId: job.id, jobTitle: job.title, company: job.company, applyUrl: application.applyUrl, questions: application.details.waiting.filter((question) => !(questionKey(question.label) in (application.details?.provided ?? {}))) }
+                  : null,
+              stuck: application.status === "applied" ? null : (application.details?.stuck ?? null),
             }
           : null,
         practice: practice.map((session) => ({ id: session.id, date: session.createdAt.toISOString(), answered: session.answers.filter(Boolean).length, score: sessionScore(session) })),
