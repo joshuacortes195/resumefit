@@ -26,6 +26,7 @@ export const FIELD_KEYS = [
   "pronouns",
   "address",
   "over18",
+  "usPerson",
   "school",
   "degree",
   "major",

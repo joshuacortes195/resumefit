@@ -5,7 +5,9 @@ import { fillDropdowns, findYesNo, setDropdown } from "./dropdowns";
 import { findFields } from "./fields";
 import { fillField, fillForm } from "./fill";
 import { captchaKind, companyFromTitle, hasCaptcha, looksConfirmed } from "./job-page";
+import { onlyThePerson, worthDrafting } from "./pipeline";
 import { pressAnswer, wouldSubmit } from "./press";
+import { profileValues } from "./values";
 
 // a search box that opens a list of choices, built the way the newer greenhouse forms build theirs:
 // pressing the box shows the list, typing narrows it, and clicking a choice puts it next to the box
@@ -294,5 +296,43 @@ describe("a box the form insists on being ticked", () => {
     expect(fillField(agree!, "Yes", null)).toBe("filled");
     expect((document.getElementById("agree") as HTMLInputElement).checked).toBe(true);
     expect((document.getElementById("news") as HTMLInputElement).checked).toBe(false);
+  });
+});
+
+describe("questions from a second set of real forms", () => {
+  it("never drafts an answer the person signs their name to", () => {
+    for (const label of [
+      "Export Control & Compliance: for the sole purpose of determining export licensing requirements, please state your citizenship",
+      "Have you ever been convicted of a felony?",
+      "Are you subject to a non-compete agreement?",
+      "Do you have any relatives who work at this company?",
+      "Are you related to a government official?",
+      "What are your salary expectations?",
+      "I certify that the information above is true",
+    ]) {
+      expect(onlyThePerson(label), label).toBe(true);
+      expect(worthDrafting({ id: "x", key: "question", label, kind: "textarea", required: true, status: "missing", value: "" }), label).toBe(false);
+    }
+    for (const label of ["Describe a project you are proud of.", "Why do you want to work here?", "Tell us about a time you solved a hard problem."]) expect(onlyThePerson(label), label).toBe(false);
+  });
+
+  it("reads the questions the first pass got wrong", () => {
+    document.body.innerHTML = `<form>
+      <label for="a">Please indicate your current city, state, and country.</label><input id="a" type="text" required>
+      <label for="b">When are you graduating? Please list the full month and year (e.g. December 2025).</label><input id="b" type="text" required>
+      <label for="c">What is your military status?</label><select id="c"><option value="">Select</option><option>I am not a veteran</option><option>I decline to answer</option></select>
+      <label for="d">Are you a US citizen or lawful permanent resident?</label><select id="d"><option value="">Select</option><option>Yes</option><option>No</option></select>
+      <label>Current location <span>No location found. Try entering a different location</span><span>Loading</span><input name="location" type="text"></label>
+    </form>`;
+    const fields = findFields(document, generic);
+    expect(fields.map((field) => field.key)).toEqual(["location", "graduationDate", "eeoVeteran", "usPerson", "location"]);
+    expect(fields[4]?.label).toBe("Current location");
+  });
+
+  it("answers citizen or permanent resident only when the profile is clear about it", () => {
+    const person = (workAuthorization: string | null) => profileValues({ user: { email: "", name: null }, resumes: [], profile: { workAuthorization, eeoGender: "", eeoRace: "", eeoVeteran: "", eeoDisability: "" } } as never).usPerson;
+    expect([person("US citizen"), person("Permanent resident"), person("Work visa"), person("Not authorized")]).toEqual(["Yes", "Yes", "No", "No"]);
+    // allowed to work says nothing about being a citizen, so that one is left for the person
+    expect([person("Authorized to work in the US"), person(null)]).toEqual([undefined, undefined]);
   });
 });

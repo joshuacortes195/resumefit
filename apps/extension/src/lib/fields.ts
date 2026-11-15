@@ -33,7 +33,9 @@ function textOf(element: Element | null | undefined): string {
 // some forms tuck status lines after the star that marks a required field, like "No location found". everything after the star is dropped
 function tidyLabel(label: string): string {
   const star = label.indexOf("\u2731");
-  return (star === -1 ? label : `${label.slice(0, star).trim()} \u2731`).replace(/\s+/g, " ").trim();
+  const cut = star === -1 ? label : `${label.slice(0, star).trim()} \u2731`;
+  // the same status lines turn up on a box that is not required, with no star to cut at
+  return cut.replace(/\s*No location found\..*$/i, "").replace(/\s+/g, " ").trim();
 }
 
 // answers that are a few words long: a name, a phone number, a city. a label that reads like a whole question is never asking for one of these,

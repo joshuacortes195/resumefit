@@ -13,9 +13,18 @@ export const MAX_DRAFTS = 6;
 // how many empty required answers one fill will look up in what the person answered before
 export const MAX_LOOKUPS = 12;
 
+// questions a person signs their name to: the law, their record, who they are related to. a draft for one of these is never written,
+// because a made up answer here is a false statement on a job application. they wait for the person
+const ONLY_THE_PERSON = /export control|export licens|\bitar\b|\bear\b|citizen|national of|nationalit|criminal|convict|felony|misdemeanor|background check|drug (test|screen)|security clearance|clearance level|non-?compete|non-?solicit|restrictive covenant|conflict of interest|government official|politically exposed|relative|related to|family member|personal relationship|disciplinar|terminated|dismissed|debarred|sanction|under oath|certify|attest|acknowledg|i (hereby )?(confirm|declare|agree)|social security|\bssn\b|date of birth|salary (history|expectation)|current (salary|compensation)|desired (salary|compensation)|expected (salary|compensation)/i;
+
+// true for a question only the person can answer truthfully, which is never drafted
+export function onlyThePerson(label: string): boolean {
+  return ONLY_THE_PERSON.test(label);
+}
+
 // true for a written question worth answering without being asked: one that has to be answered, or really is a question
 export function worthDrafting(field: FieldReport): boolean {
-  return field.key === "question" && field.value.trim() === "" && field.label.trim().length >= 5 && (field.required || field.label.includes("?"));
+  return field.key === "question" && field.value.trim() === "" && field.label.trim().length >= 5 && (field.required || field.label.includes("?")) && !onlyThePerson(field.label);
 }
 
 // the resume to attach: the one made for this job, then the one asked for, then the base resume

@@ -16,6 +16,8 @@ export function profileValues(account: Account): Partial<Record<FieldKey, string
     pronouns: profile.pronouns ?? "",
     address: profile.streetAddress ?? "",
     over18: yesNo(profile.over18 ?? null),
+    // only a clear yes or no: a citizen or a permanent resident is one, a visa or no authorization is not, anything else is left for the person
+    usPerson: /^(us citizen|permanent resident)$/i.test(profile.workAuthorization ?? "") ? "Yes" : /^(work visa|not authorized)$/i.test(profile.workAuthorization ?? "") ? "No" : "",
     howHeard: profile.howHeard ?? "",
     school: profile.school ?? "",
     degree: profile.degree ?? "",

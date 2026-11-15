@@ -7,11 +7,13 @@ export const FIELD_PATTERNS: [FieldKey, RegExp][] = [
   // asked on its own on many forms, apart from race
   ["eeoHispanic", /hispanic|latino|latinx/],
   ["eeoRace", /\brace\b|ethnic/],
-  ["eeoVeteran", /veteran/],
+  ["eeoVeteran", /veteran|military status/],
   ["eeoDisability", /disabilit/],
   ["pronouns", /\bpronouns?\b/],
   ["over18", /at least 18|18 years( of age)? or older|18 or older|over (the age of )?18|of legal age/],
   ["sponsorship", /sponsor|visa status|require.*(visa|h-?1b)/],
+  // asked on its own for export rules: a citizen or a permanent resident, which is not the same as being allowed to work
+  ["usPerson", /citizen or (a )?(lawful )?permanent resident|citizen,? (or )?(a )?green card|\bu s person\b|us person/],
   ["workAuthorization", /authori[sz]ed to work|work authori[sz]ation|legally (authori[sz]ed|eligible|able|permitted)|eligible to work|right to work/],
   ["relocation", /relocat/],
   ["howHeard", /how did you (hear|find|learn)|where did you (hear|find)|referral source|source of (application|referral)/],
@@ -29,11 +31,13 @@ export const FIELD_PATTERNS: [FieldKey, RegExp][] = [
   // school questions, the narrow ones first so "school" does not swallow them
   ["gpa", /\bgpa\b|grade point/],
   ["graduationYear", /graduation year|year of graduation/],
-  ["graduationDate", /graduation (date|month)|(expected|anticipated) graduation|graduat(ed|ing) in|when (do|did|will) you graduate/],
+  ["graduationDate", /graduation (date|month)|(expected|anticipated) graduation|graduat(ed|ing) in|when (do|did|will) you graduate|when are you graduating/],
   ["major", /\bmajor\b|field of study|area of study|discipline/],
   ["degree", /\bdegree\b|level of education|education level/],
   ["school", /\bschool\b|university|college|institution/],
   ["address", /street address|address line 1|address 1|mailing address|^address$/],
+  // one box for the whole place, "city, state and country", is the full location and not just the city
+  ["location", /city,? (and |or |& )?state|city \/ state|city state|city.{0,12}country/],
   ["zip", /\bzip\b|postal|postcode/],
   ["city", /\bcity\b|\btown\b/],
   ["state", /\bstate\b|province|\bregion\b/],
