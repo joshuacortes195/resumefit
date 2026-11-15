@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { generic } from "./adapters";
 import { fillDropdowns, findYesNo, setDropdown } from "./dropdowns";
 import { findFields } from "./fields";
+import { fillField, fillForm } from "./fill";
 import { captchaKind, companyFromTitle, hasCaptcha, looksConfirmed } from "./job-page";
 import { pressAnswer, wouldSubmit } from "./press";
 
@@ -277,5 +278,21 @@ describe("dropdowns that open on a press, not a click", () => {
     document.body.innerHTML = '<button id="a" type="button" role="combobox">Select...</button><div id="b" role="combobox" tabindex="0"></div><button id="c" type="submit" role="combobox">Submit</button>';
     const risky = (id: string) => wouldSubmit(document.getElementById(id) as HTMLElement);
     expect([risky("a"), risky("b"), risky("c")]).toEqual([false, false, true]);
+  });
+});
+
+describe("a box the form insists on being ticked", () => {
+  it("lists a required agree box with a yes to give, ticks it only on a yes, and leaves an optional one alone", () => {
+    document.body.innerHTML = '<form><label><input type="checkbox" id="agree" required> I have read and agree to the privacy notice *</label><label><input type="checkbox" id="news"> Send me news about open roles</label></form>';
+    const fields = findFields(document, generic);
+    expect(fields.map((field) => [field.kind, field.required, field.label])).toEqual([["checkbox", true, "I have read and agree to the privacy notice *"]]);
+    const [agree] = fields;
+    // never guessed: with no answer it stays empty and is reported as waiting on the person
+    expect(fillForm(fields, {}, null)[0]).toMatchObject({ status: "missing", value: "", options: ["Yes"] });
+    expect(fillField(agree!, "No", null)).toBe("missing");
+    expect((document.getElementById("agree") as HTMLInputElement).checked).toBe(false);
+    expect(fillField(agree!, "Yes", null)).toBe("filled");
+    expect((document.getElementById("agree") as HTMLInputElement).checked).toBe(true);
+    expect((document.getElementById("news") as HTMLInputElement).checked).toBe(false);
   });
 });

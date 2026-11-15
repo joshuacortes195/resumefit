@@ -180,6 +180,16 @@ describe("sending", () => {
     expect(asked.filter((type) => type === "submit")).toHaveLength(1);
   });
 
+  it("says what the form refused the send over, so the person can answer it", async () => {
+    let looks = 0;
+    const ask = (async (request: PageRequest) => {
+      if (request.type === "submit") return { pressed: true };
+      // the form stays up and marks two questions
+      return { ...PAGE, hasForm: true, problems: ++looks >= 2 ? ["Country *", "Are you over 18?"] : [] };
+    }) as Ask;
+    expect(await sendApplication(ask, instant)).toEqual({ sent: false, reason: "The form would not send. It still wants: Country *, Are you over 18?.", problems: ["Country *", "Are you over 18?"] });
+  });
+
   it("passes on why the page would not press", async () => {
     const ask = (async () => ({ pressed: false, reason: "The form has a captcha, which only you can do." })) as Ask;
     expect(await sendApplication(ask, instant)).toEqual({ sent: false, reason: "The form has a captcha, which only you can do." });

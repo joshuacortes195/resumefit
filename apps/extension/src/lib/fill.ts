@@ -73,6 +73,7 @@ function optionText(element: Element): string {
 export function currentValue(field: FormField): string {
   const [first] = field.elements;
   if (!first) return "";
+  if (field.kind === "checkbox" && field.elements.length === 1) return (first as HTMLInputElement).checked ? "Yes" : "";
   if (field.kind === "radio" || field.kind === "checkbox") {
     return field.elements
       .filter((element) => (element as HTMLInputElement).checked)
@@ -90,6 +91,8 @@ export function currentValue(field: FormField): string {
 
 // the choices a dropdown or a group of radio buttons offers, as the words on them
 export function optionsOf(field: FormField): string[] | undefined {
+  // a single box to tick has one answer, and the question is its own label
+  if (field.kind === "checkbox" && field.elements.length === 1) return ["Yes"];
   const texts =
     field.kind === "select"
       ? [...(field.elements[0] as HTMLSelectElement).options].filter((option) => option.value !== "").map((option) => option.text)
@@ -129,6 +132,14 @@ export function fillField(field: FormField, answer: string | undefined, resume: 
     if (index === -1) return empty;
     setNativeValue(select, select.options[index]?.value ?? "");
     return sure ? "filled" : "review";
+  }
+
+  // a single box to tick, like agreeing to a privacy notice: ticked only on a plain yes from the person
+  if (field.kind === "checkbox" && field.elements.length === 1) {
+    const box = first as HTMLInputElement;
+    if (!/^\s*(yes|i agree|agree|true)\b/i.test(answer)) return empty;
+    if (!box.checked && !pressAnswer(box)) return empty;
+    return "filled";
   }
 
   if (field.kind === "radio" || field.kind === "checkbox") {

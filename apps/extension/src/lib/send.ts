@@ -62,7 +62,8 @@ export function whyNotSend(page: PageInfo, fields: FieldReport[], account: Accou
   return null;
 }
 
-export type SendResult = { sent: boolean; reason?: string };
+// problems are the questions the form itself refused the send over, when it said
+export type SendResult = { sent: boolean; reason?: string; problems?: string[] };
 
 // presses Submit and waits for the page to say thanks. it presses once and never again, whatever happens next
 export async function sendApplication(ask: Ask, pause: (ms: number) => Promise<void> = (ms) => new Promise((resolve) => setTimeout(resolve, ms)), seconds = CONFIRM_SECONDS): Promise<SendResult> {
@@ -75,6 +76,11 @@ export async function sendApplication(ask: Ask, pause: (ms: number) => Promise<v
     if (page?.confirmed) return { sent: true };
     // the site answered the press with a puzzle. that one is the person's, and we do not wait around for it
     if (page?.captcha) return { sent: false, reason: "We pressed Submit and the site asked for a captcha, which only you can do. Finish it on the page." };
+    // the form answered the press by marking what it is not happy with. a couple of seconds in, that is its final word
+    if (second >= 2 && page?.hasForm && page.problems && page.problems.length > 0) {
+      const named = page.problems.slice(0, 3).join(", ");
+      return { sent: false, reason: `The form would not send. It still wants: ${named}${page.problems.length > 3 ? " and more" : ""}.`, problems: page.problems };
+    }
   }
   return { sent: false, reason: "We pressed Submit, but the page never said the application went through. Have a look at it." };
 }

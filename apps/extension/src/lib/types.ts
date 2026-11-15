@@ -167,4 +167,6 @@ export type PageInfo = {
   confirmed: boolean;
   // true on a site whose rules forbid filling its forms with a tool
   fillBlocked: boolean;
+  // the questions the form itself is marking as wrong or unanswered, by their labels. filled in once the form has been sent and refused
+  problems?: string[];
 };

@@ -141,8 +141,9 @@ export function findFields(doc: Document, adapter: Adapter): FormField[] {
         continue;
       }
     }
-    // a lone checkbox is a promise only the person can make, like "I agree to the terms"
-    if (type === "checkbox" && !grouped) continue;
+    // a lone checkbox is a promise only the person can make, like "I agree to the terms". one the form does not insist on is left alone,
+    // and one it does insist on is listed, so the person can say yes once and the form can go
+    if (type === "checkbox" && !grouped && !isRequired(control, labelFor(control, doc))) continue;
 
     const label = tidyLabel(grouped ? groupLabel(control, doc) || labelFor(control, doc) : labelFor(control, doc));
     // adapter hints first, then the browser's own hint, then the words around the field

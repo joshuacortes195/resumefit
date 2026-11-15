@@ -95,6 +95,8 @@ export function AutoApply({ page, account, jobId: cardId, open, onPage }: AutoAp
             return;
           }
           setHeld(send.reason ?? "The form was not sent.");
+          // what the form refused over is what the person is asked next, in the app
+          if (send.problems?.length) void report("needs_review", result.fields, { stuck: null, waiting: send.problems.map((label) => ({ label: label.slice(0, 300), written: true })) });
         }
       }
       // a heads up for when the person has moved on to something else while it worked

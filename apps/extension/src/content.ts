@@ -2,7 +2,7 @@ import { adapterFor } from "./lib/adapters";
 import { findApplyLink } from "./lib/apply-link";
 import { fillBlocked } from "./lib/blocked";
 import { fillDropdowns, setDropdown } from "./lib/dropdowns";
-import { findFields, looksLikeApplication, type FormField } from "./lib/fields";
+import { findFields, labelFor, looksLikeApplication, type FormField } from "./lib/fields";
 import { currentValue, fillField, fillForm, highlight, optionsOf } from "./lib/fill";
 import { hasCaptcha, looksConfirmed, readJob } from "./lib/job-page";
 import { isLinkedinProfile, readLinkedinProfile } from "./lib/linkedin-page";
@@ -29,6 +29,16 @@ function report(field: FormField, status: FieldReport["status"]): FieldReport {
 // how a field was left by the last fill, skipped when it was never touched
 const statusOf = (field: FormField) => (field.elements[0]?.getAttribute("data-resumefit-status") as FieldReport["status"] | null) ?? "skipped";
 
+// the questions the form itself says are wrong or still empty, by their labels. forms mark these when a send is refused
+function complaints(): string[] {
+  const marked = [...document.querySelectorAll<HTMLElement>('[aria-invalid="true"], input:invalid, select:invalid, textarea:invalid')].filter((element) => !element.closest('[aria-hidden="true"], [hidden]') && (element as HTMLInputElement).type !== "hidden");
+  const labels = marked.map((element) => labelFor(element, document).replace(/\s+/g, " ").trim()).filter((label) => label.length > 1);
+  return [...new Set(labels)].slice(0, 8).map((label) => label.slice(0, 200));
+}
+
+// true once Submit has been pressed on this page, which is when the form's own complaints start to mean something
+let pressed = false;
+
 // looks the page over: is it a job posting, is it an application form, which system is it
 function readPage(): PageInfo {
   const adapter = adapterFor(location.hostname);
@@ -47,6 +57,8 @@ function readPage(): PageInfo {
     captcha: hasCaptcha(document),
     confirmed: looksConfirmed(document),
     fillBlocked: blocked,
+    // an empty required box is "wrong" from the start, so these only count after a send was tried
+    problems: pressed ? complaints() : [],
   };
 }
 
@@ -105,7 +117,9 @@ if (!window.__resumefitLoaded) {
       respond(findApplyLink(document, location.href));
     } else if (request.type === "submit") {
       // the person asked for their applications to be sent for them. this is the only way a form is ever sent from here
-      respond(pressSubmit(document, location.hostname));
+      const result = pressSubmit(document, location.hostname);
+      pressed = pressed || result.pressed;
+      respond(result);
     } else if (request.type === "read-linkedin") {
       // the profile on screen, read only because the person pressed the import button
       respond(readLinkedinProfile(document, location.href));

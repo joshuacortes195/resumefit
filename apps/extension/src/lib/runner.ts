@@ -70,7 +70,11 @@ export async function runApplication(account: Account, job: RunJob, hooks: RunHo
   if (held) return { sent: false, reason: held, filled, needs };
 
   const send = await sendApplication(hooks.ask, hooks.pause);
-  if (!send.sent) return { sent: false, reason: send.reason ?? "The form was not sent.", filled, needs };
+  if (!send.sent) {
+    // what the form refused the send over becomes what the person is asked, so they can answer it in the app and it can go
+    if (send.problems?.length) await hooks.report({ ...filledIn, status: "needs_review", stuck: null, waiting: send.problems.map((label) => ({ label: label.slice(0, 300), written: true })) }).catch(() => undefined);
+    return { sent: false, reason: send.reason ?? "The form was not sent.", filled, needs };
+  }
   await hooks.report({ ...filledIn, status: "applied", fieldsNeedingAttention: 0, sentBy: "auto", waiting: [], stuck: null }).catch(() => undefined);
   return { sent: true, reason: null, filled, needs };
 }
