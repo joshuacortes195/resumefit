@@ -215,3 +215,67 @@ describe("the company in a tab title", () => {
     expect(companyFromTitle("Great place to work at scale", "")).toBe("");
   });
 });
+
+describe("dropdowns that open on a press, not a click", () => {
+  // a box the way newer component kits build one: it says it is a combo box, opens when the pointer goes down on it,
+  // takes a choice when the pointer comes up on one, and ignores the first lift after opening
+  function pressBox(label: string, choices: string[], tag: "button" | "div" = "button") {
+    const id = "p-" + document.querySelectorAll('[role="combobox"]').length;
+    const wrapper = document.createElement("div");
+    const kind = tag === "button" ? 'type="button"' : 'tabindex="0"';
+    wrapper.innerHTML = '<label id="' + id + '-label">' + label + "</label><" + tag + " " + kind + ' role="combobox" aria-labelledby="' + id + '-label" aria-controls="' + id + '-list" aria-expanded="false">​</' + tag + ">";
+    document.body.append(wrapper);
+    const trigger = wrapper.querySelector('[role="combobox"]') as HTMLElement;
+    let swallowNext = false;
+    const close = () => {
+      document.getElementById(id + "-list")?.remove();
+      trigger.setAttribute("aria-expanded", "false");
+    };
+    trigger.addEventListener("pointerdown", () => {
+      if (document.getElementById(id + "-list")) return close();
+      const list = document.createElement("div");
+      list.id = id + "-list";
+      list.setAttribute("role", "listbox");
+      for (const choice of choices) {
+        const option = document.createElement("div");
+        option.setAttribute("role", "option");
+        option.textContent = choice;
+        option.addEventListener("pointerup", () => {
+          // the lift that follows the opening press is not a choice
+          if (swallowNext) return void (swallowNext = false);
+          trigger.textContent = choice;
+          close();
+        });
+        list.append(option);
+      }
+      document.body.append(list);
+      trigger.setAttribute("aria-expanded", "true");
+      // armed a moment after the list shows, the way these kits do it, so the lift of the opening press itself does not use it up
+      setTimeout(() => (swallowNext = true), 0);
+    });
+    return trigger;
+  }
+
+  it("opens them with a real press and takes the choice, even when the first press on it is ignored", async () => {
+    document.body.innerHTML = "";
+    const sponsor = pressBox("Will you now or in the future require visa sponsorship?", ["Yes", "No"]);
+    const veteran = pressBox("Veteran Status", ["I am not a protected veteran", "I don't wish to answer"], "div");
+    const source = pressBox("How did you hear about us?", ["Job board", "Referral"]);
+    const reports = await fillDropdowns(document, { sponsorship: "No", eeoVeteran: "Decline to self-identify", howHeard: "LinkedIn" }, false);
+    expect([sponsor.textContent, veteran.textContent]).toEqual(["No", "I don't wish to answer"]);
+    expect(reports.map((report) => [report.status, report.value])).toEqual([
+      ["filled", "No"],
+      ["filled", "I don't wish to answer"],
+      ["skipped", ""],
+    ]);
+    // the one with no matching choice is closed again and left empty
+    expect(document.querySelector('[role="listbox"]')).toBeNull();
+    expect(source.textContent?.replace(/​/g, "")).toBe("");
+  });
+
+  it("lets a box that only opens a list through the click guard, and never one that sends the form", () => {
+    document.body.innerHTML = '<button id="a" type="button" role="combobox">Select...</button><div id="b" role="combobox" tabindex="0"></div><button id="c" type="submit" role="combobox">Submit</button>';
+    const risky = (id: string) => wouldSubmit(document.getElementById(id) as HTMLElement);
+    expect([risky("a"), risky("b"), risky("c")]).toEqual([false, false, true]);
+  });
+});

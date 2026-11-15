@@ -56,31 +56,52 @@ function pick(options: HTMLElement[], answer: string, key: FieldKey): { choice: 
 
 // ---- a button that opens a list ----
 
-// every button style dropdown on the page
+// every dropdown on the page that is a box to press: a button that opens a list, or anything that says it is a combo box without being a text box
 export function findDropdowns(doc: Document): HTMLElement[] {
-  return [...doc.querySelectorAll<HTMLElement>('button[aria-haspopup="listbox"]')].filter(usable);
+  return [...doc.querySelectorAll<HTMLElement>('button[aria-haspopup="listbox"], [role="combobox"]:not(input):not(textarea):not(select)')].filter((element) => usable(element) && element.getAttribute("aria-disabled") !== "true");
+}
+
+// the choices that are showing for one of these boxes: the list it says it controls, or whatever list is open
+function openChoices(trigger: HTMLElement, doc: Document): HTMLElement[] {
+  const listId = trigger.getAttribute("aria-controls") ?? trigger.getAttribute("aria-owns");
+  const list = listId ? doc.getElementById(listId) : null;
+  const own = list ? [...list.querySelectorAll<HTMLElement>('[role="option"]')] : [];
+  return own.length > 0 ? own : [...doc.querySelectorAll<HTMLElement>('[role="listbox"] [role="option"], [role="option"]')].filter((option) => option.getClientRects().length > 0 || option.isConnected);
 }
 
 // opens one dropdown, clicks the choice that matches the answer and says what it picked. a list with no clear match is closed again untouched
 async function chooseFromButton(button: HTMLElement, answer: string, key: FieldKey, doc: Document): Promise<Picked | null> {
   // a button that could send the form is never pressed, whatever it claims to open
+  // a list left open by an earlier question would be taken for this one's, so it is waited out first
+  await until(() => (doc.querySelector('[role="listbox"] [role="option"]') ? null : true), 600);
   if (!pressAnswer(button)) return null;
   const options = await until(() => {
-    const found = [...doc.querySelectorAll<HTMLElement>('[role="listbox"] [role="option"], [role="option"]')];
+    const found = openChoices(button, doc);
     return found.length > 0 ? found : null;
   }, 1500);
   const match = options ? pick(options, answer, key) : null;
   if (match) {
     const picked = words(match.choice);
-    match.choice.click();
-    return { words: picked, sure: match.sure };
+    // a choice in a list is an answer, never something that sends the form
+    if (pressAnswer(match.choice)) {
+      // the list closes by itself once a choice is taken, and the next question waits for that
+      const closed = () => (match.choice.isConnected && doc.querySelector('[role="listbox"]') ? null : true);
+      // some lists ignore the first press after they open, so a choice that did not take is pressed once more
+      if (!(await until(closed, 400))) {
+        pressAnswer(match.choice);
+        await until(closed, 800);
+      }
+      return { words: picked, sure: match.sure };
+    }
   }
   // nothing fits: close the list the way a person would, and leave the question for them
   const view = doc.defaultView ?? window;
   (doc.activeElement ?? button).dispatchEvent(new view.KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
-  await new Promise((done) => setTimeout(done, 80));
-  // still open: a second click on the button closes it
-  if (options?.some((option) => option.isConnected)) button.click();
+  // some lists take a moment to fold away. one that says it is closed is left alone, pressing it again would only open it
+  const open = () => (button.hasAttribute("aria-expanded") ? button.getAttribute("aria-expanded") === "true" : Boolean(options?.some((option) => option.isConnected)));
+  await until(() => (open() ? null : true), 500);
+  // still open: a second press on the box closes it
+  if (open()) pressAnswer(button);
   return null;
 }
 
@@ -90,7 +111,8 @@ function buttonWidget(button: HTMLElement, doc: Document): Widget {
     element: button,
     label,
     required: button.getAttribute("aria-required") === "true" || /required|\*\s*$/i.test(button.getAttribute("aria-label") ?? "") || /\*\s*$/.test(label),
-    shown: () => (PLACEHOLDER.test(words(button)) ? "" : words(button)),
+    // an empty box can hold a word like "Select..." or a blank character that only keeps its height
+    shown: () => (PLACEHOLDER.test(words(button).replace(/[\u200b\u00a0]/g, "").trim()) ? "" : words(button).replace(/[\u200b\u00a0]/g, "").trim()),
     choose: (answer, key) => chooseFromButton(button, answer, key, doc),
   };
 }
@@ -135,10 +157,17 @@ function type(input: HTMLInputElement, text: string): void {
 async function chooseFromSearch(input: HTMLInputElement, answer: string, key: FieldKey, doc: Document): Promise<Picked | null> {
   const view = doc.defaultView ?? window;
   const press = (target: Element, event: string) => target.dispatchEvent(new view.MouseEvent(event, { bubbles: true, cancelable: true }));
-  // pressing on the box is what opens the list
-  input.focus();
+  // a list left open by the question before would be read as this one's
+  await until(() => (doc.querySelector('[role="listbox"] [role="option"]') ? null : true), 600);
+  // pressing on the box is what opens the list. taking focus first would make some of them think they were already open
   press(shellOf(input).querySelector<HTMLElement>('[class*="control"]') ?? input, "mousedown");
-  let options = (await until(() => (listOf(input, doc).length > 0 ? listOf(input, doc) : null), 700)) ?? [];
+  let options = (await until(() => (listOf(input, doc).length > 0 ? listOf(input, doc) : null), 500)) ?? [];
+  if (options.length === 0) {
+    // others open when the box itself is pressed like any button
+    pressAnswer(input);
+    input.focus();
+    options = (await until(() => (listOf(input, doc).length > 0 ? listOf(input, doc) : null), 500)) ?? [];
+  }
   let match = pick(options, answer, key);
   if (!match) {
     // a long list, or one that is looked up as you type like a city: type the answer and see what it offers
@@ -151,9 +180,11 @@ async function chooseFromSearch(input: HTMLInputElement, answer: string, key: Fi
   }
   if (match) {
     const picked = words(match.choice);
-    press(match.choice, "mousedown");
     // a choice in a list is an answer, never something that sends the form
-    if (pressAnswer(match.choice)) return { words: picked, sure: match.sure };
+    if (pressAnswer(match.choice)) {
+      await until(() => (listOf(input, doc).length === 0 ? true : null), 800);
+      return { words: picked, sure: match.sure };
+    }
   }
   // nothing fits: clear what was typed and close the list, and leave the question for the person
   if (input.value) type(input, "");

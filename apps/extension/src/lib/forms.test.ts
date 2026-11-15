@@ -515,9 +515,9 @@ describe("never sending the form", () => {
     for (const file of files) {
       const code = readFileSync(path.join(folder, file), "utf8").replace(/\/\/.*$/gm, "");
       expect(code, file).not.toMatch(/\.submit\(|requestSubmit|dispatchEvent\([^)]*["']submit/);
-      // the only clicks are on a radio button or a choice in an open list, the guard itself,
+      // the only clicks are the guard itself, which every answer and every dropdown goes through,
       // and the one press of Submit for a person who switched sending on
-      const allowed = file === "lib/press.ts" || file === "lib/submit.ts" ? 1 : file === "lib/dropdowns.ts" ? 2 : 0;
+      const allowed = file === "lib/press.ts" || file === "lib/submit.ts" ? 1 : 0;
       expect(code.match(/\.click\(\)/g)?.length ?? 0, file).toBe(allowed);
     }
   });
