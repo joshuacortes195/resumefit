@@ -1,5 +1,5 @@
 import type { SkillMatch } from "@resumefit/shared";
-import { formattingChecks, recruiterTipChecks, searchabilityChecks, type Check } from "./checks";
+import { formattingChecks, recruiterTipChecks, stuffingNote, searchabilityChecks, type Check } from "./checks";
 import { SCORE_CAPS } from "./config";
 import { analyzeJd, cleanTitle, stripIgnoredSections, yearsWanted, type JdAnalysis } from "./jd";
 import type { LayoutMeta } from "./layout";
@@ -173,6 +173,9 @@ export function scanResume(input: ScanInput): ScanResult {
   const checkInput = { text: resumeText, parsed: resume, jd, jobTitle, educationOverride: input.educationOverride, layout };
   const searchability = searchabilityChecks(checkInput);
   const recruiterTips = recruiterTipChecks(checkInput);
+  // a resume that leans on repeating keywords gets told so. it is a note, so the score is the same with or without it
+  const stuffing = stuffingNote([...hard, ...soft], resume);
+  if (stuffing) recruiterTips.push(stuffing);
   const formatting = formattingChecks(checkInput);
 
   const categoryScores: CategoryScores = {

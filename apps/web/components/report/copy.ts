@@ -71,6 +71,7 @@ export const GROUPS: Record<CheckGroup, { label: string; hint: string }> = {
   "word-count": { label: "Word count", hint: "Too short looks thin, too long does not get read. Most strong resumes land between 300 and 1000 words." },
   verbs: { label: "Action verbs", hint: "Starting many bullets with the same verb makes different work sound the same." },
   spelling: { label: "Spelling", hint: "A quick pass for common typos. It will not catch everything, so read it through once more yourself." },
+  stuffing: { label: "Keyword stuffing", hint: "Repeating a skill over and over, or a skills list longer than your experience, can raise a scanner's count and still lose the person reading it." },
   layout: { label: "Layout", hint: "Columns, tables and images can scramble the order a scanner reads your text in." },
   fonts: { label: "Font check", hint: "Common fonts at a readable size come through cleanly in every system." },
   "page-setup": { label: "Page setup", hint: "Some scanners skip headers and footers, and odd page sizes or margins can cut text off." },

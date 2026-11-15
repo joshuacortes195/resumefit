@@ -20,6 +20,7 @@ export type CheckGroup =
   | "word-count"
   | "verbs"
   | "spelling"
+  | "stuffing"
   | "layout"
   | "fonts"
   | "page-setup";
@@ -675,4 +676,34 @@ export function formattingChecks({ text, parsed, layout }: CheckInput): Check[] 
     );
   }
   return checks;
+}
+
+// a skill has to show up this many times, and this many times more often than the posting names it, to count as repeated too much
+const STUFFED_TIMES = 8;
+const STUFFED_RATIO = 4;
+// the skills section is this share of every word on the resume
+const SKILLS_HEAVY = 0.45;
+
+// warns when a resume reads as stuffed with keywords: one skill repeated far more than the job asks for, or a skills list
+// that outweighs everything else. scanners count the words, but a recruiter reads the page, and this is what gets one thrown out.
+// it is a note, so it never moves the score. nothing is returned when the resume reads fine
+export function stuffingNote(skills: { name: string; resumeCount: number; jdCount: number }[], parsed: CheckInput["parsed"]): Check | null {
+  const repeated = skills.filter((skill) => skill.resumeCount >= STUFFED_TIMES && skill.resumeCount >= STUFFED_RATIO * Math.max(skill.jdCount, 1)).sort((a, b) => b.resumeCount - a.resumeCount);
+  const skillWords = parsed.sections.filter((section) => section.kind === "skills").reduce((sum, section) => sum + section.lines.join(" ").split(/\s+/).filter(Boolean).length, 0);
+  const heavy = parsed.wordCount >= 150 && skillWords / parsed.wordCount > SKILLS_HEAVY;
+  if (repeated.length === 0 && !heavy) return null;
+  const parts: string[] = [];
+  if (repeated.length > 0) {
+    const named = repeated.slice(0, 3).map((skill) => `${skill.name} (${skill.resumeCount} times)`);
+    parts.push(`${named.join(", ")} ${repeated.length === 1 ? "is" : "are"} repeated far more than the job description asks for.`);
+  }
+  if (heavy) parts.push(`Your skills section is ${Math.round((100 * skillWords) / parsed.wordCount)}% of the whole resume.`);
+  return {
+    id: "stuffing",
+    category: "recruiterTips",
+    group: "stuffing",
+    passed: true,
+    info: true,
+    message: `${parts.join(" ")} A scanner may count that, but a recruiter reads it as keyword stuffing. Show each skill once or twice inside a result you got with it.`,
+  };
 }
