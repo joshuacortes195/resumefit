@@ -127,10 +127,10 @@ export function Landing({ inviteOnly }: { inviteOnly: boolean }) {
           <p>ResumeFit is a free tool, built for me and my friends.</p>
           <p className="flex gap-4">
             <Link href="/privacy" className={LINK_BUTTON}>
-              Privacy
+              Privacy Policy
             </Link>
             <Link href="/terms" className={LINK_BUTTON}>
-              Terms
+              Terms of Service
             </Link>
           </p>
         </div>

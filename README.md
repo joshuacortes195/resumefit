@@ -185,6 +185,9 @@ This project includes information from the [O*NET 30.0 Database](https://www.one
 - **Addresses that point at nothing** answer with a real 404 and the app's own not found page.
 - **Ids that are not ids**, like a link someone mangled, get the same not found page instead of an error.
 - **Postings that talk to the AI**: a line like "ignore all previous instructions" in a job description is left out of the score and out of everything sent to a model, and the report says so.
+- **Quoted text**: resume, posting and form text goes to a model inside triple quotes, and a run of quote marks inside that text is squashed to one, so it cannot close the quotes early and pass for the app's own instructions.
+- **Links from job sites** are only kept when they are plain http or https addresses.
+- **The daily send number** is counted by the app and by the extension, and the lower count wins, so it holds even if a report to the app goes missing.
 - **AI answers** have fancy hyphens, quotes and spaces swapped for plain ones, since some applicant systems cannot read them.
 
 ## Privacy, in short
@@ -194,4 +197,8 @@ This project includes information from the [O*NET 30.0 Database](https://www.one
 - The admin can see each member's email, name, join date, invite code and scan count, and nothing else of theirs.
 - People can download everything they have stored, or delete their account and all of it, from Settings.
 
-The full version is at `/privacy` in the app.
+The full version is the Privacy Policy at `/privacy`, and the rules are the Terms of Service at `/terms`. Who runs the app, the contact address, the date and the minimum age (16) on both pages come from `apps/web/lib/legal.ts`, so the contact address is a one line change there.
+
+## Security
+
+How the app protects data, and how to report a problem privately, is in [SECURITY.md](SECURITY.md).

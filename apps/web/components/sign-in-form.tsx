@@ -1,9 +1,11 @@
 "use client";
 
 import { useActionState } from "react";
+import Link from "next/link";
 import { MailCheck } from "lucide-react";
 import { signInWithEmail, signInWithGoogle, type SignInState } from "@/app/actions/auth";
 import { INPUT, PRIMARY_BUTTON, SECONDARY_BUTTON } from "@/components/ui/buttons";
+import { MINIMUM_AGE } from "@/lib/legal";
 
 // email link, and google when it is switched on, with the invite code for first timers
 export function SignInForm({ inviteOnly, google, error, invite }: { inviteOnly: boolean; google: boolean; error: string | null; invite: string }) {
@@ -56,6 +58,18 @@ export function SignInForm({ inviteOnly, google, error, invite }: { inviteOnly: 
           Continue with Google
         </button>
       )}
+      {/* signing in for the first time makes the account, so the agreement is spelled out right here */}
+      <p className="text-center text-xs text-muted">
+        By creating an account or signing in, you agree to the{" "}
+        <Link href="/terms" className="underline hover:text-foreground">
+          Terms of Service
+        </Link>{" "}
+        and the{" "}
+        <Link href="/privacy" className="underline hover:text-foreground">
+          Privacy Policy
+        </Link>
+        , and confirm you are at least {MINIMUM_AGE}.
+      </p>
     </form>
   );
 }

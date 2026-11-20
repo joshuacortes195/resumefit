@@ -65,3 +65,13 @@ test("script written into the page without the code is refused", async ({ page }
   expect(result.link).toBe(false);
   expect(result.refused.length).toBeGreaterThanOrEqual(2);
 });
+
+// the browser rules the live site sends with every page, the legal pages included
+test("every page tells the browser to stay on https and stay out of frames", async ({ request }) => {
+  for (const path of ["/sign-in", "/privacy", "/terms", "/dashboard"]) {
+    const headers = (await request.get(path)).headers();
+    expect(headers["strict-transport-security"] ?? "", path).toMatch(/max-age=\d{8,}/);
+    expect(headers["x-frame-options"], path).toBe("DENY");
+    expect(headers["content-security-policy"] ?? "", path).toContain("frame-ancestors 'none'");
+  }
+});

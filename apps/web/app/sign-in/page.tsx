@@ -19,7 +19,7 @@ export default function SignInPage({ searchParams }: { searchParams: Promise<{ e
         <Suspense fallback={null}>
           <SignInBody searchParams={searchParams} />
         </Suspense>
-        <p className="mt-6 flex justify-center gap-4 text-xs text-muted">
+        <p className="mt-6 flex flex-wrap justify-center gap-x-4 gap-y-2 text-xs text-muted">
           {/* for people who landed here without knowing what the app is */}
           <Link href="/" className="hover:text-foreground">
             What is ResumeFit?
@@ -28,10 +28,10 @@ export default function SignInPage({ searchParams }: { searchParams: Promise<{ e
             Sample scan
           </Link>
           <Link href="/privacy" className="hover:text-foreground">
-            Privacy
+            Privacy Policy
           </Link>
           <Link href="/terms" className="hover:text-foreground">
-            Terms
+            Terms of Service
           </Link>
         </p>
       </div>

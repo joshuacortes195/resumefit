@@ -11,6 +11,9 @@ import { Sidebar } from "@/components/sidebar";
 const ACCOUNT_LINKS = [
   { label: "Settings", href: "/settings" },
   { label: "AI settings", href: "/settings#ai" },
+  // the rules and what happens to your data, always one click away
+  { label: "Privacy Policy", href: "/privacy" },
+  { label: "Terms of Service", href: "/terms" },
 ];
 
 // top bar, sidebar and the page area for every signed in page
