@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { and, eq, like, lt } from "drizzle-orm";
 import { getDb, schema } from "@/db";
 import { htmlToText, type FeedJob } from "@/lib/jobs-feed";
+import { webLink } from "@/lib/safe-link";
 
 // live job search: asks job sites for the title someone is after, right when they search.
 // the company boards we keep a copy of only cover the companies on our list. these sites, all free to ask, cover some of everyone else
@@ -46,7 +47,8 @@ function job(provider: string, id: string, fields: { title: string; company: str
     domain: "",
     location: fields.location.trim(),
     remote: fields.remote ?? /\bremote\b/i.test(`${fields.location} ${fields.title}`),
-    url: fields.url,
+    // only a plain web address is kept from a job site
+    url: webLink(fields.url),
     postedAt: fields.postedAt,
     // the skills are worked out by the caller, which has the skills list
     skills: [],

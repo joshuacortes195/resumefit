@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 import type { Ask } from "./pipeline";
 import { runApplication } from "./runner";
 import { fillEverything } from "./pipeline";
-import { aboutCompany, sendApplication, waitingOn, whyNotSend } from "./send";
+import { aboutCompany, sendApplication, waitingOn, whyNotSend, withLocalCap } from "./send";
 import { findSubmit, pressSubmit } from "./submit";
 import type { Account, FieldReport, PageInfo, PageRequest } from "./types";
 
@@ -282,5 +282,30 @@ describe("working through one application alone", () => {
     const outcome = await runApplication(account("all"), JOB, silent.hooks);
     expect(outcome.sent).toBe(false);
     expect(silent.reports.map((report) => report.status)).toEqual(["needs_review"]);
+  });
+});
+
+describe("the daily number of sends", () => {
+  const now = Date.parse("2026-11-20T12:00:00Z");
+  const hours = (n: number) => now - n * 3_600_000;
+  const capped = (cap: number | undefined, left: number) => ({ ...account("all", left), profile: { ...account("all", left).profile, dailySendCap: cap } }) as Account;
+
+  it("holds even when the app was never told about some of the sends", () => {
+    // the app thinks 5 are left of 5, but this browser sent 3 in the last day
+    const left = withLocalCap(capped(5, 5), [hours(1), hours(2), hours(20)], now).sendsLeft;
+    expect(left).toBe(2);
+    expect(whyNotSend(PAGE, [field("a")], withLocalCap(capped(3, 3), [hours(1), hours(2), hours(3)], now))).toMatch(/number of applications/);
+  });
+
+  it("forgets sends older than a day and never goes above the app's own count", () => {
+    expect(withLocalCap(capped(5, 5), [hours(25), hours(30)], now).sendsLeft).toBe(5);
+    expect(withLocalCap(capped(10, 1), [], now).sendsLeft).toBe(1);
+    expect(withLocalCap(capped(10, 0), [], now).sendsLeft).toBe(0);
+  });
+
+  it("falls back to 10 a day, and never more than 25, when the profile number is missing or odd", () => {
+    expect(withLocalCap(capped(undefined, 99), Array.from({ length: 4 }, (_, n) => hours(n)), now).sendsLeft).toBe(6);
+    expect(withLocalCap(capped(500, 99), [], now).sendsLeft).toBe(25);
+    expect(withLocalCap(capped(0, 99), [], now).sendsLeft).toBe(10);
   });
 });

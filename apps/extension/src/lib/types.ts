@@ -85,6 +85,8 @@ export type Profile = {
   eeoHispanic?: string;
   // who presses Submit. off: the person. safe: us, except a drafted answer about the employer waits for the person. all: us, those included
   autoSend?: "off" | "safe" | "all";
+  // the most applications the person lets us send in one day, 1 to 25
+  dailySendCap?: number;
 };
 
 // what the web app tells us about the connected person

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { STYLE_RULES } from "@/lib/ai/prompts/style";
+import { STYLE_RULES, quote } from "@/lib/ai/prompts/style";
 import { blankInstructions } from "@resumefit/scoring";
 
 export const builderBulletsSchema = z.object({ bullets: z.array(z.string()).min(1).max(6) });
@@ -18,7 +18,7 @@ Company: ${input.company || "not given"}
 
 What the person says they did:
 """
-${input.description.slice(0, 2000)}
+${quote(input.description.slice(0, 2000))}
 """`;
 }
 
@@ -37,12 +37,12 @@ export function builderSummaryPrompt(input: { resume: string; years: string; jdT
 
 Target job description:
 """
-${(input.jdText ? blankInstructions(input.jdText).trim().slice(0, 5000) : "") || "not given"}
+${quote((input.jdText ? blankInstructions(input.jdText).trim().slice(0, 5000) : "") || "not given")}
 """
 
 The rest of the resume:
 """
-${input.resume.slice(0, 8000)}
+${quote(input.resume.slice(0, 8000))}
 """`;
 }
 

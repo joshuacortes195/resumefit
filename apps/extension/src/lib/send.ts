@@ -62,6 +62,22 @@ export function whyNotSend(page: PageInfo, fields: FieldReport[], account: Accou
   return null;
 }
 
+// one day, for counting sends
+const DAY_MS = 86_400_000;
+// the daily number when the profile did not say, and the most the profile can ever ask for
+const DEFAULT_CAP = 10;
+const HIGHEST_CAP = 25;
+
+// the account with its sends left also counted from this browser's own list of sends.
+// the app counts the sends it was told about, so a report that never reached it could let a day go past the person's number.
+// whichever count is lower wins, so the daily number holds even then
+export function withLocalCap(account: Account, sentAt: number[], now = Date.now()): Account {
+  const asked = account.profile?.dailySendCap;
+  const cap = Math.min(HIGHEST_CAP, Number.isInteger(asked) && (asked ?? 0) > 0 ? (asked as number) : DEFAULT_CAP);
+  const recent = sentAt.filter((at) => now - at < DAY_MS && at <= now).length;
+  return { ...account, sendsLeft: Math.max(0, Math.min(account.sendsLeft ?? 0, cap - recent)) };
+}
+
 // problems are the questions the form itself refused the send over, when it said
 export type SendResult = { sent: boolean; reason?: string; problems?: string[] };
 

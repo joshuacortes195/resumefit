@@ -1,4 +1,4 @@
-import { STYLE_RULES } from "@/lib/ai/prompts/style";
+import { STYLE_RULES, quote } from "@/lib/ai/prompts/style";
 import { blankInstructions } from "@resumefit/scoring";
 
 export const TONES = ["Professional", "Enthusiastic", "Concise", "Conversational"] as const;
@@ -35,12 +35,12 @@ Why this company, in the person's words: ${input.why?.trim() || "not given"}
 
 Job description:
 """
-${blankInstructions(input.jdText).trim().slice(0, 8000) || "not given"}
+${quote(blankInstructions(input.jdText).trim().slice(0, 8000) || "not given")}
 """
 
 Resume:
 """
-${input.resume.slice(0, 10_000)}
+${quote(input.resume.slice(0, 10_000))}
 """`;
 }
 

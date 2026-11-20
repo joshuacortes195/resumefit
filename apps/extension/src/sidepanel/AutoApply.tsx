@@ -3,6 +3,7 @@ import { api, type ApplicationReport } from "../lib/api";
 import { getPending, type PendingApply } from "../lib/pending";
 import { fillEverything, pickResume, tally } from "../lib/pipeline";
 import { sendApplication, stuckOn, waitingOn, whyNotSend } from "../lib/send";
+import { cappedAccount, noteSend } from "../lib/send-log";
 import type { Account, FieldReport, PageInfo } from "../lib/types";
 import { activeTab, askPage, localToday, readPage } from "./page";
 
@@ -79,8 +80,8 @@ export function AutoApply({ page, account, jobId: cardId, open, onPage }: AutoAp
       void report("needs_review", result.fields, { coverLetter: result.coverLetter !== null });
       // the person asked for it to be sent: do that now when their rules allow, and say why when they do not
       if (sends && !onlyNew) {
-        // how many sends are left is read fresh, the panel may have been open a while
-        const fresh = await api.me().catch(() => account);
+        // how many sends are left is read fresh, the panel may have been open a while, and checked against this browser's own count
+        const fresh = await cappedAccount(await api.me().catch(() => account));
         const why = whyNotSend(await readPage().catch(() => page), result.fields, fresh);
         if (why) {
           setHeld(why);
@@ -88,6 +89,8 @@ export function AutoApply({ page, account, jobId: cardId, open, onPage }: AutoAp
           setBusy("send");
           const send = await sendApplication(askPage);
           if (send.sent) {
+            // counted in the browser too, so the daily number holds even if the report below goes missing
+            await noteSend().catch(() => undefined);
             await report("applied", result.fields, { fieldsNeedingAttention: 0, coverLetter: result.coverLetter !== null, sentBy: "auto" });
             setSentForMe(true);
             setApplied(true);

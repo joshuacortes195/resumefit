@@ -1,5 +1,5 @@
 import { blankInstructions } from "@resumefit/scoring";
-import { STYLE_RULES } from "@/lib/ai/prompts/style";
+import { STYLE_RULES, quote } from "@/lib/ai/prompts/style";
 
 export const SCREENING_TASK = "Task: answer an application question.";
 
@@ -18,16 +18,16 @@ export function screeningPrompt(input: { question: string; resume: string; jdTex
   // the question comes off somebody else's form, so it is quoted like the posting is
   return `Question:
 """
-${blankInstructions(input.question)}
+${quote(blankInstructions(input.question))}
 """
 
 Job description:
 """
-${blankInstructions(input.jdText).slice(0, 6000) || "not given"}
+${quote(blankInstructions(input.jdText).slice(0, 6000) || "not given")}
 """
 
 Resume:
 """
-${input.resume.slice(0, 9000)}
+${quote(input.resume.slice(0, 9000))}
 """`;
 }

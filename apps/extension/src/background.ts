@@ -1,6 +1,7 @@
 import { api, getConnection, type Connection } from "./lib/api";
 import { clearPending, setPending } from "./lib/pending";
 import { runApplication, type RunJob, type RunOutcome } from "./lib/runner";
+import { cappedAccount, noteSend } from "./lib/send-log";
 import type { PageRequest } from "./lib/types";
 
 // the background worker: opens the side panel, owns the right click menu, takes the connection from the web app
@@ -94,7 +95,9 @@ function today(): string {
 
 // true when the person switched sending on, has sends left today, and has let us onto pages
 async function canRunAlone(): Promise<boolean> {
-  const account = await api.me().catch(() => null);
+  const fetched = await api.me().catch(() => null);
+  // sends left is the lower of the app's count and this browser's own
+  const account = fetched ? await cappedAccount(fetched) : null;
   if (!account?.autoApply || !account.profile || (account.profile.autoSend ?? "off") === "off" || (account.sendsLeft ?? 0) <= 0) return false;
   return chrome.permissions.contains({ origins: ["https://*/*"] });
 }
@@ -160,7 +163,7 @@ async function runOne(job: RunJob): Promise<RunOutcome> {
   let outcome: RunOutcome;
   try {
     // the person's rules are read fresh every time, so a change or a used up day takes hold at once
-    const account = await api.me();
+    const account = await cappedAccount(await api.me());
     if ((account.profile?.autoSend ?? "off") === "off" || (account.sendsLeft ?? 0) <= 0) throw new Error("You have reached the number of applications you let us send in a day.");
     const tab = await chrome.tabs.create({ url: job.url, active: false });
     tabId = tab.id;
@@ -182,6 +185,8 @@ async function runOne(job: RunJob): Promise<RunOutcome> {
     outcome = { sent: false, reason: problem instanceof Error ? problem.message : "Something went wrong.", filled: 0, needs: 0 };
   }
   if (outcome.sent) {
+    // counted here too, so the daily number holds even if the report to the app went missing
+    await noteSend().catch(() => undefined);
     // a sent application has nothing left to look at
     if (tabId !== undefined) void chrome.tabs.remove(tabId).catch(() => undefined);
     note("Application sent", "It is on your tracker under Applied, with the answers that went out.");

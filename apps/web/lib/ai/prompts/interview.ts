@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { STYLE_RULES } from "@/lib/ai/prompts/style";
+import { STYLE_RULES, quote } from "@/lib/ai/prompts/style";
 import { blankInstructions } from "@resumefit/scoring";
 
 export const QUESTION_TYPES = ["behavioral", "technical", "resume"] as const;
@@ -21,12 +21,12 @@ export function interviewQuestionsPrompt(input: { jobTitle: string | null; jdTex
 
 Job description:
 """
-${blankInstructions(input.jdText).slice(0, 6000)}
+${quote(blankInstructions(input.jdText).slice(0, 6000))}
 """
 
 Candidate's resume:
 """
-${input.resume.slice(0, 8000) || "not given"}
+${quote(input.resume.slice(0, 8000) || "not given")}
 """`;
 }
 
@@ -59,18 +59,18 @@ export function interviewFeedbackPrompt(input: { question: string; answer: strin
 
 Job description:
 """
-${blankInstructions(input.jdText).slice(0, 4000)}
+${quote(blankInstructions(input.jdText).slice(0, 4000))}
 """
 
 Candidate's resume:
 """
-${input.resume.slice(0, 6000) || "not given"}
+${quote(input.resume.slice(0, 6000) || "not given")}
 """
 
 Question: ${input.question}
 
 The candidate's answer:
 """
-${input.answer.slice(0, 5000)}
+${quote(input.answer.slice(0, 5000))}
 """`;
 }

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { STYLE_RULES } from "@/lib/ai/prompts/style";
+import { STYLE_RULES, quote } from "@/lib/ai/prompts/style";
 
 export const headlinesSchema = z.object({ options: z.array(z.string()).min(1).max(5) });
 
@@ -35,12 +35,12 @@ Current headline: ${input.headline || "none"}
 
 Current About section:
 """
-${input.about.slice(0, 4000) || "none"}
+${quote(input.about.slice(0, 4000) || "none")}
 """
 
 Experience:
 """
-${input.experience.slice(0, 6000) || "none"}
+${quote(input.experience.slice(0, 6000) || "none")}
 """
 
 Skills listed on the profile: ${input.skills.slice(0, 60).join(", ") || "none"}`;

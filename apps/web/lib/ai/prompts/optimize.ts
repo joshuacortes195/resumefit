@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { STYLE_RULES } from "@/lib/ai/prompts/style";
+import { STYLE_RULES, quote } from "@/lib/ai/prompts/style";
 import { blankInstructions } from "@resumefit/scoring";
 
 // the kinds of change a suggestion can be
@@ -58,12 +58,12 @@ ${input.present.join(", ") || "none"}
 
 Job description:
 """
-${blankInstructions(input.jdSummary)}
+${quote(blankInstructions(input.jdSummary))}
 """
 
 Resume, one numbered line each:
 """
-${numbered}
+${quote(numbered)}
 """`;
 }
 
@@ -86,6 +86,6 @@ Target job title: ${input.jobTitle ?? "not given"}
 
 The job entry from the resume:
 """
-${input.entry}
+${quote(input.entry)}
 """`;
 }

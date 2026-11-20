@@ -16,3 +16,9 @@ export const BANNED_WORDS = ["spearheaded", "leveraged", "synergy", "synergies",
 export function tidy(text: string): string {
   return text.replace(/\s*[—–]\s*/g, ", ").replace(/ ,/g, ",").trim();
 }
+
+// text from a resume, a posting or a form goes inside triple quotes. a run of three or more quote marks in that text
+// would close the quotes early and make what follows look like our own instructions, so it is squashed to one mark
+export function quote(text: string): string {
+  return text.replace(/"{3,}|“{3,}|”{3,}/g, '"');
+}

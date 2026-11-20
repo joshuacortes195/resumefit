@@ -3,6 +3,7 @@ import { countSkills, looksLikeTitle, parseResume, yearsWanted, type SkillTerm }
 import { HARD_SKILLS } from "@resumefit/skills-data";
 import { getDb, schema } from "@/db";
 import { BOARDS, type Board } from "@/lib/job-boards";
+import { webLink } from "@/lib/safe-link";
 
 export { BOARDS, type Board } from "@/lib/job-boards";
 export { fitLabel } from "@/lib/fit";
@@ -125,7 +126,8 @@ export async function fetchBoard(board: Board): Promise<FeedJob[]> {
     domain: board.domain,
     location: location.slice(0, 120),
     remote,
-    url,
+    // only a plain web address is kept from a job board
+    url: webLink(url),
     postedAt,
     skills: skillsIn(title, description),
     intern: INTERN.test(title),

@@ -8,7 +8,11 @@ const SECURITY_HEADERS = [
   // a page that opens us in a new tab gets no handle back to this one
   { key: "Cross-Origin-Opener-Policy", value: "same-origin" },
   // the microphone is only for interview practice, nothing else is ever asked for
-  { key: "Permissions-Policy", value: "camera=(), geolocation=(), microphone=(self)" },
+  { key: "Permissions-Policy", value: "camera=(), geolocation=(), microphone=(self), payment=(), usb=(), serial=(), hid=(), bluetooth=(), browsing-topics=()" },
+  // browsers only ever talk to the site over https for the next two years, even if someone types http:// or follows an old link
+  { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains" },
+  // old flash and pdf plugins are not allowed to read anything from the site
+  { key: "X-Permitted-Cross-Domain-Policies", value: "none" },
 ];
 
 const nextConfig: NextConfig = {
