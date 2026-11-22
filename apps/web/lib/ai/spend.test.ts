@@ -1,7 +1,8 @@
 import { randomUUID } from "node:crypto";
+import { eq } from "drizzle-orm";
 import { describe, expect, it, vi } from "vitest";
 import { getDb, schema } from "@/db";
-import { GLOBAL_DAILY_CAP, globalCapReached, USER_DAILY_CAP } from "@/lib/ai/limits";
+import { DAILY_CAPS, GLOBAL_DAILY_CAP, globalCapReached, USER_DAILY_CAP, usedToday } from "@/lib/ai/limits";
 import { geminiCall, groqCall, MAX_OUTPUT_TOKENS, type ProviderRequest } from "@/lib/ai/providers";
 import { AiLimitError, generateText, type ReadyProvider } from "@/lib/ai/router";
 
@@ -30,6 +31,23 @@ function counting(): ReadyProvider & { requests: ProviderRequest[] } {
   const requests: ProviderRequest[] = [];
   return { name: "gemini", model: "m", fastModel: "m", requests, call: async (request) => (requests.push(request), { text: "ok", tokensIn: 1, tokensOut: 1 }) };
 }
+
+// this one runs first, the next one fills up the allowance everyone shares
+describe("requests sent side by side", () => {
+  it("cannot all slip under a feature's daily cap while the model is still thinking", async () => {
+    const id = await someone();
+    const cap = DAILY_CAPS["cover-letter"] ?? 0;
+    // a model that takes a moment, like a real one, so every request is in flight before any is written down
+    const slow: ReadyProvider = { name: "gemini", model: "m", fastModel: "m", call: async () => (await new Promise((done) => setTimeout(done, 80)), { text: "ok", tokensIn: 1, tokensOut: 1 }) };
+    const results = await Promise.allSettled(Array.from({ length: cap + 5 }, () => generateText("cover-letter", { system: "s", prompt: "p" }, { userId: id, providers: [slow] })));
+    // the first ten in line get their letter, the rest are turned away
+    expect(results.filter((result) => result.status === "fulfilled")).toHaveLength(cap);
+    // what was used is written down once each, with the model that answered on it, and the ones turned away leave nothing behind
+    const rows = await (await getDb()).select({ model: schema.aiUsage.model }).from(schema.aiUsage).where(eq(schema.aiUsage.userId, id));
+    expect(rows).toHaveLength(results.filter((result) => result.status === "fulfilled").length);
+    expect(rows.every((row) => row.model === "m")).toBe(true);
+  });
+});
 
 describe("the shared daily allowance", () => {
   it("stops a brand new account once everyone together has used the day's allowance", async () => {

@@ -1,4 +1,4 @@
-import { and, count, eq, gte, ne } from "drizzle-orm";
+import { and, count, eq, gte, ne, sql } from "drizzle-orm";
 import { getDb, schema } from "@/db";
 
 // the things people can ask the writing helpers to do
@@ -38,8 +38,9 @@ function startOfDay(): Date {
 
 // how many times a feature was used today, by one person or by everyone.
 // the count for one feature leaves out requests nobody answered, so a busy provider does not eat someone's ten cover letters.
-// the counts across all features keep them in, because a request that failed still used up the shared allowance on the way
-export async function usedToday(feature?: AiFeature, userId?: string): Promise<number> {
+// the counts across all features keep them in, because a request that failed still used up the shared allowance on the way.
+// upTo only counts what came in no later than one held spot, so requests that arrive together are put in a line
+export async function usedToday(feature?: AiFeature, userId?: string, upTo?: string): Promise<number> {
   const db = await getDb();
   const [row] = await db
     .select({ total: count() })
@@ -50,6 +51,7 @@ export async function usedToday(feature?: AiFeature, userId?: string): Promise<n
         feature ? eq(schema.aiUsage.feature, feature) : undefined,
         feature ? ne(schema.aiUsage.model, NO_ANSWER) : undefined,
         userId ? eq(schema.aiUsage.userId, userId) : undefined,
+        upTo ? sql`(${schema.aiUsage.createdAt}, ${schema.aiUsage.id}) <= (select ${schema.aiUsage.createdAt}, ${schema.aiUsage.id} from ${schema.aiUsage} where ${schema.aiUsage.id} = ${upTo})` : undefined,
       ),
     );
   return row?.total ?? 0;
@@ -74,10 +76,39 @@ export async function globalCapReached(): Promise<boolean> {
   return (await usedToday()) >= GLOBAL_DAILY_CAP;
 }
 
-// writes down a request that every provider failed. it counts toward the person's and everyone's daily total,
-// so sending requests that are bound to fail is not a way around the caps
-export async function logFailure(userId: string, feature: AiFeature): Promise<void> {
-  await logUsage({ userId, feature, provider: "none", model: NO_ANSWER, tokensIn: 0, tokensOut: 0 }).catch(() => undefined);
+// what is written in place of a model's name while a request is still waiting on its answer
+export const WAITING = "waiting";
+
+// takes a spot in today's counts before any model is asked. requests sent side by side each count the spots ahead of theirs,
+// so a burst of them cannot all get under a cap while the first answers are still on their way
+export async function holdSpot(userId: string, feature: AiFeature): Promise<string> {
+  const db = await getDb();
+  const [row] = await db.insert(schema.aiUsage).values({ userId, feature, provider: "none", model: WAITING }).returning({ id: schema.aiUsage.id });
+  if (!row) throw new Error("Could not count the request.");
+  return row.id;
+}
+
+// which cap a held spot lands past, if any: the feature's own, the person's share of the day or the one everyone shares.
+// only the uses up to and including the spot are counted, so the first ones in line go ahead and the rest are turned away
+export async function capPassed(userId: string, feature: AiFeature, spot: string): Promise<"feature" | "user" | "global" | null> {
+  const { dailyCaps } = await import("@/lib/data/settings");
+  const cap = (await dailyCaps())[feature];
+  if (cap !== null && (await usedToday(feature, userId, spot)) > cap) return "feature";
+  if ((await usedToday(undefined, userId, spot)) > USER_DAILY_CAP) return "user";
+  if ((await usedToday(undefined, undefined, spot)) > GLOBAL_DAILY_CAP) return "global";
+  return null;
+}
+
+// fills in a held spot once we know who answered, or that nobody did
+export async function settleSpot(id: string, entry: { provider: string; model: string; tokensIn: number; tokensOut: number }): Promise<void> {
+  const db = await getDb();
+  await db.update(schema.aiUsage).set(entry).where(eq(schema.aiUsage.id, id));
+}
+
+// gives a spot back when the request was turned away before any model was asked
+export async function dropSpot(id: string): Promise<void> {
+  const db = await getDb();
+  await db.delete(schema.aiUsage).where(eq(schema.aiUsage.id, id));
 }
 
 // writes down one call, the caps and the admin page are built from these rows

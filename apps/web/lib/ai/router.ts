@@ -5,7 +5,7 @@ import { z } from "zod";
 import { getDb, schema } from "@/db";
 import { plainAnswer } from "@/lib/ai/clean";
 import { decrypt } from "@/lib/ai/crypto";
-import { globalCapReached, logFailure, logUsage, remainingToday, userCapReached, type AiFeature } from "@/lib/ai/limits";
+import { capPassed, dropSpot, holdSpot, NO_ANSWER, settleSpot, type AiFeature } from "@/lib/ai/limits";
 import { mockCall } from "@/lib/ai/mock";
 import { encryptionSecret } from "@/lib/ai/secret";
 import { cloudflareCall, DEFAULT_MODELS, geminiCall, groqCall, isModelProblem, PROVIDERS, ProviderError, type ProviderCall, type ProviderName } from "@/lib/ai/providers";
@@ -156,18 +156,27 @@ function parseReply<T>(text: string, shape: z.ZodType<T>): { ok: true; value: T 
   }
 }
 
-// checks the caps before a call and picks the providers to try
-async function prepare(feature: AiFeature, options: GenerateOptions): Promise<ReadyProvider[]> {
+// picks the providers to try and checks the caps before a call. the request takes its spot in the counts first and the caps
+// are checked with it counted in, so requests sent at the same moment can not all pass while none of them is written down yet.
+// hands back the spot to fill in after the call, null when nothing is counted
+async function prepare(feature: AiFeature, options: GenerateOptions): Promise<{ providers: ReadyProvider[]; spot: string | null }> {
   const providers = options.providers ?? (await readyProviders(options.userId));
   if (providers.length === 0) throw new AiUnavailableError();
-  if (!options.untracked) {
-    if ((await remainingToday(options.userId, feature)) === 0) throw new AiLimitError();
-    // one person's share of the day, then how fast they are going, then the allowance everyone shares
-    if (await userCapReached(options.userId)) throw new AiLimitError("You have used all of your AI actions for today. They reset at midnight.");
+  if (options.untracked) return { providers, spot: null };
+  const spot = await holdSpot(options.userId, feature);
+  try {
+    // the feature's own cap, one person's share of the day and the allowance everyone shares, then how fast they are going
+    const passed = await capPassed(options.userId, feature, spot);
+    if (passed === "feature") throw new AiLimitError();
+    if (passed === "user") throw new AiLimitError("You have used all of your AI actions for today. They reset at midnight.");
+    if (passed === "global") throw new AiLimitError("The shared AI allowance for today is used up. It resets at midnight.");
     if (!(await withinLimit(options.userId, "ai"))) throw new AiLimitError("That is a lot of AI requests in a short time. Wait a minute and try again.");
-    if (await globalCapReached()) throw new AiLimitError("The shared AI allowance for today is used up. It resets at midnight.");
+  } catch (error) {
+    // turned away before any model was asked, so the spot goes back
+    await dropSpot(spot).catch(() => undefined);
+    throw error;
   }
-  return providers;
+  return { providers, spot };
 }
 
 // how long one model gets to answer before the next one is tried. people are waiting on these, so it is kept short
@@ -238,7 +247,7 @@ async function attempt<T>(
   options: GenerateOptions,
   run: (provider: ReadyProvider, model: string, signal: AbortSignal) => Promise<{ value: T; tokensIn: number; tokensOut: number }>,
 ): Promise<T> {
-  const providers = await prepare(feature, options);
+  const { providers, spot } = await prepare(feature, options);
   // every model that could be asked, in order: the one that was wanted first, then the provider's smaller one in case the first is not on offer for this key
   const candidates = providers.flatMap((provider) => {
     const wanted = options.fast ? provider.fastModel : provider.model;
@@ -264,7 +273,8 @@ async function attempt<T>(
       if (!options.untracked) record(provider.name);
       if (worthSaving) await saveHealth(provider.name);
       if (!options.untracked && !provider.own) await resetBreaker(key);
-      if (!options.untracked) await logUsage({ userId: options.userId, feature, provider: provider.name, model, tokensIn, tokensOut });
+      // the spot this request held is filled in with who answered
+      if (spot) await settleSpot(spot, { provider: provider.name, model, tokensIn, tokensOut });
       // fancy dashes, quotes and spaces are swapped for plain ones before anything is shown or saved
       return plainAnswer(value);
     } catch (error) {
@@ -284,7 +294,7 @@ async function attempt<T>(
     }
   }
   // nobody answered. it still cost calls to the providers, so it is counted
-  if (!options.untracked) await logFailure(options.userId, feature);
+  if (spot) await settleSpot(spot, { provider: "none", model: NO_ANSWER, tokensIn: 0, tokensOut: 0 }).catch(() => undefined);
   throw new AiBusyError();
 }
 
