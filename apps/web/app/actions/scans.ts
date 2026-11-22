@@ -136,7 +136,8 @@ export async function setScanStatus(scanId: string, status: string, today: strin
 // archives or restores scans from the history table
 export async function archiveScans(scanIds: string[], archived: boolean): Promise<ActionResult> {
   const parsed = z.array(id).max(200).safeParse(scanIds);
-  if (!parsed.success) return fail("Pick the scans first.");
+  // the archive switch has to really be a yes or no, anything else from the browser is turned away
+  if (!parsed.success || typeof archived !== "boolean") return fail("Pick the scans first.");
   const user = await getCurrentUser();
   await setScansArchived(user.id, parsed.data, archived);
   refresh();

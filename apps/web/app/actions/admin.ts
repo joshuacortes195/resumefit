@@ -32,6 +32,8 @@ export async function createInviteAction(input: { maxUses: number; expiresInDays
 
 // takes an invite code out of use
 export async function revokeInviteAction(code: string): Promise<ActionResult> {
+  // what arrives is only as well shaped as whoever sent it
+  if (typeof code !== "string") return { ok: false, error: "That invite code could not be found." };
   await requireAdmin();
   await revokeInvite(code.slice(0, 60));
   revalidatePath("/admin");
@@ -40,6 +42,8 @@ export async function revokeInviteAction(code: string): Promise<ActionResult> {
 
 // saves the daily caps for each writing feature
 export async function saveCapsAction(caps: Record<string, number>): Promise<ActionResult> {
+  // a missing or odd list of caps is turned away before anything is read from it
+  if (!caps || typeof caps !== "object") return { ok: false, error: "Caps have to be whole numbers from 0 to 1000." };
   await requireAdmin();
   const cleaned: Partial<Record<AiFeature, number>> = {};
   for (const feature of AI_FEATURES) {
@@ -55,6 +59,8 @@ export async function saveCapsAction(caps: Record<string, number>): Promise<Acti
 
 // turns features on and off
 export async function saveFlagsAction(flags: Record<string, boolean>): Promise<ActionResult> {
+  // same for the feature switches
+  if (!flags || typeof flags !== "object") return { ok: false, error: "Those switches could not be read." };
   await requireAdmin();
   const cleaned = Object.fromEntries((Object.keys(FLAGS) as Flag[]).map((flag) => [flag, flags[flag] === true])) as Record<Flag, boolean>;
   await saveFeatureFlags(cleaned);
@@ -64,7 +70,7 @@ export async function saveFlagsAction(flags: Record<string, boolean>): Promise<A
 
 // deletes the signed in person's account and everything in it. there is no undo
 export async function deleteMyAccount(confirmation: string): Promise<ActionResult> {
-  if (confirmation.trim().toLowerCase() !== "delete my account") return { ok: false, error: 'Type "delete my account" to confirm.' };
+  if (typeof confirmation !== "string" || confirmation.trim().toLowerCase() !== "delete my account") return { ok: false, error: 'Type "delete my account" to confirm.' };
   const user = await getCurrentUser();
   let leftover = false;
   try {

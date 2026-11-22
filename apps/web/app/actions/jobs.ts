@@ -124,7 +124,8 @@ export async function setJobStatus(jobId: string, status: string, today: string)
 
 // archives a job or brings it back to the board
 export async function setJobArchived(jobId: string, archived: boolean): Promise<ActionResult> {
-  if (!id.safeParse(jobId).success) return fail("We could not find that job.");
+  // the archive switch has to really be a yes or no, anything else from the browser is turned away
+  if (!id.safeParse(jobId).success || typeof archived !== "boolean") return fail("We could not find that job.");
   const user = await getCurrentUser();
   if (!(await updateJob(user.id, jobId, { archived }))) return fail("We could not find that job.");
   refresh(jobId);
