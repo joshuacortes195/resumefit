@@ -72,6 +72,8 @@ function looksLikePhone(match: string): boolean {
   const digits = match.replace(/\D/g, "").length;
   if (digits < (match.trimStart().startsWith("+") ? 8 : 9) || digits > 15) return false;
   const years = match.split(/\D+/).filter((part) => /^(?:19|20)\d{2}$/.test(part)).length;
+  // a date like 01/15/2023 is part of a job's dates, not a phone, so it stays for the ai to read
+  if (/(?<!\d)\d{1,2}\/\d{1,2}\/\d{2,4}/.test(match)) return false;
   return years < 2;
 }
 

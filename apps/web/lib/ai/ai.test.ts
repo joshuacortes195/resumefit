@@ -352,6 +352,8 @@ Led 4 launches from 2019 – 2023.`;
     for (const secret of ["rivera-mail", "rivera.example", "0199", "0123", "0147", "1990"]) expect(redacted.text, secret).not.toContain(secret);
     // a span of years written with a dash is still left alone
     expect(redacted.text).toContain("Led 4 launches from 2019 – 2023.");
+    // dates written with slashes stay, they are the job's dates and not a phone
+    expect(redact("Held from 01/15/2023 - 05/20/2024 at Acme").text).toBe("Held from 01/15/2023 - 05/20/2024 at Acme");
     expect(redacted.restore(redacted.text)).toBe(tricky);
   });
 
