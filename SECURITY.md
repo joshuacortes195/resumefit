@@ -28,7 +28,7 @@ I will confirm the report within a few days, keep you updated while it is fixed 
 
 **Browser protections**
 - A strict Content Security Policy with a fresh nonce on every request, `frame-ancestors 'none'`, `X-Frame-Options: DENY`, HSTS, `nosniff`, a strict referrer policy, a locked down Permissions Policy and `Cross-Origin-Opener-Policy`. API answers also carry `Cross-Origin-Resource-Policy: same-origin`.
-- API requests that change something are refused when they come from another site, on top of the framework's own origin check for server actions.
+- API requests and server actions that change something are refused when they come from another site, on top of the framework's own origin check for server actions, including when the browser leaves the origin out.
 - Private pages are sent with `Cache-Control: private, no-store` and `noindex`.
 - No user content is ever rendered as raw HTML, and links that come from job sites or users are only kept when they are plain `http`/`https` addresses.
 

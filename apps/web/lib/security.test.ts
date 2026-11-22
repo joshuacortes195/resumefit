@@ -126,6 +126,15 @@ describe("requests from other sites", () => {
     expect(fromAnotherSite(sent("/api/export", "POST"))).toBe(false);
   });
 
+  it("checks server actions on any page the same way, since the framework lets one with no origin through", () => {
+    const action = { "next-action": "40abc" };
+    expect(fromAnotherSite(sent("/tracker", "POST", { ...action, "sec-fetch-site": "cross-site" }))).toBe(true);
+    expect(fromAnotherSite(sent("/settings", "POST", { ...action, origin: "null" }))).toBe(true);
+    expect(fromAnotherSite(sent("/tracker", "POST", { ...action, origin: "https://resumefit-three.vercel.app", "sec-fetch-site": "same-origin" }))).toBe(false);
+    // a plain form post to a page that is not an action is left to the page
+    expect(fromAnotherSite(sent("/tracker", "POST", { "sec-fetch-site": "cross-site" }))).toBe(false);
+  });
+
   it("leaves reads and the extension's key checked endpoints alone", () => {
     expect(fromAnotherSite(sent("/api/account/export", "GET", { origin: "https://evil.example" }))).toBe(false);
     expect(fromAnotherSite(sent("/api/ext/scan", "POST", { origin: "chrome-extension://abc" }))).toBe(false);

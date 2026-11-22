@@ -3,11 +3,14 @@ const OTHER_SITE = new Set(["cross-site", "same-site"]);
 
 // true when a request that changes something through the api was sent by a page on another site.
 // browsers say where such a request came from, and the app's own pages are the only ones that should be making them.
-// the extension's endpoints are left out, they are opened to it on purpose and ask for its key instead of a session
+// the extension's endpoints are left out, they are opened to it on purpose and ask for its key instead of a session.
+// server actions are checked the same way wherever they are posted to. the framework turns away a foreign origin itself,
+// but lets one with no origin at all through, even when the browser says it came from another site
 export function fromAnotherSite(request: Request): boolean {
   if (["GET", "HEAD", "OPTIONS"].includes(request.method)) return false;
   const { pathname, host } = new URL(request.url);
-  if (!pathname.startsWith("/api/") || pathname.startsWith("/api/ext/")) return false;
+  const action = request.headers.has("next-action");
+  if (!action && (!pathname.startsWith("/api/") || pathname.startsWith("/api/ext/"))) return false;
   const origin = request.headers.get("origin");
   // no origin at all: fall back on the browser's own note about the sender, so a page that gets its origin stripped is still turned away.
   // a request with neither comes from a script or a tool, not a browser, so it carries no one's cookies by accident
