@@ -110,6 +110,28 @@ function groupLabel(control: Element, doc: Document): string {
   return "";
 }
 
+// answers about who someone is, their right to work, where they live, their pay and their written answers.
+// these only ever go into a box the person can see, so a page cannot tuck a hidden one away to collect them
+const PRIVATE_KEYS = new Set<FieldKey>(["eeoGender", "eeoHispanic", "eeoRace", "eeoVeteran", "eeoDisability", "workAuthorization", "usPerson", "sponsorship", "address", "zip", "salary", "gpa", "over18", "pronouns", "question"]);
+
+// true when nothing on screen shows this element: it or a box around it is switched off, it is made invisible, or it sits off the page
+function unseen(element: Element): boolean {
+  const view = element.ownerDocument.defaultView;
+  if (!view) return false;
+  const own = view.getComputedStyle(element);
+  if (own.visibility === "hidden" || own.visibility === "collapse") return true;
+  for (let node: Element | null = element; node; node = node.parentElement) if (view.getComputedStyle(node).display === "none") return true;
+  const box = element.getBoundingClientRect();
+  return box.width > 0 && box.height > 0 && (box.right + view.scrollX <= 0 || box.bottom + view.scrollY <= 0);
+}
+
+// a radio button or checkbox is often drawn by its label with the real box hidden, so for those a label the person can see counts too
+function hiddenFromPerson(control: Control): boolean {
+  if (!unseen(control)) return false;
+  const labels = control instanceof HTMLInputElement && control.labels ? [...control.labels] : [];
+  return !labels.some((label) => !unseen(label));
+}
+
 // true when the form marks this field as one that has to be answered
 function isRequired(control: Element, label: string): boolean {
   return control.hasAttribute("required") || control.getAttribute("aria-required") === "true" || /[*\u2731]\s*$|\(required\)/i.test(label);
@@ -162,6 +184,8 @@ export function findFields(doc: Document, adapter: Adapter): FormField[] {
     if (!key && (kind === "textarea" || (kind === "text" && label.length > 25 && (label.includes("?") || label.length > 40)))) key = "question";
     // big text boxes are always a question to answer in words, whatever their placeholder says
     if (kind === "textarea" && !hinted) key = "question";
+    // a private answer asked for in a box nobody can see is left out altogether, so it is never filled, drafted or looked up
+    if (key && PRIVATE_KEYS.has(key) && hiddenFromPerson(control)) continue;
 
     // an upload box often has only its button's word next to it, so it is named for what goes in it
     const shown = kind === "file" && key && label.length < 12 ? (key === "resume" ? "Resume" : "Cover letter") : label;

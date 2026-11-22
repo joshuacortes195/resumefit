@@ -265,6 +265,32 @@ describe("a form on any other site", () => {
     expect((doc.querySelector('input[name="terms"]') as HTMLInputElement).checked).toBe(false);
     expect(valueOf("#pw")).toBe("");
   });
+
+  // a page can hide boxes to collect answers the person never sees go out
+  it("never puts a private answer into a box the person cannot see", () => {
+    document.body.innerHTML = `
+      <style>.gone { display: none }</style>
+      <label for="n">Full name</label><input id="n">
+      <label for="e">Email</label><input id="e" type="email">
+      <div class="gone"><label for="g">Gender</label><select id="g"><option></option><option>Decline to self-identify</option><option>Male</option></select></div>
+      <div style="display: none"><label for="v">Veteran status</label><select id="v"><option></option><option>I am not a protected veteran</option></select></div>
+      <div style="visibility: hidden"><label for="a">Street address</label><input id="a"></div>
+      <div style="display: none"><label for="q">Why do you want to work here?</label><textarea id="q" required></textarea></div>
+      <fieldset><legend>Are you legally authorized to work in the US?</legend>
+        <label><input type="radio" name="auth" value="y" style="display: none"> Yes</label>
+        <label><input type="radio" name="auth" value="n" style="display: none"> No</label>
+      </fieldset>`;
+    const fields = findFields(document, generic);
+    fillForm(fields, { ...VALUES, eeoGender: "Male", address: "123 Main Street" }, null);
+    // the hidden ones are not even listed, so nothing is drafted or looked up for them either
+    expect(fields.map((field) => field.key)).toEqual(["fullName", "email", "workAuthorization"]);
+    expect(valueOf("#g")).toBe("");
+    expect(valueOf("#v")).toBe("");
+    expect(valueOf("#a")).toBe("");
+    // the visible ones still fill, and so does a radio drawn by its label with the real button hidden
+    expect(valueOf("#n")).toBe("Jordan Avery Lee");
+    expect((document.querySelector('input[name="auth"][value="y"]') as HTMLInputElement).checked).toBe(true);
+  });
 });
 
 describe("filling the way frameworks expect", () => {
