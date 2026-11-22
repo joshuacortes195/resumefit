@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { eq, like } from "drizzle-orm";
 import JSZip from "jszip";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import nextConfig from "@/next.config";
 import { getDb, schema } from "@/db";
 import { quote } from "@/lib/ai/prompts/style";
@@ -14,7 +14,9 @@ import { savePendingLinkedin } from "@/lib/data/practice";
 import { getProfile, saveProfile } from "@/lib/data/profile";
 import { saveResume } from "@/lib/data/resumes";
 import { createScan } from "@/lib/data/scans";
-import { withinLimit } from "@/lib/rate-limit";
+import { corsHeaders } from "@/lib/ext-auth";
+import { SHIPPED_EXTENSION_ID } from "@/lib/extension-client";
+import { clientAddress, withinLimit } from "@/lib/rate-limit";
 import { webLink } from "@/lib/safe-link";
 import { fromAnotherSite } from "@/lib/same-origin";
 import { draftCookie } from "@/lib/builder/open-draft";
@@ -59,6 +61,49 @@ describe("safety headers", () => {
     expect(named["referrer-policy"]).toBe("strict-origin-when-cross-origin");
     expect(named["permissions-policy"]).toContain("camera=()");
     expect(named["permissions-policy"]).toContain("geolocation=()");
+  });
+
+  it("keeps api answers from being pulled into another site's page", async () => {
+    const rules = (await nextConfig.headers?.()) ?? [];
+    const api = rules.find((rule) => rule.source === "/api/:path*")?.headers ?? [];
+    expect(api).toContainEqual({ key: "Cross-Origin-Resource-Policy", value: "same-origin" });
+  });
+});
+
+describe("who may call the extension endpoints", () => {
+  // a preflight from some origin, the way a browser sends one
+  const from = (origin: string) => new Request("https://resumefit.test/api/ext/me", { method: "OPTIONS", headers: { origin } });
+
+  it("only answers our own extension on the live site, never another extension or a web page", () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("NEXT_PUBLIC_EXTENSION_ID", "");
+    try {
+      const ours = `chrome-extension://${SHIPPED_EXTENSION_ID}`;
+      expect(corsHeaders(from(ours))["Access-Control-Allow-Origin"]).toBe(ours);
+      expect(corsHeaders(from("chrome-extension://abcdefghijklmnopabcdefghijklmnop"))).toEqual({});
+      expect(corsHeaders(from("https://evil.example"))).toEqual({});
+      // never a wildcard, and never with cookies
+      expect(Object.values(corsHeaders(from(ours)))).not.toContain("*");
+      expect(corsHeaders(from(ours))).not.toHaveProperty("Access-Control-Allow-Credentials");
+
+      // an id set for this copy of the app replaces the shipped one
+      vi.stubEnv("NEXT_PUBLIC_EXTENSION_ID", "abcdefghijklmnopabcdefghijklmnop");
+      expect(corsHeaders(from("chrome-extension://abcdefghijklmnopabcdefghijklmnop"))["Access-Control-Allow-Origin"]).toBe("chrome-extension://abcdefghijklmnopabcdefghijklmnop");
+      expect(corsHeaders(from(ours))).toEqual({});
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+});
+
+describe("where a signed out request came from", () => {
+  it("trusts the addresses the host writes over the one a visitor can type", () => {
+    // a visitor puts a made up address first in x-forwarded-for, the host's own header still wins
+    expect(clientAddress(new Headers({ "x-forwarded-for": "1.2.3.4, 203.0.113.9", "x-real-ip": "203.0.113.9" }))).toBe("203.0.113.9");
+    expect(clientAddress(new Headers({ "x-forwarded-for": "1.2.3.4", "x-vercel-forwarded-for": "198.51.100.7" }))).toBe("198.51.100.7");
+    // off the host there is only x-forwarded-for, and with nothing at all everyone shares one count
+    expect(clientAddress(new Headers({ "x-forwarded-for": "192.0.2.1, 10.0.0.1" }))).toBe("192.0.2.1");
+    expect(clientAddress(new Headers())).toBe("unknown");
   });
 });
 

@@ -27,7 +27,7 @@ I will confirm the report within a few days, keep you updated while it is fixed 
 - Session cookies are `HttpOnly`, `Secure` and `SameSite=Lax`.
 
 **Browser protections**
-- A strict Content Security Policy with a fresh nonce on every request, `frame-ancestors 'none'`, `X-Frame-Options: DENY`, HSTS, `nosniff`, a strict referrer policy, a locked down Permissions Policy and `Cross-Origin-Opener-Policy`.
+- A strict Content Security Policy with a fresh nonce on every request, `frame-ancestors 'none'`, `X-Frame-Options: DENY`, HSTS, `nosniff`, a strict referrer policy, a locked down Permissions Policy and `Cross-Origin-Opener-Policy`. API answers also carry `Cross-Origin-Resource-Policy: same-origin`.
 - API requests that change something are refused when they come from another site, on top of the framework's own origin check for server actions.
 - Private pages are sent with `Cache-Control: private, no-store` and `noindex`.
 - No user content is ever rendered as raw HTML, and links that come from job sites or users are only kept when they are plain `http`/`https` addresses.
@@ -35,7 +35,7 @@ I will confirm the report within a few days, keep you updated while it is fixed 
 **Uploads and outside requests**
 - Uploaded files are identified by their own bytes, not their name, capped at 4 MB, and only PDF and DOCX are read. PDFs have a page limit and a time limit, and DOCX files are checked for zip bombs (entry count, unpacked size and XML size) before they are read.
 - Importing a job from a link only fetches public `https` pages. Every redirect hop is checked again, and private, local and reserved addresses are refused at the moment of connecting, not only when the link is first checked. Responses are capped in size and time.
-- Expensive and AI routes are rate limited per user, with daily caps on AI features.
+- Expensive and AI routes are rate limited per user, with daily caps on AI features, a daily cap per person across all of them and one shared daily cap across everyone. Every request to a model has a ceiling on how long its reply can be.
 
 **AI features**
 - Names, emails, phone numbers, addresses, links and dates of birth are swapped for placeholders before text is sent to a model.
@@ -48,7 +48,7 @@ I will confirm the report within a few days, keep you updated while it is fixed 
 
 **Browser extension**
 - No host access by default. Access to pages is asked for when it is needed, and no remote code is ever loaded.
-- Only the ResumeFit web app can message the extension, and a connection it offers has to be approved in the side panel.
+- Only the ResumeFit web app can message the extension, and a connection it offers has to be approved in the side panel. The other way round, the app's extension endpoints only answer cross site requests from the ResumeFit extension's own id.
 - Submitting an application is off by default. When a user switches it on, it only happens on Greenhouse, Lever and Ashby forms, never on LinkedIn or Indeed, never past a captcha, and never more than the user's daily number. The daily number is counted by both the app and the extension.
 
 **Your data**

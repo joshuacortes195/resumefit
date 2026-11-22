@@ -8,7 +8,7 @@ import { authMode } from "@/lib/auth";
 import { emailKnown, inviteProblem, isOwnerEmail, noUsersYet } from "@/lib/data/users";
 import { appUrl, serverEnv } from "@/lib/env";
 import { inviteErrorCode } from "@/lib/invite";
-import { withinLimit } from "@/lib/rate-limit";
+import { clientAddress, withinLimit } from "@/lib/rate-limit";
 import { supabaseServer } from "@/lib/supabase/server";
 
 // what the sign in form shows after a try
@@ -32,9 +32,9 @@ const TOO_MANY = "Too many tries. Wait a few minutes and try again.";
 // a short name for an email or a connection to count tries under, so the real thing is never written down
 const countUnder = (what: string) => createHash("sha256").update(what.trim().toLowerCase()).digest("hex").slice(0, 32);
 
-// true while this connection has sign in tries left. the host fills in where the request came from, a visitor cannot fake it there
+// true while this connection has sign in tries left. the address comes from the headers the host writes, not ones a visitor can fake
 async function connectionWithinLimit(): Promise<boolean> {
-  const from = ((await headers()).get("x-forwarded-for") ?? "").split(",")[0]?.trim() || "unknown";
+  const from = clientAddress(await headers());
   return withinLimit(countUnder(from), "sign-in-ip", undefined, Date.now(), SIGN_IN_WINDOW_MS);
 }
 

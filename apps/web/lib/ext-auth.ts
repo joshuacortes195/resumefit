@@ -1,12 +1,15 @@
 import type { CurrentUser } from "@/lib/auth";
 import { userForToken } from "@/lib/data/extension";
 import { safeErrorText } from "@/lib/log";
+import { SHIPPED_EXTENSION_ID } from "@/lib/extension-client";
 import { RateLimitError } from "@/lib/rate-limit";
 
-// headers that let the extension, and only an extension, call these endpoints from its own pages
+// headers that let our extension, and only ours, call these endpoints from its own pages. the live site only answers
+// the one extension id, the set one or the one the download carries. on your own machine any extension may, for testing builds
 export function corsHeaders(request: Request): Record<string, string> {
   const origin = request.headers.get("origin") ?? "";
-  const allowed = process.env.NEXT_PUBLIC_EXTENSION_ID ? origin === `chrome-extension://${process.env.NEXT_PUBLIC_EXTENSION_ID}` : origin.startsWith("chrome-extension://");
+  const pinned = `chrome-extension://${process.env.NEXT_PUBLIC_EXTENSION_ID || SHIPPED_EXTENSION_ID}`;
+  const allowed = origin === pinned || (process.env.NODE_ENV !== "production" && origin.startsWith("chrome-extension://"));
   return allowed ? { "Access-Control-Allow-Origin": origin, "Access-Control-Allow-Headers": "Authorization, Content-Type", "Access-Control-Allow-Methods": "GET, POST, OPTIONS", Vary: "Origin" } : {};
 }
 

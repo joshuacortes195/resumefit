@@ -63,6 +63,10 @@ export const DEFAULT_MODELS: Record<ProviderName, { main: string; fast: string }
   cloudflare: { main: "@cf/meta/llama-3.3-70b-instruct-fp8-fast", fast: "@cf/meta/llama-3.1-8b-instruct" },
 };
 
+// the most a model may write back for one request. far above what any feature needs, it is only there so a reply
+// that runs away can never cost more than this
+export const MAX_OUTPUT_TOKENS = 16_384;
+
 // pulls a status code out of whatever a library throws
 function statusOf(error: unknown): number | undefined {
   const status = (error as { status?: unknown })?.status;
@@ -80,6 +84,7 @@ export function geminiCall(apiKey: string): ProviderCall {
         config: {
           systemInstruction: system,
           abortSignal: signal,
+          maxOutputTokens: MAX_OUTPUT_TOKENS,
           ...(json ? { responseMimeType: "application/json" } : {}),
           ...(json && withSchema && jsonSchema ? { responseJsonSchema: jsonSchema } : {}),
         },
@@ -132,6 +137,7 @@ export function groqCall(apiKey: string): ProviderCall {
             { role: "system", content: system },
             { role: "user", content: prompt },
           ],
+          max_completion_tokens: MAX_OUTPUT_TOKENS,
           ...(strictJson ? { response_format: { type: "json_object" } } : {}),
         },
         signal,

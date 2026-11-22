@@ -18,8 +18,12 @@ const SECURITY_HEADERS = [
 const nextConfig: NextConfig = {
   // no need to tell visitors what the app is built with
   poweredByHeader: false,
-  // the same safety headers on every page
-  headers: async () => [{ source: "/:path*", headers: SECURITY_HEADERS }],
+  // the same safety headers on every page. api answers, like resume files and exports, also may not be pulled into another site's page.
+  // the extension reads them with a normal cross site request, which this does not touch
+  headers: async () => [
+    { source: "/:path*", headers: SECURITY_HEADERS },
+    { source: "/api/:path*", headers: [{ key: "Cross-Origin-Resource-Policy", value: "same-origin" }] },
+  ],
   // these load their own files at runtime, so they are left out of the bundle
   serverExternalPackages: ["@electric-sql/pglite", "unpdf"],
   // the pdf page reader is started as a side thread from its own file, so that file has to be shipped with the routes that take uploads

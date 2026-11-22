@@ -37,6 +37,13 @@ export class RateLimitError extends Error {
 
 const WINDOW_MS = 60_000;
 
+// where a request really came from, for limits on people who are not signed in yet. vercel writes x-real-ip and
+// x-vercel-forwarded-for itself, so those come first. x-forwarded-for is only a fallback, its first entry can be typed by the visitor
+export function clientAddress(headers: Pick<Headers, "get">): string {
+  const first = (value: string | null) => (value ?? "").split(",")[0]?.trim() ?? "";
+  return first(headers.get("x-real-ip")) || first(headers.get("x-vercel-forwarded-for")) || first(headers.get("x-forwarded-for")) || "unknown";
+}
+
 // counts one more use and says whether it is still within the limit. the count lives in the database,
 // so it holds across the many short lived copies of the app that a host runs, not just inside one of them
 export async function withinLimit(userId: string, bucket: RateBucket, limit: number = RATE_LIMITS[bucket], now = Date.now(), windowMs = WINDOW_MS): Promise<boolean> {
