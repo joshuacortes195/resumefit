@@ -280,11 +280,24 @@ export type ScanListOptions = {
   pageSize?: number;
 };
 
+// the furthest page and longest search the history table takes, the address bar can carry anything
+const MAX_PAGE = 10_000;
+const MAX_SEARCH = 200;
+
+// what the history search box becomes in the query. the characters that mean "anything" or escape in a like pattern are taken out,
+// so typing them just searches for the rest instead of matching every row
+export function searchTerm(search: string | undefined): string | null {
+  const cleaned = (search ?? "").slice(0, MAX_SEARCH).replace(/[%_\\]/g, "").trim();
+  return cleaned ? `%${cleaned}%` : null;
+}
+
 // a page of scan history, with the total so the table can show "1-10 of N"
 export async function listScans(userId: string, options: ScanListOptions = {}): Promise<{ items: ScanListItem[]; total: number }> {
-  const { search, sort = "date", archived = false, page = 1, pageSize = 10 } = options;
+  const { search, sort = "date", archived = false, pageSize = 10 } = options;
+  // a page number from the address that is not a sane whole number becomes the first or last page we allow
+  const page = Number.isFinite(options.page) ? Math.min(MAX_PAGE, Math.max(1, Math.floor(options.page ?? 1))) : 1;
   const db = await getDb();
-  const term = search?.trim() ? `%${search.trim().replace(/[%_]/g, "")}%` : null;
+  const term = searchTerm(search);
   const where = and(
     eq(schema.scans.userId, userId),
     eq(schema.scans.archived, archived),
@@ -312,7 +325,7 @@ export async function listScans(userId: string, options: ScanListOptions = {}): 
     .where(where)
     .orderBy(order, desc(schema.scans.createdAt))
     .limit(pageSize)
-    .offset((Math.max(1, page) - 1) * pageSize);
+    .offset((page - 1) * pageSize);
   const [totals] = await db.select({ total: count() }).from(schema.scans).where(where);
 
   return {

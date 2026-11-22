@@ -5,7 +5,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { createJob, findCard, latestScores, listJobs, samePosting, tidyCompany } from "./jobs";
 import { addedOn } from "@/lib/job-tabs";
 import { duplicateResume, getResume, listManagedResumes, listResumes, saveResume, setBaseResume } from "./resumes";
-import { addToDictionary, createScan, deleteScans, ensureCard, getScan, hashJd, listScans, previewOf, previousScan, rankResumes, scansToday, setScansArchived, updateScan } from "./scans";
+import { addToDictionary, createScan, deleteScans, ensureCard, getScan, hashJd, listScans, previewOf, previousScan, rankResumes, scansToday, searchTerm, setScansArchived, updateScan } from "./scans";
 
 const RESUME = `Jordan Lee
 Austin, TX | jordan.lee@example.com | (512) 555-0142
@@ -105,6 +105,13 @@ describe("scans", () => {
     expect(await previousScan(user.id, first)).toBeNull();
   });
 
+  it("takes the like wildcards and escape out of a history search", () => {
+    expect(searchTerm("100% remote_job\\")).toBe("%100 remotejob%");
+    expect(searchTerm("  %_  ")).toBeNull();
+    expect(searchTerm(undefined)).toBeNull();
+    expect(searchTerm("a".repeat(5000))?.length).toBe(202);
+  });
+
   it("lists, searches, archives and deletes", async () => {
     const user = await getCurrentUser();
     const scan = await createScan(user.id, { resumeId: null, resumeText: RESUME, layout: null, jdText: "Staff Nurse at Northwind Health\nPatient care and charting in a busy ward", jobTitle: "Staff Nurse" });
@@ -118,6 +125,11 @@ describe("scans", () => {
     expect(paged.items).toHaveLength(2);
     expect(paged.total).toBeGreaterThan(2);
     expect(paged.items[0]?.matchRate).toBeGreaterThanOrEqual(paged.items[1]?.matchRate ?? 0);
+
+    // a search or page from the address bar that no table would ever send still answers instead of failing
+    expect((await listScans(user.id, { search: "north%wind\\" })).total).toBe(1);
+    for (const page of [Infinity, Number.NaN, 1e21, -5]) expect((await listScans(user.id, { page })).items.length).toBeGreaterThanOrEqual(0);
+    expect((await listScans(user.id, { search: "x".repeat(5000) })).total).toBe(0);
 
     await setScansArchived(user.id, [scan.id], true);
     expect((await listScans(user.id, { search: "northwind" })).total).toBe(0);
