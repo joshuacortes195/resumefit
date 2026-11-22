@@ -1,3 +1,5 @@
+// the encryption secret is only ever read on the server
+import "server-only";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { randomBytes } from "node:crypto";
 import path from "node:path";

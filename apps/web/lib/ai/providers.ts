@@ -1,3 +1,5 @@
+// the provider calls carry api keys, so this file can never end up in the browser
+import "server-only";
 import { GoogleGenAI } from "@google/genai";
 
 // the free services we can send writing requests to

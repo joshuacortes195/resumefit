@@ -5,7 +5,11 @@ import { defineConfig } from "vitest/config";
 export default defineConfig({
   resolve: {
     // same shortcut the web app uses for its own files
-    alias: { "@": path.resolve(import.meta.dirname, "apps/web") },
+    alias: {
+      "@": path.resolve(import.meta.dirname, "apps/web"),
+      // next handles the server only marker itself, outside of next it is just an empty file
+      "server-only": path.resolve(import.meta.dirname, "apps/web/node_modules/next/dist/compiled/server-only/empty.js"),
+    },
   },
   test: {
     include: ["packages/*/src/**/*.test.ts", "apps/web/lib/**/*.test.ts", "apps/extension/src/**/*.test.ts"],

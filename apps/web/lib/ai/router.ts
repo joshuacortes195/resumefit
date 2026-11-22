@@ -1,3 +1,5 @@
+// keeps the provider keys and the router out of anything sent to the browser
+import "server-only";
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { getDb, schema } from "@/db";
@@ -7,7 +9,7 @@ import { globalCapReached, logFailure, logUsage, remainingToday, userCapReached,
 import { mockCall } from "@/lib/ai/mock";
 import { encryptionSecret } from "@/lib/ai/secret";
 import { cloudflareCall, DEFAULT_MODELS, geminiCall, groqCall, isModelProblem, PROVIDERS, ProviderError, type ProviderCall, type ProviderName } from "@/lib/ai/providers";
-import { aiProviderOrder, serverEnv } from "@/lib/env";
+import { aiProviderOrder, serverEnv, testSwitch } from "@/lib/env";
 import { withinLimit } from "@/lib/rate-limit";
 
 // shown when every provider is rate limited or down
@@ -102,7 +104,7 @@ export async function readyProviders(userId?: string): Promise<ReadyProvider[]> 
   const env = serverEnv();
   const ready: ReadyProvider[] = [];
   // the browser tests switch this on so they never need a real key
-  if (process.env.AI_MOCK === "1") return [{ name: "gemini", call: mockCall, model: "mock", fastModel: "mock" }];
+  if (testSwitch("AI_MOCK") === "1") return [{ name: "gemini", call: mockCall, model: "mock", fastModel: "mock" }];
 
   // someone who saved their own gemini key gets it tried before the shared ones
   const secret = encryptionSecret();

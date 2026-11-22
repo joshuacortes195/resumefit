@@ -4,6 +4,7 @@ import { HARD_SKILLS } from "@resumefit/skills-data";
 import { getDb, schema } from "@/db";
 import { BOARDS, type Board } from "@/lib/job-boards";
 import { webLink } from "@/lib/safe-link";
+import { testSwitch } from "@/lib/env";
 
 export { BOARDS, type Board } from "@/lib/job-boards";
 export { fitLabel } from "@/lib/fit";
@@ -160,7 +161,7 @@ export async function fetchBoard(board: Board): Promise<FeedJob[]> {
 
 // how long a company's saved openings count as fresh
 // lets the browser tests run without reaching out to real job sites
-const OFFLINE = () => process.env.JOB_FEED_OFFLINE === "1";
+const OFFLINE = () => testSwitch("JOB_FEED_OFFLINE") === "1";
 
 // a company's openings are fetched again once they are this old. short, so a posting from this morning is here by lunch
 const STALE_AFTER = 3 * 60 * 60 * 1000;

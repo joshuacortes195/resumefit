@@ -2,7 +2,7 @@ import { existsSync, mkdirSync } from "node:fs";
 import path from "node:path";
 import { drizzle, type PostgresJsDatabase } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
-import { serverEnv } from "@/lib/env";
+import { serverEnv, testSwitch } from "@/lib/env";
 import * as schema from "./schema";
 
 export type Db = PostgresJsDatabase<typeof schema>;
@@ -11,7 +11,8 @@ export type Db = PostgresJsDatabase<typeof schema>;
 const globalForDb = globalThis as unknown as { db?: Promise<Db> };
 
 // where the local database and uploads live when no hosted database is set up
-export const LOCAL_DATA_DIR = process.env.LOCAL_DATA_DIR ?? path.join(process.cwd(), ".data");
+// the tests point it at memory, the live host always keeps the default
+export const LOCAL_DATA_DIR = testSwitch("LOCAL_DATA_DIR") ?? path.join(process.cwd(), ".data");
 
 // the migrations folder, whether the app was started from its own folder or from the repo root
 function migrationsFolder(): string {

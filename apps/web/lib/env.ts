@@ -71,6 +71,13 @@ export function serverEnv() {
   return { ...env, DATABASE_URL: env.DATABASE_URL ?? (process.env.POSTGRES_URL || undefined) };
 }
 
+// switches only the browser tests use. on the live host they always read as unset,
+// so a stray setting there can never fake the ai, stop the job feed or move the data somewhere else
+export function testSwitch(name: "AI_MOCK" | "JOB_FEED_OFFLINE" | "LOCAL_DATA_DIR"): string | undefined {
+  if (process.env.VERCEL) return undefined;
+  return process.env[name] || undefined;
+}
+
 // the address the app is reached at, used in sign in links.
 // set by hand it wins, on vercel the project's own address is used, and otherwise it is your own machine
 export function appUrl(): string {

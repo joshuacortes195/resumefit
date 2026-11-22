@@ -17,6 +17,8 @@ function hosted(): { url: string; key: string } | null {
 
 // where a file sits on disk when running locally
 function localPath(filePath: string): string {
+  // on the live host a missing storage key is a mistake, uploads must never quietly land on the server's own disk
+  if (process.env.VERCEL) throw new Error("File storage is not set up. Add SUPABASE_SERVICE_ROLE_KEY in the project settings.");
   // file paths are built from ids we made ourselves, this just makes sure none can climb out of the folder
   const safe = filePath.split("/").filter((part) => part && part !== "..").join("/");
   // tests keep their database in memory, so their uploads go to the system temp folder
