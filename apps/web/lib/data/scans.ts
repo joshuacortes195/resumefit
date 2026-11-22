@@ -392,6 +392,11 @@ export type RankedResume = { resumeId: string; name: string; matchRate: number; 
 // the most resumes one comparison will score. each is a full scan, so this keeps a click quick
 const MAX_COMPARED = 60;
 
+// how much text one comparison reads in all, the posting once for every resume plus the resume itself.
+// a scan takes longer the longer the posting is, and sixty long resumes against a very long posting held the server up for half a minute.
+// ordinary resumes and postings stay well inside this, only the newest ones are compared when the texts are huge
+export const MAX_COMPARE_CHARS = 1_000_000;
+
 // scores every saved resume against the posting of one scan and puts the best fit first.
 // it uses each resume's text only, with the same skills and settings as the scan itself, so the numbers can be compared with each other
 export async function rankResumes(userId: string, scan: SavedScan): Promise<RankedResume[]> {
@@ -401,8 +406,16 @@ export async function rankResumes(userId: string, scan: SavedScan): Promise<Rank
     getDictionary(userId),
     cachedHints(hashJd(scan.jdText)),
   ]);
-  const ranked = rows
-    .flatMap((row) => (row.rawText?.trim() ? [{ ...row, rawText: row.rawText }] : []))
+  // newest first, until the reading budget is spent
+  const picked: { id: string; name: string; isBase: boolean; rawText: string }[] = [];
+  let read = 0;
+  for (const row of rows) {
+    if (!row.rawText?.trim()) continue;
+    read += scan.jdText.length + row.rawText.length;
+    if (read > MAX_COMPARE_CHARS) break;
+    picked.push({ ...row, rawText: row.rawText });
+  }
+  const ranked = picked
     .map((row) => {
       const result = runScan({ resumeText: row.rawText, jdText: scan.jdText, jobTitle: scan.jobTitleOverride ?? scan.jobTitle, jobUrl: scan.jobUrl, educationOverride: scan.educationOverride, customSkills: scan.customSkills, layout: null, today: scan.createdAt, hints }, dictionary);
       return { resumeId: row.id, name: row.name, matchRate: result.matchRate, isBase: row.isBase, current: row.id === scan.resumeId };

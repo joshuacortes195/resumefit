@@ -5,6 +5,10 @@ import { getDb, schema } from "@/db";
 // and stop a script or a stuck button from firing dozens of requests at once
 export const RATE_LIMITS = {
   scan: 20,
+  // changes on a report that score it again, like a new title, a skill added by hand or an edited posting
+  rescore: 30,
+  // scoring every saved resume against one posting, which is many scans in one go
+  compare: 5,
   upload: 20,
   ai: 20,
   "find-jobs": 30,

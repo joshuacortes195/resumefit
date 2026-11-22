@@ -8,12 +8,17 @@ import { and, eq } from "drizzle-orm";
 import { getDb, schema } from "@/db";
 import { getCurrentUser } from "@/lib/auth";
 import { addToDictionary, deleteScans, ensureCard, getScan, rankResumes, setScansArchived, updateScan, type RankedResume } from "@/lib/data/scans";
+import { withinLimit } from "@/lib/rate-limit";
 
 // what every action hands back, so the page can show a message when something is off
 export type ActionResult = { ok: true } | { ok: false; error: string };
 
 const id = z.uuid();
 const fail = (error: string): ActionResult => ({ ok: false, error });
+
+// shown when a report is changed too often in a minute. every change that scores the report again is real work on a long posting,
+// so those changes share a per minute limit
+const SLOW_DOWN = "That is a lot of changes in a short time. Wait a minute and try again.";
 
 // refreshes the pages that show scans
 function refresh(scanId?: string) {
@@ -27,6 +32,7 @@ export async function renameScan(scanId: string, input: { company: string; jobTi
   const parsed = z.object({ scanId: id, company: z.string().trim().max(200), jobTitle: z.string().trim().max(200) }).safeParse({ scanId, ...input });
   if (!parsed.success) return fail("That title is too long.");
   const user = await getCurrentUser();
+  if (!(await withinLimit(user.id, "rescore"))) return fail(SLOW_DOWN);
   const scan = await updateScan(user.id, parsed.data.scanId, { company: parsed.data.company || null, jobTitle: parsed.data.jobTitle || null });
   if (!scan) return fail("We could not find that scan.");
   // the tracker card keeps the same name
@@ -46,6 +52,7 @@ export async function setTargetTitle(scanId: string, title: string): Promise<Act
   const parsed = z.object({ scanId: id, title: z.string().trim().max(200) }).safeParse({ scanId, title });
   if (!parsed.success) return fail("That title is too long.");
   const user = await getCurrentUser();
+  if (!(await withinLimit(user.id, "rescore"))) return fail(SLOW_DOWN);
   if (!(await updateScan(user.id, parsed.data.scanId, { jobTitleOverride: parsed.data.title || null }))) return fail("We could not find that scan.");
   refresh(scanId);
   return { ok: true };
@@ -56,6 +63,7 @@ export async function setRequiredEducation(scanId: string, level: string): Promi
   const parsed = z.object({ scanId: id, level: z.enum([...DEGREE_LEVELS, "none", "auto"]) }).safeParse({ scanId, level });
   if (!parsed.success) return fail("Pick a degree from the list.");
   const user = await getCurrentUser();
+  if (!(await withinLimit(user.id, "rescore"))) return fail(SLOW_DOWN);
   // auto goes back to whatever we read from the posting
   if (!(await updateScan(user.id, parsed.data.scanId, { educationOverride: parsed.data.level === "auto" ? null : parsed.data.level }))) return fail("We could not find that scan.");
   refresh(scanId);
@@ -69,6 +77,7 @@ export async function addSkill(scanId: string, input: { name: string; category: 
     .safeParse({ scanId, ...input });
   if (!parsed.success) return fail(parsed.error.issues[0]?.message ?? "Check the skill name.");
   const user = await getCurrentUser();
+  if (!(await withinLimit(user.id, "rescore"))) return fail(SLOW_DOWN);
   const scan = await getScan(user.id, parsed.data.scanId);
   if (!scan) return fail("We could not find that scan.");
 
@@ -85,6 +94,7 @@ export async function addSkill(scanId: string, input: { name: string; category: 
 export async function removeSkill(scanId: string, name: string): Promise<ActionResult> {
   if (typeof name !== "string") return fail("We could not find that skill.");
   const user = await getCurrentUser();
+  if (!(await withinLimit(user.id, "rescore"))) return fail(SLOW_DOWN);
   const scan = id.safeParse(scanId).success ? await getScan(user.id, scanId) : null;
   if (!scan) return fail("We could not find that scan.");
   await updateScan(user.id, scan.id, { customSkills: scan.customSkills.filter((skill) => skill.name !== name) });
@@ -97,6 +107,7 @@ export async function updateJobDescription(scanId: string, jdText: string): Prom
   const parsed = z.object({ scanId: id, jdText: z.string().trim().min(50, "Paste the full job description, this one looks too short.").max(60_000, "That job description is too long.") }).safeParse({ scanId, jdText });
   if (!parsed.success) return fail(parsed.error.issues[0]?.message ?? "Check the job description.");
   const user = await getCurrentUser();
+  if (!(await withinLimit(user.id, "rescore"))) return fail(SLOW_DOWN);
   if (!(await updateScan(user.id, parsed.data.scanId, { jdText: parsed.data.jdText }))) return fail("We could not find that scan.");
   refresh(scanId);
   return { ok: true };
@@ -158,6 +169,8 @@ export async function removeScans(scanIds: string[]): Promise<ActionResult> {
 export async function compareResumes(scanId: string): Promise<({ ok: true; resumes: RankedResume[] }) | { ok: false; error: string }> {
   if (!id.safeParse(scanId).success) return fail("That scan could not be found.") as { ok: false; error: string };
   const user = await getCurrentUser();
+  // one comparison is a scan for every saved resume, so only a few go through a minute
+  if (!(await withinLimit(user.id, "compare"))) return { ok: false, error: "That is a lot of comparisons in a short time. Wait a minute and try again." };
   const scan = await getScan(user.id, scanId);
   if (!scan) return { ok: false, error: "That scan could not be found." };
   return { ok: true, resumes: await rankResumes(user.id, scan) };
