@@ -1,7 +1,7 @@
 import { formattingChecks, parseResume, scanResume } from "@resumefit/scoring";
 import { describe, expect, it } from "vitest";
 import { headerContactDocx, heavyPdf, messyPdf, plainDocx, scannedPdf, singleColumnPdf, tableDocx, twoColumnPdf } from "./fixtures";
-import { FileError, readResumeFile, sniffFileType, uploadBytes } from "./index";
+import { FileError, MAX_RESUME_CHARS, readResumeFile, sniffFileType, uploadBytes } from "./index";
 
 // a fixed "today" so Present always means the same month
 const TODAY = new Date(2026, 5, 15);
@@ -240,6 +240,18 @@ describe("limits on what a file can hold", () => {
     const laughs = new JSZip();
     laughs.file("word/document.xml", '<?xml version="1.0"?><!DOCTYPE lolz [<!ENTITY lol "lol"><!ENTITY lol2 "&lol;&lol;&lol;&lol;&lol;&lol;&lol;&lol;">]><w:document>&lol2;</w:document>');
     await expect(readResumeFile(await laughs.generateAsync({ type: "uint8array" }), "resume.docx")).rejects.toThrow(/does not look like a Word document/);
+  });
+
+  it("cuts the text of an absurdly long file to the length a pasted resume can be", async () => {
+    const { Document, Packer, Paragraph } = await import("docx");
+    // two thousand lines of a hundred letters, far more text than any resume
+    const line = "Built and shipped things with TypeScript and React for a very long time at many places ".padEnd(100, "x");
+    const doc = new Document({ sections: [{ children: Array.from({ length: 2000 }, () => new Paragraph(line)) }] });
+    const { text } = await readResumeFile(new Uint8Array(await Packer.toBuffer(doc)), "novel.docx");
+    expect(text.length).toBe(MAX_RESUME_CHARS);
+    expect(text.startsWith("Built and shipped")).toBe(true);
+    // a normal resume is left whole
+    expect((await readResumeFile(await plainDocx(), "Jordan-Lee-Resume.docx")).text.length).toBeLessThan(MAX_RESUME_CHARS);
   });
 
   it("answers a damaged file with a plain message, never the error itself", async () => {

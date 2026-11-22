@@ -1,7 +1,7 @@
 import { z } from "zod";
 import type { LayoutMeta } from "@resumefit/scoring";
 import { DAILY_RESUME_LIMIT, getResume, resumesToday, saveResume } from "@/lib/data/resumes";
-import { FileError, MAX_FILE_BYTES, readResumeFile, uploadBytes } from "@/lib/files";
+import { FileError, MAX_FILE_BYTES, MAX_RESUME_CHARS, readResumeFile, uploadBytes } from "@/lib/files";
 import { safeErrorText, withoutNulls } from "@/lib/log";
 import { rateLimit, RateLimitError } from "@/lib/rate-limit";
 
@@ -42,7 +42,7 @@ export function field(form: FormData, name: string): string | undefined {
 // the longest name a resume can be saved under
 const MAX_NAME = 200;
 
-const resumeTextSchema = z.string().min(50, "That resume looks too short. Paste the full text.").max(60_000, "That resume is too long to scan.");
+const resumeTextSchema = z.string().min(50, "That resume looks too short. Paste the full text.").max(MAX_RESUME_CHARS, "That resume is too long to scan.");
 
 // what to call a pasted resume. the job it was pasted for tells them apart later, a list of "Pasted resume" with only a date does not
 export function pastedName(jobTitle?: string, company?: string, today = new Date()): string {

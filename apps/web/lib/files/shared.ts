@@ -48,6 +48,10 @@ export function mostCommon<T>(values: T[]): T | null {
   return best;
 }
 
+// the most resume text we keep from an upload, the same as the paste box allows.
+// a real resume is a small part of this, anything past it is cut off so every later step gets text it can take
+export const MAX_RESUME_CHARS = 60_000;
+
 // more pages than any resume has. past this we stop reading, so a huge file cannot tie the server up
 export const MAX_PDF_PAGES = 15;
 

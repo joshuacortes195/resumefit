@@ -1,9 +1,9 @@
 import { readDocx } from "./docx";
 import { readPdf } from "./pdf";
 import { safeErrorText, withoutNulls } from "@/lib/log";
-import { FileError, MAX_FILE_BYTES, splitLabelledLists, type ExtractedFile } from "./shared";
+import { FileError, MAX_FILE_BYTES, MAX_RESUME_CHARS, splitLabelledLists, type ExtractedFile } from "./shared";
 
-export { FileError, MAX_FILE_BYTES, type ExtractedFile } from "./shared";
+export { FileError, MAX_FILE_BYTES, MAX_RESUME_CHARS, type ExtractedFile } from "./shared";
 
 // works out the real file type from its first bytes, not from its name
 export function sniffFileType(bytes: Uint8Array): "pdf" | "docx" | null {
@@ -33,8 +33,9 @@ export async function readResumeFile(bytes: Uint8Array, fileName: string | null)
   try {
     const read = await (type === "pdf" ? readPdf(bytes, fileName) : readDocx(bytes, fileName));
     // a file can carry a character the database refuses to store
-    // and a pdf can run two rows of the skills section together
-    return { ...read, text: splitLabelledLists(withoutNulls(read.text)) };
+    // and a pdf can run two rows of the skills section together.
+    // an absurdly long file is cut to the same length a pasted resume can be
+    return { ...read, text: splitLabelledLists(withoutNulls(read.text)).slice(0, MAX_RESUME_CHARS) };
   } catch (error) {
     if (error instanceof FileError) throw error;
     // a damaged or odd file can trip the readers in ways we did not plan for. the detail goes to the server log, the person gets a plain message
