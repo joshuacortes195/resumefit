@@ -14,6 +14,11 @@ vi.mock("@/lib/auth", () => ({
 vi.mock("next/cache", () => ({ revalidatePath: () => undefined }));
 
 const { compareResumes, setTargetTitle } = await import("@/app/actions/scans");
+const { startBlankResume } = await import("@/app/actions/builder");
+const { duplicateResumeAction } = await import("@/app/actions/resumes");
+const { saveOptimizedResume } = await import("@/app/actions/writing");
+const { createLinkedinReport, startPractice } = await import("@/app/actions/practice");
+const { DAILY_RESUME_LIMIT, listResumes } = await import("@/lib/data/resumes");
 const { createScan, MAX_COMPARE_CHARS, rankResumes } = await import("@/lib/data/scans");
 const { saveResume } = await import("@/lib/data/resumes");
 
@@ -57,5 +62,34 @@ describe("work that scores a report again", () => {
     expect(ranked.length).toBeGreaterThan(0);
     expect(ranked.length).toBeLessThanOrEqual(Math.floor(MAX_COMPARE_CHARS / jdText.length));
     expect(ranked.length).toBeLessThan(20);
+  });
+});
+
+describe("things that add rows", () => {
+  it("scores and saves only so many linkedin reports and practice sessions a minute", async () => {
+    await ready;
+    const posting = `${JD}\nWe build accessible interfaces with a small team.`;
+    const reports = [];
+    for (let round = 0; round < RATE_LIMITS.scan + 1; round++) reports.push(await createLinkedinReport({ profile: { headline: "Frontend developer", about: "", experience: "", skills: [] }, jobDescriptions: [posting] }));
+    expect(reports.filter((result) => result.ok)).toHaveLength(RATE_LIMITS.scan);
+    // the same minute's limit is used up, so a practice session has to wait too
+    expect(await startPractice({ jdText: posting })).toMatchObject({ ok: false, error: expect.stringContaining("short time") });
+  });
+
+  it("holds every way of adding a resume to the same daily limit as an upload", async () => {
+    await ready;
+    const db = await getDb();
+    const [some] = await listResumes(ME);
+    const scan = await createScan(ME, { resumeId: some?.id ?? null, resumeText: RESUME, layout: null, jdText: JD });
+    // fill the rest of the day's allowance straight into the table
+    const have = (await listResumes(ME)).length;
+    await db.insert(schema.resumes).values(Array.from({ length: Math.max(0, DAILY_RESUME_LIMIT - have) }, (_, index) => ({ userId: ME, name: `Filler ${index}`, rawText: `filler ${index}` })));
+    const before = (await listResumes(ME)).length;
+
+    const limit = { ok: false, error: expect.stringContaining(`${DAILY_RESUME_LIMIT} resumes`) };
+    expect(await startBlankResume()).toMatchObject(limit);
+    expect(await duplicateResumeAction(some?.id ?? "")).toMatchObject(limit);
+    expect(await saveOptimizedResume({ scanId: scan.id, text: `${RESUME}\nSkills\nTypeScript, React`, optimizationId: null, acceptedIds: [], afterScore: 80 })).toMatchObject(limit);
+    expect((await listResumes(ME)).length).toBe(before);
   });
 });

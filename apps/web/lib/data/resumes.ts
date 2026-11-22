@@ -56,6 +56,9 @@ export async function getResume(userId: string, id: string): Promise<ResumeRow |
 // how many new resumes one person can add in a day, just to stop a runaway script filling the storage
 export const DAILY_RESUME_LIMIT = 100;
 
+// what every way of adding a resume says once the day's limit is reached
+export const RESUME_LIMIT_REACHED = `You have added ${DAILY_RESUME_LIMIT} resumes in the last day. Use one of your saved resumes, or try again tomorrow.`;
+
 // how many resumes this person added in the last day
 export async function resumesToday(userId: string): Promise<number> {
   const db = await getDb();

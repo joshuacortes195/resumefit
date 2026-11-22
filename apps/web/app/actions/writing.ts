@@ -14,7 +14,7 @@ import { safeErrorText } from "@/lib/log";
 import { getCurrentUser } from "@/lib/auth";
 import { getJob, listInterviews, saveCoverLetter, updateInterview } from "@/lib/data/jobs";
 import { finishOptimization, saveSuggestions } from "@/lib/data/optimizations";
-import { getResume, saveResume } from "@/lib/data/resumes";
+import { DAILY_RESUME_LIMIT, getResume, RESUME_LIMIT_REACHED, resumesToday, saveResume } from "@/lib/data/resumes";
 import { ensureCard, getScan } from "@/lib/data/scans";
 
 // what the writing actions hand back: the result plus how many uses are left today
@@ -70,6 +70,8 @@ export async function saveOptimizedResume(input: { scanId: string; text: string;
     .safeParse(input);
   if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? "There is nothing to save yet." };
   const user = await getCurrentUser();
+  // every save is a new resume, so it counts toward the same daily limit as an upload
+  if ((await resumesToday(user.id)) >= DAILY_RESUME_LIMIT) return { ok: false, error: RESUME_LIMIT_REACHED };
   const scan = await getScan(user.id, parsed.data.scanId);
   if (!scan) return { ok: false, error: "We could not find that scan." };
 

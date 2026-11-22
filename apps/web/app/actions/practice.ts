@@ -16,8 +16,11 @@ import { clearPendingLinkedin, createPracticeSession, deleteLinkedinReport, dele
 import { getResume, listResumes } from "@/lib/data/resumes";
 import { fallbackQuestions, measureAnswer } from "@/lib/interview";
 import { safeErrorText } from "@/lib/log";
+import { withinLimit } from "@/lib/rate-limit";
 
 type Result<T = object> = ({ ok: true } & T) | { ok: false; error: string };
+
+const SLOW_DOWN = "That is a lot of requests in a short time. Wait a minute and try again.";
 
 // turns anything that went wrong with a writing request into a message
 function problem(error: unknown): { ok: false; error: string } {
@@ -45,6 +48,8 @@ export async function createLinkedinReport(input: { profile: z.input<typeof prof
   if (!profile.data.headline && !profile.data.about && !profile.data.experience) return { ok: false, error: "Add your headline, About section or experience first." };
 
   const user = await getCurrentUser();
+  // scoring a profile against up to three postings is the same work as a scan, and each one saves a report, so it shares the scan limit
+  if (!(await withinLimit(user.id, "scan"))) return { ok: false, error: SLOW_DOWN };
   const cleaned = { ...profile.data, skills: profile.data.skills.filter(Boolean), url: profile.data.url || undefined };
   const report = scoreLinkedin(cleaned, jobs.data, HARD_SKILLS, SOFT_SKILLS);
   const id = await saveLinkedinReport(user.id, cleaned, jobs.data, report);
@@ -91,6 +96,8 @@ export async function startPractice(input: { jobId?: string; jdText?: string }):
   const parsed = z.object({ jobId: z.uuid().optional(), jdText: z.string().trim().max(60_000).optional() }).safeParse(input);
   if (!parsed.success) return { ok: false, error: "Pick a job or paste a job description." };
   const user = await getCurrentUser();
+  // each start reads the posting and saves a session, so it has the same per minute limit as a scan
+  if (!(await withinLimit(user.id, "scan"))) return { ok: false, error: SLOW_DOWN };
   const job = parsed.data.jobId ? await getJob(user.id, parsed.data.jobId) : null;
   const jdText = parsed.data.jdText || job?.description || "";
   if (jdText.length < 50) return { ok: false, error: job ? "That job has no description yet. Add one on its card, or paste it here." : "Paste the job description, the questions are written from it." };

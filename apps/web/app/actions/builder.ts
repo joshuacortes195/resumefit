@@ -13,7 +13,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { builderToText } from "@/lib/builder/layout";
 import { builderDataSchema, TEMPLATE_IDS, templateSettingsSchema } from "@/lib/builder/types";
 import { createBuilderResume, saveBuilderResume } from "@/lib/data/builder";
-import { deleteResume } from "@/lib/data/resumes";
+import { DAILY_RESUME_LIMIT, deleteResume, RESUME_LIMIT_REACHED, resumesToday } from "@/lib/data/resumes";
 import { savedJobs } from "@/lib/jobs-feed";
 import { safeErrorText } from "@/lib/log";
 import { withinLimit } from "@/lib/rate-limit";
@@ -32,6 +32,8 @@ function problem(error: unknown): { ok: false; error: string } {
 // starts an empty resume and says where to find it
 export async function startBlankResume(template?: string): Promise<Result<{ id: string }>> {
   const user = await getCurrentUser();
+  // a blank resume is still a new resume, so it counts toward the same daily limit as an upload
+  if ((await resumesToday(user.id)) >= DAILY_RESUME_LIMIT) return { ok: false, error: RESUME_LIMIT_REACHED };
   // only a template we really have, anything else starts on the usual one
   const picked = TEMPLATE_IDS.find((entry) => entry === template);
   const id = await createBuilderResume(user.id, picked ? { template: picked } : {});

@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import type { ActionResult } from "@/app/actions/scans";
 import { getCurrentUser } from "@/lib/auth";
-import { deleteResume, duplicateResume, renameResume, setBaseResume } from "@/lib/data/resumes";
+import { DAILY_RESUME_LIMIT, deleteResume, duplicateResume, renameResume, RESUME_LIMIT_REACHED, resumesToday, setBaseResume } from "@/lib/data/resumes";
 import { safeErrorText } from "@/lib/log";
 
 const id = z.uuid();
@@ -33,6 +33,8 @@ export async function renameResumeAction(resumeId: string, name: string): Promis
 export async function duplicateResumeAction(resumeId: string): Promise<ActionResult> {
   if (!id.safeParse(resumeId).success) return fail("We could not find that resume.");
   const user = await getCurrentUser();
+  // a copy is a new resume too, so it counts toward the daily limit
+  if ((await resumesToday(user.id)) >= DAILY_RESUME_LIMIT) return fail(RESUME_LIMIT_REACHED);
   if (!(await duplicateResume(user.id, resumeId))) return fail("We could not find that resume.");
   revalidatePath("/resumes");
   return { ok: true };
