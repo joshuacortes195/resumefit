@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { fromAnotherSite } from "@/lib/same-origin";
 
 // the same settings the server side sign in client uses, so the session cookies cannot be read by scripts in the page
 const SESSION_COOKIE = { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "lax" as const };
@@ -41,23 +42,6 @@ function contentPolicy(nonce: string): string {
     "base-uri 'self'",
     "object-src 'none'",
   ].join("; ");
-}
-
-// true when a request that changes something through the api was sent by a page on another site.
-// browsers say where such a request came from, and the app's own pages are the only ones that should be making them.
-// the extension's endpoints are left out, they are opened to it on purpose and ask for its key instead of a session
-function fromAnotherSite(request: NextRequest): boolean {
-  if (["GET", "HEAD", "OPTIONS"].includes(request.method)) return false;
-  const { pathname, host } = request.nextUrl;
-  if (!pathname.startsWith("/api/") || pathname.startsWith("/api/ext/")) return false;
-  const origin = request.headers.get("origin");
-  if (!origin) return false;
-  try {
-    const from = new URL(origin).host;
-    return from !== host && from !== request.headers.get("host");
-  } catch {
-    return true;
-  }
 }
 
 // the names this computer goes by
