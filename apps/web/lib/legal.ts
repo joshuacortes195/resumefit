@@ -10,7 +10,7 @@ export const CONTACT_EMAIL = "[contact email to be added]";
 export const CONTACT_IS_EMAIL = /^[^\s@\[\]]+@[^\s@]+\.[^\s@]+$/.test(CONTACT_EMAIL);
 
 // the date shown at the top of both pages. move it whenever either page changes
-export const LEGAL_UPDATED = "November 20, 2026";
+export const LEGAL_UPDATED = "November 22, 2026";
 
 // whose laws the terms are read under
 export const GOVERNING_LAW = "the State of California";

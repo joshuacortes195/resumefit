@@ -128,7 +128,8 @@ export default function PrivacyPage() {
           </li>
           <li>
             <span className="font-medium">Job sources</span>: Find Jobs reads public job boards on Greenhouse, Lever and Ashby, and searches Remotive and Jobicy, and USAJOBS when it is set up, with the
-            job title and place you typed. Importing a job from a link fetches that page. None of these are sent your resume or account details.
+            job title and place you typed. When you leave the title empty, the most recent job title on your resume is searched for instead. Importing a job from a link fetches that page. None
+            of these are sent your resume or account details, only that title and place.
           </li>
           <li>
             <span className="font-medium">DuckDuckGo icons</span>: your browser loads the small company logos from DuckDuckGo using the company&apos;s web address, so DuckDuckGo sees that address and,

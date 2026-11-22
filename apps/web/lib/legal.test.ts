@@ -20,7 +20,7 @@ describe("the terms and privacy pages", () => {
       expect(page).toContain(String(MINIMUM_AGE));
       expect(page).toContain(CONTACT_EMAIL);
     }
-    expect(LEGAL_UPDATED).toBe("November 20, 2026");
+    expect(LEGAL_UPDATED).toBe("November 22, 2026");
     // the placeholder is not mistaken for a real address
     expect(CONTACT_IS_EMAIL).toBe(CONTACT_EMAIL.includes("@") && !CONTACT_EMAIL.includes("["));
   });
@@ -41,6 +41,13 @@ describe("the terms and privacy pages", () => {
   it("cover what a launch needs", () => {
     for (const part of ["Supabase", "Vercel", "DuckDuckGo", "Limited Use", "California", "never sell", "Download everything", "Delete"]) expect(privacy).toContain(part);
     for (const part of ["as is", "Limitation of liability", "Acceptable use", "Auto Apply", "You are responsible for every application", "Governing law", "California"]) expect(terms.toLowerCase()).toContain(part.toLowerCase());
+  });
+
+  // find jobs searches the newest title on the resume when nothing is typed, and the policy has to say so
+  it("say what find jobs sends to the job sites", () => {
+    const findJobs = readFileSync(path.join(import.meta.dirname, "../app/actions/find-jobs.ts"), "utf8");
+    expect(findJobs).toContain("parseResume(chosen.rawText).experience[0]?.title");
+    expect(privacy).toContain("When you leave the title empty, the most recent job title on your resume is searched for instead.");
   });
 
   it("never use long dashes", () => {
