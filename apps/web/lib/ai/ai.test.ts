@@ -341,6 +341,25 @@ Maria Garcia-Lopez led a team of 8 from 2019 - 2023. Maria shipped 3 apps.`;
     expect(redacted.restore(redacted.text)).toBe(tricky);
   });
 
+  // phones with dashes or hard spaces from a word processor, spelled out emails and a birthday all stay out of the prompt
+  it("hides details written with dashes, spelled out or with a wide at sign", () => {
+    const tricky = `Sam Rivera
+sam [at] rivera-mail [dot] com | sam＠rivera.example | 415–555–0199 | 415‑555‑0123 | 212/555/0147
+Birthday: May 12, 1990
+
+Led 4 launches from 2019 – 2023.`;
+    const redacted = redact(tricky, { name: "Sam Rivera" });
+    for (const secret of ["rivera-mail", "rivera.example", "0199", "0123", "0147", "1990"]) expect(redacted.text, secret).not.toContain(secret);
+    // a span of years written with a dash is still left alone
+    expect(redacted.text).toContain("Led 4 launches from 2019 – 2023.");
+    expect(redacted.restore(redacted.text)).toBe(tricky);
+  });
+
+  it("hides the email and phone the resume reader found, whatever shape they are in", () => {
+    const redacted = redact("Call 555.0142.77 or write jo-at-home", { name: "Jo Park", email: "jo-at-home", phone: "555.0142.77" });
+    expect(redacted.text).toBe("Call [PHONE_2] or write [EMAIL_1]");
+  });
+
   it("leaves ordinary sentences that only look a bit like an address or a number alone", () => {
     const plain = "Led 5 engineers along the way. Cut costs 20 percent in the first place. Jan 2020 - Mar 2023. GPA 3.85 (2019 - 2023). Grew revenue to 1,200,000.";
     expect(redact(plain, { name: "Sam Hill" }).text).toBe(plain);

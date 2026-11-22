@@ -14,7 +14,10 @@ export type Redactor = {
 };
 
 // every repeat here has an upper bound, so a long run of letters or digits cannot make these slow
-const EMAIL = /[A-Za-z0-9._%+-]{1,64}@[A-Za-z0-9.-]{1,255}\.[A-Za-z]{2,}/g;
+// the wide @ some keyboards type counts too
+const EMAIL = /[A-Za-z0-9._%+-]{1,64}[@\uff20][A-Za-z0-9.-]{1,255}\.[A-Za-z]{2,}/g;
+// an email spelled out to dodge spam bots, like "name [at] site [dot] com"
+const EMAIL_SPELLED = /[A-Za-z0-9._%+-]{1,64} ?[[({<] ?at ?[\])}>] ?[A-Za-z0-9-]{1,63}(?: ?[[({<] ?dot ?[\])}>] ?[A-Za-z0-9-]{1,63}){1,4}/gi;
 const URL = /(?:https?:\/\/|www\.)[^\s,;|)]{1,2000}|\b(?:linkedin\.com|github\.com)\/[^\s,;|)]{1,2000}/gi;
 // a handle written next to the name of the site, like "github: @someone"
 const HANDLE = /\b(?:github|gitlab|linkedin|twitter|instagram)\s?[:@]\s?@?[\w.-]{2,40}/gi;
@@ -22,9 +25,10 @@ const HANDLE = /\b(?:github|gitlab|linkedin|twitter|instagram)\s?[:@]\s?@?[\w.-]
 const ID_NUMBER = /\b\d{3}-\d{2}-\d{4}\b/g;
 // a date of birth, with the words in front of it
 const MONTH = "(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]{0,6}\\.?";
-const BIRTH = new RegExp(`\\b(?:date of birth|d\\.?o\\.?b\\.?|born(?: on)?)\\s?[:\\-]?\\s?(?:\\d{1,2}[/.\\- ]\\d{1,2}[/.\\- ]\\d{2,4}|\\d{4}[/.\\-]\\d{1,2}[/.\\-]\\d{1,2}|(?:\\d{1,2}(?:st|nd|rd|th)? )?${MONTH},? ?(?:\\d{1,2}(?:st|nd|rd|th)?,? )?\\d{4})`, "gi");
-// anything shaped like a phone number from any country. what it finds is checked again in looksLikePhone
-const PHONE = /(?<![\w.])\+?\(?\d[\d ().\- ]{6,20}\d(?!\w)/g;
+const BIRTH = new RegExp(`\\b(?:date of birth|birth ?date|birthday|d\\.?o\\.?b\\.?|born(?: on)?)\\s?[:\\-]?\\s?(?:\\d{1,2}[/.\\- ]\\d{1,2}[/.\\- ]\\d{2,4}|\\d{4}[/.\\-]\\d{1,2}[/.\\-]\\d{1,2}|(?:\\d{1,2}(?:st|nd|rd|th)? )?${MONTH},? ?(?:\\d{1,2}(?:st|nd|rd|th)?,? )?\\d{4})`, "gi");
+// anything shaped like a phone number from any country. what it finds is checked again in looksLikePhone.
+// word processors and pdfs often turn the hyphens into dashes or hard spaces, and some people use slashes, so those count as separators too
+const PHONE = /(?<![\w.])\+?\(?\d[\d ().\-\/\u00a0\u2010-\u2015\u2212]{6,20}\d(?!\w)/g;
 // a street address. the short endings need capital letters in front, since "way", "court" and "drive" are ordinary words too
 const STREET_ENDS = "Street|St|Avenue|Ave|Road|Rd|Boulevard|Blvd|Drive|Dr|Lane|Ln|Way|Court|Ct|Terrace|Ter|Place|Pl|Circle|Cir|Parkway|Pkwy|Highway|Hwy|Square|Sq|Trail|Crescent|Close";
 const UNIT = "(?:,? (?:Apt|Apartment|Unit|Suite|Ste|#)\\.? ?[\\w-]{1,8})?";
@@ -116,7 +120,10 @@ export function redactor(contact?: Partial<ResumeContact> | null): Redactor {
     for (const link of maybeLinks) if (top.includes(link.toLowerCase())) ownLinks.add(link);
     for (const link of [...profiles, ...ownLinks]) result = swap(result, new RegExp(escaped(link.trim()), "gi"), "LINK");
     result = swap(result, HANDLE, "LINK");
+    // the email and phone the resume reader found are hidden as written, whatever shape they are in
+    for (const [found, label] of [[contact?.email, "EMAIL"], [contact?.phone, "PHONE"]] as const) if (found && found.trim().length > 5) result = swap(result, new RegExp(escaped(found.trim()), "g"), label);
     result = swap(result, EMAIL, "EMAIL");
+    result = swap(result, EMAIL_SPELLED, "EMAIL");
     result = swap(result, BIRTH, "BIRTH");
     result = swap(result, ID_NUMBER, "ID");
     result = swap(result, PHONE, "PHONE", looksLikePhone);
