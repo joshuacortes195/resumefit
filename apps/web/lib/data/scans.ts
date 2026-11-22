@@ -395,7 +395,7 @@ const MAX_COMPARED = 60;
 // how much text one comparison reads in all, the posting once for every resume plus the resume itself.
 // a scan takes longer the longer the posting is, and sixty long resumes against a very long posting held the server up for half a minute.
 // ordinary resumes and postings stay well inside this, only the newest ones are compared when the texts are huge
-export const MAX_COMPARE_CHARS = 1_000_000;
+export const MAX_COMPARE_CHARS = 500_000;
 
 // scores every saved resume against the posting of one scan and puts the best fit first.
 // it uses each resume's text only, with the same skills and settings as the scan itself, so the numbers can be compared with each other
