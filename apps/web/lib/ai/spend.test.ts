@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { describe, expect, it, vi } from "vitest";
 import { getDb, schema } from "@/db";
-import { DAILY_CAPS, GLOBAL_DAILY_CAP, globalCapReached, USER_DAILY_CAP, usedToday } from "@/lib/ai/limits";
+import { DAILY_CAPS, GLOBAL_DAILY_CAP, globalCapReached, USER_DAILY_CAP } from "@/lib/ai/limits";
 import { geminiCall, groqCall, MAX_OUTPUT_TOKENS, type ProviderRequest } from "@/lib/ai/providers";
 import { AiLimitError, generateText, type ReadyProvider } from "@/lib/ai/router";
 
