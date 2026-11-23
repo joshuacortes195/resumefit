@@ -7,8 +7,9 @@ vi.mock("@/lib/auth", () => ({
 }));
 
 // every lookup the page could make, so the test sees if any of them is ever asked
-const lookups = vi.hoisted(() => ({ listUsers: vi.fn(), listInvites: vi.fn(), usageByDay: vi.fn() }));
+const lookups = vi.hoisted(() => ({ listUsers: vi.fn(), listInvites: vi.fn(), usageByDay: vi.fn(), junk: vi.fn() }));
 vi.mock("@/lib/data/admin", () => ({ listUsers: lookups.listUsers, listInvites: lookups.listInvites, usageByDay: lookups.usageByDay }));
+vi.mock("@/lib/data/junk-users", () => ({ countJunkSignIns: lookups.junk, JUNK_AFTER_DAYS: 7, JUNK_PER_RUN: 500 }));
 
 describe("the admin page opened by a member", () => {
   it("answers a real 404 before any part of the page is sent, and looks nothing up", async () => {

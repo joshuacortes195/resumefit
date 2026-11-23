@@ -1,12 +1,16 @@
 import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import { AdminPanel } from "@/components/admin-panel";
+import { JunkSignIns } from "@/components/junk-sign-ins";
 import { CARD } from "@/components/ui/buttons";
 import { TableSkeleton } from "@/components/ui/skeleton";
 import { DAILY_CAPS, type AiFeature } from "@/lib/ai/limits";
 import { readyProviders, savedProviderHealth } from "@/lib/ai/router";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUser, type CurrentUser } from "@/lib/auth";
 import { listInvites, listUsers, usageByDay } from "@/lib/data/admin";
+import { countJunkSignIns, JUNK_AFTER_DAYS, JUNK_PER_RUN } from "@/lib/data/junk-users";
+import { safeErrorText } from "@/lib/log";
+import { authAdmin } from "@/lib/supabase/admin";
 import { LocalTime } from "@/components/local-time";
 import { dailyCaps, featureFlags, FLAGS, type Flag } from "@/lib/data/settings";
 
@@ -24,15 +28,28 @@ export default async function AdminPage() {
     <div className="mx-auto max-w-5xl space-y-6">
       <h1 className="text-3xl font-semibold">Admin</h1>
       <Suspense fallback={<TableSkeleton />}>
-        <AdminContent />
+        <AdminContent admin={user} />
       </Suspense>
     </div>
   );
 }
 
+// how many sign in records never got into the app, or null when that cannot be checked from here
+async function junkCount(admin: CurrentUser): Promise<number | null> {
+  const client = authAdmin();
+  if (!client) return null;
+  try {
+    return await countJunkSignIns(client, { id: admin.id, email: admin.email });
+  } catch (error) {
+    // the rest of the page still loads when the sign in service does not answer
+    console.error(safeErrorText(error, "could not count unused sign ins"));
+    return null;
+  }
+}
+
 // everything on the page, loaded once we know it is the admin
-async function AdminContent() {
-  const [users, invites, usage, caps, flags, ready] = await Promise.all([listUsers(), listInvites(), usageByDay(), dailyCaps(), featureFlags(), readyProviders()]);
+async function AdminContent({ admin }: { admin: CurrentUser }) {
+  const [users, invites, usage, caps, flags, ready, junk] = await Promise.all([listUsers(), listInvites(), usageByDay(), dailyCaps(), featureFlags(), readyProviders(), junkCount(admin)]);
   const health = await savedProviderHealth();
   const readyNames = new Set(ready.map((provider) => provider.name));
 
@@ -131,6 +148,9 @@ async function AdminContent() {
           </tbody>
         </table>
       </section>
+
+      {/* sign in records left by people who never got past the invite code */}
+      <JunkSignIns count={junk} days={JUNK_AFTER_DAYS} perRun={JUNK_PER_RUN} />
     </>
   );
 }
