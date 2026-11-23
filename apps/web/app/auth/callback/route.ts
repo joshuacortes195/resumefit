@@ -2,7 +2,7 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { admitUser } from "@/lib/data/users";
 import { inviteErrorCode } from "@/lib/invite";
-import { supabaseServer } from "@/lib/supabase/server";
+import { clearSignInLeftovers, supabaseServer } from "@/lib/supabase/server";
 
 // where the email link and google send people back to: finish signing in, then let them into the app
 export async function GET(request: Request): Promise<Response> {
@@ -14,6 +14,8 @@ export async function GET(request: Request): Promise<Response> {
   const supabase = await supabaseServer();
   const { data, error } = await supabase.auth.exchangeCodeForSession(code);
   if (error || !data.user?.email) return back("link");
+  // the link has been used, so the code check cookies it needed go too
+  await clearSignInLeftovers();
 
   // new people need the invite code they typed before leaving for their email
   const store = await cookies();

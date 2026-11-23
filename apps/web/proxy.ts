@@ -1,9 +1,8 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { fromAnotherSite } from "@/lib/same-origin";
-
-// the same settings the server side sign in client uses, so the session cookies cannot be read by scripts in the page
-const SESSION_COOKIE = { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "lax" as const };
+// the same settings the server side sign in client uses, so the session cookies cannot be read by scripts in the page and last 90 days
+import { SESSION_COOKIE, withSessionAge } from "@/lib/supabase/session-cookie";
 
 // pages anyone can open without signing in
 const PUBLIC = /^\/(sign-in|auth\/|privacy|terms|robots\.txt$|api\/ext\/|api\/health$|api\/cron\/feed$|scans\/sample)/;
@@ -74,7 +73,7 @@ export async function proxy(request: NextRequest) {
         // refreshed session cookies go onto both the request and the answer
         for (const { name, value } of items) request.cookies.set(name, value);
         response = NextResponse.next({ request });
-        for (const { name, value, options } of items) response.cookies.set(name, value, options);
+        for (const { name, value, options } of items) response.cookies.set(name, value, withSessionAge(options));
       },
     },
   });

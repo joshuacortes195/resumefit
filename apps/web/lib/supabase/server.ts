@@ -1,10 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { publicEnv } from "@/lib/env";
-
-// how the session cookies are set. scripts in the page cannot read them, and on the live site they only travel over https.
-// nothing in the browser needs them, all sign in work happens on the server
-export const SESSION_COOKIE = { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "lax" as const };
+import { SESSION_COOKIE, signInLeftovers, withSessionAge } from "@/lib/supabase/session-cookie";
 
 // the sign in client for server code, it keeps the session in cookies
 export async function supabaseServer() {
@@ -18,11 +15,18 @@ export async function supabaseServer() {
       getAll: () => store.getAll(),
       setAll: (items) => {
         try {
-          for (const { name, value, options } of items) store.set(name, value, options);
+          // every session cookie gets our 90 day age instead of the library's 400 days
+          for (const { name, value, options } of items) store.set(name, value, withSessionAge(options));
         } catch {
           // pages cannot set cookies while they render, the proxy refreshes the session for them
         }
       },
     },
   });
+}
+
+// clears the sign in helper cookies once someone is signed in, so only the session itself is left
+export async function clearSignInLeftovers(): Promise<void> {
+  const store = await cookies();
+  for (const name of signInLeftovers(store.getAll().map((cookie) => cookie.name))) store.delete(name);
 }
