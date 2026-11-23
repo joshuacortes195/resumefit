@@ -22,5 +22,5 @@ test("an address that points at nothing answers 404 with our own page", async ({
 });
 
 test("pages that are there still answer 200", async ({ request }) => {
-  for (const path of ["/dashboard", "/scans", "/tracker", "/scans/sample", "/help"]) expect((await request.get(path)).status(), path).toBe(200);
+  for (const path of ["/dashboard", "/scans", "/tracker", "/scans/sample", "/help", "/admin"]) expect((await request.get(path)).status(), path).toBe(200);
 });

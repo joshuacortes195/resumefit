@@ -12,12 +12,14 @@ import { dailyCaps, featureFlags, FLAGS, type Flag } from "@/lib/data/settings";
 
 export const metadata = { title: "Admin" };
 
-
 // names for the capped features
 const CAP_LABELS: Partial<Record<AiFeature, string>> = { optimize: "Optimize", "cover-letter": "Cover letters", bullets: "Bullet ideas", linkedin: "LinkedIn", interview: "Interview", "thank-you": "Thank-you notes", builder: "Builder", screening: "Application answers" };
 
 // the admin page, only for people marked as admin
-export default function AdminPage() {
+export default async function AdminPage() {
+  // checked before anything is sent, so everyone else gets a real 404 and the same "no such page" as any other wrong address
+  const user = await getCurrentUser();
+  if (!user.isAdmin) notFound();
   return (
     <div className="mx-auto max-w-5xl space-y-6">
       <h1 className="text-3xl font-semibold">Admin</h1>
@@ -28,11 +30,8 @@ export default function AdminPage() {
   );
 }
 
+// everything on the page, loaded once we know it is the admin
 async function AdminContent() {
-  const user = await getCurrentUser();
-  // everyone else gets the same "no such page" as any other wrong address
-  if (!user.isAdmin) notFound();
-
   const [users, invites, usage, caps, flags, ready] = await Promise.all([listUsers(), listInvites(), usageByDay(), dailyCaps(), featureFlags(), readyProviders()]);
   const health = await savedProviderHealth();
   const readyNames = new Set(ready.map((provider) => provider.name));
