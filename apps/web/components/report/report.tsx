@@ -36,7 +36,9 @@ const TOUR: TourStep[] = [
 // the full match report for one scan
 export function Report({ data, resumes }: { data: ReportData; resumes: ResumeOption[] }) {
   const router = useRouter();
-  const { report, readOnly } = data;
+  const { report, readOnly, resumeGone } = data;
+  // with the resume deleted nothing can be scored again, so the edits that rescore are hidden
+  const fixed = readOnly || resumeGone;
   const [tab, setTab] = useState<"report" | "ats" | "jd">("report");
   const [dialog, setDialog] = useState<Dialog>(null);
   const [touring, setTouring] = useState(false);
@@ -104,6 +106,13 @@ export function Report({ data, resumes }: { data: ReportData; resumes: ResumeOpt
           </button>
         </div>
       </header>
+
+      {/* says so when the resume behind this scan was deleted */}
+      {resumeGone && (
+        <p role="note" className="mt-5 rounded-xl border border-border bg-surface px-4 py-3 text-sm">
+          The resume used for this scan was deleted, so its text is no longer kept here. The score and findings are the ones from when you scanned. To change them, run a new scan with another resume.
+        </p>
+      )}
 
       {/* the rules about who can apply, checked against the application profile, before any time goes into the rest */}
       {data.eligibility.length > 0 && (
@@ -258,7 +267,7 @@ export function Report({ data, resumes }: { data: ReportData; resumes: ResumeOpt
                       resumeText={data.resumeText}
                       spans={data.spans.resume}
                       customNames={customNames}
-                      readOnly={readOnly}
+                      readOnly={fixed}
                       onAdd={() => open(section.key === "hardSkills" ? "add-hard" : "add-soft")}
                       onRemove={(name) => run(() => removeSkill(data.id, name))}
                     />
@@ -266,7 +275,7 @@ export function Report({ data, resumes }: { data: ReportData; resumes: ResumeOpt
                     <Findings
                       checks={checksFor(section.key)}
                       actions={
-                        readOnly
+                        fixed
                           ? {}
                           : {
                               "job-title": { label: "Update scan information", onClick: () => open("target-title") },
@@ -286,7 +295,14 @@ export function Report({ data, resumes }: { data: ReportData; resumes: ResumeOpt
 
           {/* the resume as an applicant system reads it into its form */}
           <div className={`animate-swap pt-6 ${tab === "ats" ? "" : "hidden"} print:hidden`}>
-            <AtsView resume={report.resume} />
+            {resumeGone ? (
+              <section className={`${CARD} p-5 sm:p-6`}>
+                <h2 className="text-xl font-semibold">What the applicant system sees</h2>
+                <p className="mt-2 max-w-prose text-sm text-muted">The resume used for this scan was deleted, so there is nothing left to show here.</p>
+              </section>
+            ) : (
+              <AtsView resume={report.resume} />
+            )}
           </div>
 
           {/* the job description with every skill marked */}
@@ -294,7 +310,7 @@ export function Report({ data, resumes }: { data: ReportData; resumes: ResumeOpt
             <section className={`${CARD} p-5 sm:p-6`}>
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <h2 className="text-xl font-semibold">{data.jobTitle ?? "Job description"}</h2>
-                {!readOnly && (
+                {!fixed && (
                   <button type="button" onClick={() => open("edit-jd")} className={`${SECONDARY_BUTTON} px-3 py-1.5`}>
                     <Pencil className="size-3.5" aria-hidden />
                     Edit job description
@@ -325,10 +341,13 @@ export function Report({ data, resumes }: { data: ReportData; resumes: ResumeOpt
             </Link>
           ) : (
             <div className="flex flex-wrap gap-2">
-              <Link href={`/optimize/${data.id}`} className={PRIMARY_BUTTON}>
-                <Sparkles className="size-4" aria-hidden />
-                AI Optimize
-              </Link>
+              {/* the optimizer rewrites the scanned resume, so it needs that resume to still be here */}
+              {!resumeGone && (
+                <Link href={`/optimize/${data.id}`} className={PRIMARY_BUTTON}>
+                  <Sparkles className="size-4" aria-hidden />
+                  AI Optimize
+                </Link>
+              )}
               <button type="button" onClick={() => open("rescan")} className={SECONDARY_BUTTON}>
                 <RefreshCw className="size-4" aria-hidden />
                 Upload and rescan

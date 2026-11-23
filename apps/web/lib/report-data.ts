@@ -1,7 +1,7 @@
 import { blankInstructions, findSkillSpans, inHouseHost, type ScanResult, type SkillSpan } from "@resumefit/scoring";
 import { HARD_SKILLS, SOFT_SKILLS } from "@resumefit/skills-data";
 import type { CustomSkill, SavedScan } from "@/lib/data/scans";
-import { runScan } from "@/lib/data/scans";
+import { resumeRemoved, runScan } from "@/lib/data/scans";
 import { checkEligibility, type EligibilityItem, type EligibilityProfile } from "@/lib/eligibility";
 import { SAMPLE_COMPANY, SAMPLE_JD, SAMPLE_JOB_TITLE, SAMPLE_RESUME } from "@/lib/sample-scan";
 
@@ -10,6 +10,8 @@ export type ReportData = {
   id: string;
   // the sample report cannot be edited
   readOnly: boolean;
+  // true when the resume behind the scan was deleted, so its text is gone and the score cannot be worked out again
+  resumeGone: boolean;
   jobTitle: string | null;
   company: string | null;
   jdText: string;
@@ -51,6 +53,7 @@ export function toReportData(scan: SavedScan, previous: ReportData["previous"], 
   return {
     id: scan.id,
     readOnly: false,
+    resumeGone: resumeRemoved(scan),
     jobTitle: scan.jobTitle,
     company: scan.company,
     jdText: scan.jdText,
@@ -78,6 +81,7 @@ export function sampleReportData(): ReportData {
   return {
     id: "sample",
     readOnly: true,
+    resumeGone: false,
     jobTitle: SAMPLE_JOB_TITLE,
     company: SAMPLE_COMPANY,
     jdText: SAMPLE_JD,

@@ -217,6 +217,13 @@ export type ScanChanges = {
 export async function updateScan(userId: string, id: string, changes: ScanChanges): Promise<SavedScan | null> {
   const scan = await getScan(userId, id);
   if (!scan) return null;
+  // with the resume gone there is nothing to score again, so only the title and company can change
+  if (resumeRemoved(scan)) {
+    const db = await getDb();
+    const named = { jobTitle: changes.jobTitle === undefined ? scan.jobTitle : changes.jobTitle, company: changes.company === undefined ? scan.company : changes.company };
+    const [row] = await db.update(schema.scans).set(named).where(and(eq(schema.scans.id, id), eq(schema.scans.userId, userId))).returning();
+    return row ? toSaved(row) : null;
+  }
   const next = { ...scan, ...changes };
   const report = runScan(
     {
@@ -377,6 +384,50 @@ export async function setScansArchived(userId: string, ids: string[], archived: 
   if (ids.length === 0) return;
   const db = await getDb();
   await db.update(schema.scans).set({ archived }).where(and(eq(schema.scans.userId, userId), inArray(schema.scans.id, ids)));
+}
+
+// true once the resume behind a scan was deleted and its text taken out of the scan. a real scan always has text
+export function resumeRemoved(scan: Pick<ScanRow, "resumeTextSnapshot">): boolean {
+  return scan.resumeTextSnapshot.trim() === "";
+}
+
+// the report with everything read off the resume taken out. the score, the skill matches and the posting stay
+export function withoutResume(report: ScanResult, layout: LayoutMeta | null): { report: ScanResult; layout: LayoutMeta | null } {
+  const fileName = layout?.fileName ?? null;
+  // a message can quote the file name, which often has the person's name in it
+  const tidy = (message: string) => (fileName ? message.split(`"${fileName}" `).join("").split(fileName).join("your file") : message);
+  return {
+    report: {
+      ...report,
+      resume: {
+        ...report.resume,
+        // the headings stay so the shape is the same, the lines under them go
+        sections: report.resume.sections.map((section) => ({ ...section, lines: [] })),
+        contact: { name: null, email: null, phone: null, location: null, linkedin: null, github: null, links: [] },
+        experience: [],
+        education: [],
+        measurableResults: [],
+      },
+      // details on a finding are lines copied from the resume
+      checks: report.checks.map((check) => ({ ...check, message: tidy(check.message), details: undefined })),
+    },
+    // the file's name and the text in its header and footer can hold contact details, the rest of the layout is just measurements
+    layout: layout ? { ...layout, fileName: null, headerText: "", footerText: "" } : null,
+  };
+}
+
+// takes a deleted resume's text out of every scan made with it, keeping each scan's score and report.
+// the optimizer drafts for those scans were rewrites of that text, so they go too
+export async function forgetResumeInScans(userId: string, resumeId: string): Promise<void> {
+  const db = await getDb();
+  const rows = await db.select().from(schema.scans).where(and(eq(schema.scans.userId, userId), eq(schema.scans.resumeId, resumeId)));
+  if (rows.length === 0) return;
+  for (const row of rows) {
+    const scan = toSaved(row);
+    const { report, layout } = withoutResume(scan.report, scan.layoutMeta);
+    await db.update(schema.scans).set({ resumeTextSnapshot: "", report, layoutMeta: layout }).where(and(eq(schema.scans.id, row.id), eq(schema.scans.userId, userId)));
+  }
+  await db.delete(schema.optimizations).where(and(eq(schema.optimizations.userId, userId), inArray(schema.optimizations.scanId, rows.map((row) => row.id))));
 }
 
 // deletes scans for good

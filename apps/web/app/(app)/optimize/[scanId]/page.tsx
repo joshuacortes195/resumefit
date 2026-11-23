@@ -1,5 +1,5 @@
 import { Suspense } from "react";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { countSkills, type SkillTerm } from "@resumefit/scoring";
 import { HARD_SKILLS, SOFT_SKILLS } from "@resumefit/skills-data";
 import { Workspace } from "@/components/optimize/workspace";
@@ -8,7 +8,7 @@ import { remainingToday } from "@/lib/ai/limits";
 import { aiAvailable } from "@/lib/ai/router";
 import { getCurrentUser, type CurrentUser } from "@/lib/auth";
 import { latestOptimization } from "@/lib/data/optimizations";
-import { cachedHints, getDictionary, getScan, type SavedScan } from "@/lib/data/scans";
+import { cachedHints, getDictionary, getScan, resumeRemoved, type SavedScan } from "@/lib/data/scans";
 
 export const metadata = { title: "AI Optimize" };
 
@@ -19,6 +19,8 @@ export default async function OptimizePage({ params }: { params: Promise<{ scanI
   const user = await getCurrentUser();
   const scan = await getScan(user.id, scanId);
   if (!scan) notFound();
+  // the resume behind this scan was deleted, so there is nothing to rewrite. the report says why
+  if (resumeRemoved(scan)) redirect(`/scans/${scan.id}`);
   return (
     <Suspense fallback={<ReportSkeleton />}>
       <WorkspaceLoader user={user} scan={scan} />

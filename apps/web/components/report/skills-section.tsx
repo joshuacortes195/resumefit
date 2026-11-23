@@ -150,7 +150,8 @@ export function SkillsSection({ kind, skills, resumeText, spans, customNames, re
         <div className="mt-4 space-y-4">
           <HighlightLegend only="found" />
           <div className="max-h-96 overflow-y-auto rounded-lg bg-background p-4">
-            <HighlightedText text={resumeText} spans={spans} skills={skills} only="found" />
+            {/* a scan whose resume was deleted has no text left to mark up */}
+            {resumeText ? <HighlightedText text={resumeText} spans={spans} skills={skills} only="found" /> : <p className="text-sm text-muted">The resume used for this scan was deleted, so its text is no longer kept.</p>}
           </div>
           {missing.length > 0 && (
             <div>

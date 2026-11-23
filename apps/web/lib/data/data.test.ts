@@ -4,8 +4,11 @@ import { getDb, schema } from "@/db";
 import { getCurrentUser } from "@/lib/auth";
 import { createJob, findCard, latestScores, listJobs, samePosting, tidyCompany } from "./jobs";
 import { addedOn } from "@/lib/job-tabs";
-import { duplicateResume, getResume, listManagedResumes, listResumes, saveResume, setBaseResume } from "./resumes";
-import { addToDictionary, createScan, deleteScans, ensureCard, getScan, hashJd, listScans, previewOf, previousScan, rankResumes, scansToday, searchTerm, setScansArchived, updateScan } from "./scans";
+import { eq } from "drizzle-orm";
+import type { LayoutMeta } from "@resumefit/scoring";
+import { toReportData } from "@/lib/report-data";
+import { deleteResume, duplicateResume, getResume, listManagedResumes, listResumes, saveResume, setBaseResume } from "./resumes";
+import { addToDictionary, createScan, deleteScans, ensureCard, getScan, hashJd, listScans, previewOf, previousScan, rankResumes, resumeRemoved, scansToday, searchTerm, setScansArchived, updateScan } from "./scans";
 
 const RESUME = `Jordan Lee
 Austin, TX | jordan.lee@example.com | (512) 555-0142
@@ -330,5 +333,67 @@ describe("the best resume for a job", () => {
     // the one this scan used is marked, and scoring its text gives the scan's own number
     expect(ranked.find((entry) => entry.current)).toMatchObject({ resumeId: plain.id, matchRate: scan.report.matchRate });
     expect(ranked.some((entry) => entry.resumeId === tailored.id && !entry.current)).toBe(true);
+  });
+});
+
+describe("deleting a resume", () => {
+  // a file layout with the person's name in the file name and their email in the page header
+  const LAYOUT: LayoutMeta = {
+    fileType: "pdf",
+    fileName: "jordan lee resume (final) v2.pdf",
+    pageCount: 1,
+    pageSize: "Letter",
+    margins: { top: 1, right: 1, bottom: 1, left: 1 },
+    columns: 1,
+    hasTables: false,
+    imageCount: 0,
+    headerText: "Jordan Lee jordan.lee@example.com",
+    footerText: "(512) 555-0142",
+    fonts: [{ name: "Calibri", share: 1 }],
+    bodyFontSize: 11,
+    minFontSize: 10,
+    maxFontSize: 18,
+    boldShare: 0.1,
+    lightTextShare: 0,
+    offLeftShare: 0,
+  };
+
+  it("takes its text out of its scans but keeps their score and report, and leaves other scans alone", async () => {
+    const db = await getDb();
+    const id = randomUUID();
+    await db.insert(schema.users).values({ id, email: `resume-delete-${id}@example.com` });
+    const gone = await saveResume(id, { name: "Gone", text: RESUME, layout: LAYOUT });
+    const kept = await saveResume(id, { name: "Kept", text: `${RESUME}\nSkills\nTypeScript` });
+    const scan = await createScan(id, { resumeId: gone.id, resumeText: RESUME, layout: LAYOUT, jdText: JD });
+    const other = await createScan(id, { resumeId: kept.id, resumeText: kept.rawText ?? "", layout: null, jdText: JD });
+    await db.insert(schema.optimizations).values({ userId: id, scanId: scan.id, originalText: RESUME, finalText: RESUME });
+    await db.insert(schema.optimizations).values({ userId: id, scanId: other.id, originalText: "other" });
+    expect(JSON.stringify(scan)).toContain("jordan.lee@example.com");
+
+    await deleteResume(id, gone.id);
+
+    const [row] = await db.select().from(schema.scans).where(eq(schema.scans.id, scan.id));
+    // nothing read off the resume is left anywhere in the row
+    for (const secret of ["jordan.lee@example.com", "555-0142", "Jordan", "jordan lee resume", "Acme Corp", "Rebuilt the checkout", "State University"]) expect(JSON.stringify(row), secret).not.toContain(secret);
+    expect(row?.resumeTextSnapshot).toBe("");
+    // the score and the findings stay as they were
+    expect(row?.matchRate).toBe(scan.matchRate);
+    const after = (await getScan(id, scan.id))!;
+    expect(resumeRemoved(after)).toBe(true);
+    expect(after.report.hardSkills).toEqual(scan.report.hardSkills);
+    expect(after.report.checks.map((check) => [check.id, check.passed])).toEqual(scan.report.checks.map((check) => [check.id, check.passed]));
+    expect(after.layoutMeta).toMatchObject({ fonts: LAYOUT.fonts, fileName: null, headerText: "", footerText: "" });
+    // the optimizer draft of that resume goes, the other scan's stays
+    expect(await db.select().from(schema.optimizations).where(eq(schema.optimizations.scanId, scan.id))).toHaveLength(0);
+    expect(await db.select().from(schema.optimizations).where(eq(schema.optimizations.scanId, other.id))).toHaveLength(1);
+    expect((await getScan(id, other.id))?.resumeTextSnapshot).toBe(kept.rawText);
+
+    // the report page still opens, and says the resume is gone
+    const page = toReportData(after, null);
+    expect(page).toMatchObject({ resumeGone: true, resumeText: "", hasLayout: true });
+    expect(page.spans.resume).toEqual([]);
+    // edits that would score it again leave the score alone, a new title still saves
+    expect((await updateScan(id, scan.id, { customSkills: [{ name: "Storybook", category: "hard" }], jobTitle: "Renamed" }))?.matchRate).toBe(scan.matchRate);
+    expect(await getScan(id, scan.id)).toMatchObject({ jobTitle: "Renamed", matchRate: scan.matchRate, customSkills: [] });
   });
 });

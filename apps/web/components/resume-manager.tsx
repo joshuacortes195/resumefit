@@ -242,7 +242,7 @@ export function ResumeManager({ resumes }: { resumes: ManagedResume[] }) {
       <ConfirmDialog
         open={deleting !== null}
         title={`Delete ${deleting?.name ?? "this resume"}?`}
-        message="The resume and its file are removed for good. Scans you already ran with it keep their reports."
+        message="The resume and its file are removed for good. Scans you already ran with it keep their scores and reports, but no longer keep its text, and their AI Optimize drafts are deleted."
         confirmLabel="Delete"
         pending={pending}
         onConfirm={() => deleting && run(() => deleteResumeAction(deleting.id), () => setDeleting(null))}

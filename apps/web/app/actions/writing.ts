@@ -15,12 +15,15 @@ import { getCurrentUser } from "@/lib/auth";
 import { getJob, listInterviews, saveCoverLetter, updateInterview } from "@/lib/data/jobs";
 import { finishOptimization, saveSuggestions } from "@/lib/data/optimizations";
 import { DAILY_RESUME_LIMIT, getResume, RESUME_LIMIT_REACHED, resumesToday, saveResume } from "@/lib/data/resumes";
-import { ensureCard, getScan } from "@/lib/data/scans";
+import { ensureCard, getScan, resumeRemoved } from "@/lib/data/scans";
 
 // what the writing actions hand back: the result plus how many uses are left today
 type Written<T> = ({ ok: true; remaining: number | null } & T) | { ok: false; error: string };
 
 const id = z.uuid();
+
+// shown when the resume a scan was made with has since been deleted
+const RESUME_GONE = "The resume used for this scan was deleted, so there is nothing to rewrite. Run a new scan with another resume first.";
 
 // turns anything that went wrong into a message for the person
 function problem(error: unknown): { ok: false; error: string } {
@@ -40,6 +43,8 @@ export async function generateSuggestions(scanId: string): Promise<Written<{ sug
     const user = await getCurrentUser();
     const scan = id.safeParse(scanId).success ? await getScan(user.id, scanId) : null;
     if (!scan) return { ok: false, error: "We could not find that scan." };
+    // nothing to rewrite once the resume behind the scan was deleted
+    if (resumeRemoved(scan)) return { ok: false, error: RESUME_GONE };
     const suggestions = await suggestEdits(scan, { userId: user.id });
     const optimizationId = await saveSuggestions(user.id, scan.id, scan.resumeTextSnapshot, suggestions, scan.matchRate);
     return { ok: true, suggestions, optimizationId, remaining: await left(user.id, "optimize") };
@@ -116,7 +121,9 @@ export async function generateCoverLetter(input: z.input<typeof letterSchema>): 
     const resume = resumeId ? await getResume(user.id, resumeId) : job?.resumeId ? await getResume(user.id, job.resumeId) : null;
 
     // a resume that was picked on purpose wins over the one a scan happened to use
-    const resumeText = (resumeId ? resume?.rawText : null) ?? scan?.resumeTextSnapshot ?? resume?.rawText ?? "";
+    // a scan whose resume was deleted has no text left, so it never wins over the job's own resume
+    const fromScan = scan && !resumeRemoved(scan) ? scan.resumeTextSnapshot : null;
+    const resumeText = (resumeId ? resume?.rawText : null) ?? fromScan ?? resume?.rawText ?? "";
     const jdText = parsed.data.jdText?.trim() || scan?.jdText || job?.description || "";
     const typed = parseTarget(parsed.data.target ?? "");
     const jobTitle = parsed.data.jobTitle?.trim() || typed.jobTitle || scan?.jobTitle || job?.title || null;
@@ -125,7 +132,7 @@ export async function generateCoverLetter(input: z.input<typeof letterSchema>): 
     // the job description is a bonus, the letter only has to know which job it is for
     if (jdText.trim().length < 50 && !jobTitle) return { ok: false, error: "Say which job the letter is for, like Software Engineer Intern for Google." };
 
-    const contact: ResumeContact = (resumeId ? null : scan?.report.resume.contact) ?? parseResume(resumeText).contact;
+    const contact: ResumeContact = (resumeId || !fromScan ? null : scan?.report.resume.contact) ?? parseResume(resumeText).contact;
     const letter = await writeCoverLetter(
       {
         resume: resumeText,

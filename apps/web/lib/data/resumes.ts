@@ -2,6 +2,7 @@ import { and, count, desc, eq, gte } from "drizzle-orm";
 import { parseResume, type LayoutMeta } from "@resumefit/scoring";
 import type { ResumeSource } from "@resumefit/shared";
 import { getDb, schema } from "@/db";
+import { forgetResumeInScans } from "@/lib/data/scans";
 import { deleteFile, saveFile } from "@/lib/storage";
 import { isUuid } from "@/lib/ids";
 
@@ -152,6 +153,8 @@ export async function deleteResume(userId: string, id: string): Promise<void> {
   if (!resume) return;
   // the stored file goes first. if that fails the resume stays, instead of leaving a file behind that nothing points at
   if (resume.filePath) await deleteFile(resume.filePath);
+  // scans made with it keep their score and report, but not its text
+  await forgetResumeInScans(userId, id);
   const db = await getDb();
   await db.delete(schema.resumes).where(and(eq(schema.resumes.userId, userId), eq(schema.resumes.id, id)));
   // when the base resume is deleted, the most recent one left takes its place
