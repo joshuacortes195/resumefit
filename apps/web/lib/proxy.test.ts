@@ -16,6 +16,40 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
+// the content policy the proxy wrote for one page, with its one time code swapped for a marker
+async function policyFor(path: string): Promise<string> {
+  const response = await proxy(new NextRequest(`http://localhost${path}`, { headers: { host: "localhost" } }));
+  return (response.headers.get("content-security-policy") ?? "").replace(/'nonce-[^']+'/, "'nonce-CODE'");
+}
+
+// the live site's policy exactly as it was before the cloudflare check existed
+const LIVE_POLICY =
+  "default-src 'self'; script-src 'self' 'nonce-CODE' 'strict-dynamic'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://icons.duckduckgo.com; font-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; form-action 'self'; base-uri 'self'; object-src 'none'";
+
+describe("the content policy and the cloudflare sign in check", () => {
+  it("is exactly the old policy when no site key is set, live and on a dev machine", async () => {
+    vi.stubEnv("NEXT_PUBLIC_TURNSTILE_SITE_KEY", "");
+    vi.stubEnv("NODE_ENV", "production");
+    for (const path of ["/sign-in", "/dashboard", "/privacy"]) expect(await policyFor(path)).toBe(LIVE_POLICY);
+    vi.stubEnv("NODE_ENV", "development");
+    expect(await policyFor("/sign-in")).toBe(LIVE_POLICY.replace("'strict-dynamic'", "'strict-dynamic' 'unsafe-eval'").replace("connect-src 'self'", "connect-src 'self' ws: http://localhost:*"));
+  });
+
+  it("lets cloudflare in for scripts, frames and requests only once the site key is set", async () => {
+    vi.stubEnv("NEXT_PUBLIC_TURNSTILE_SITE_KEY", "0x4AAAAAAAtestkey");
+    vi.stubEnv("NODE_ENV", "production");
+    const policy = await policyFor("/sign-in");
+    const part = (name: string) => policy.split("; ").find((piece) => piece.startsWith(`${name} `)) ?? "";
+    expect(part("script-src")).toBe("script-src 'self' 'nonce-CODE' 'strict-dynamic' https://challenges.cloudflare.com");
+    expect(part("frame-src")).toBe("frame-src 'self' https://challenges.cloudflare.com");
+    expect(part("connect-src")).toBe("connect-src 'self' https://challenges.cloudflare.com");
+    // nothing else gets looser, and scripts still need the code
+    expect(part("frame-ancestors")).toBe("frame-ancestors 'none'");
+    expect(part("img-src")).toBe("img-src 'self' data: blob: https://icons.duckduckgo.com");
+    expect(policy.match(/challenges\.cloudflare\.com/g)).toHaveLength(3);
+  });
+});
+
 describe("the security contact file", () => {
   it("is open to someone who is not signed in, while private pages still send them to sign in", async () => {
     signedOut();

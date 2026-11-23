@@ -26,16 +26,20 @@ function finish(request: NextRequest, response: NextResponse): NextResponse {
 // or were loaded by one that does, so a script someone manages to inject is refused. the dev server needs eval for hot reloading
 function contentPolicy(nonce: string): string {
   const dev = process.env.NODE_ENV !== "production";
+  // the sign in check from cloudflare, only let in when its site key is set. without the key the policy is exactly as before
+  const captcha = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ? " https://challenges.cloudflare.com" : "";
   return [
     "default-src 'self'",
-    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${dev ? " 'unsafe-eval'" : ""}`,
+    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${dev ? " 'unsafe-eval'" : ""}${captcha}`,
     // styles written on an element, like the fill of a score ring, cannot carry a code
     "style-src 'self' 'unsafe-inline'",
     // the only pictures from somewhere else are the little company logos on the job pages
     "img-src 'self' data: blob: https://icons.duckduckgo.com",
     "font-src 'self' data:",
-    // the pages only ever talk to the app itself
-    `connect-src 'self'${dev ? " ws: http://localhost:*" : ""}`,
+    // the pages only ever talk to the app itself, and to the sign in check when it is on
+    `connect-src 'self'${dev ? " ws: http://localhost:*" : ""}${captcha}`,
+    // the sign in check draws itself in a little frame
+    ...(captcha ? [`frame-src 'self'${captcha}`] : []),
     "frame-ancestors 'none'",
     "form-action 'self'",
     "base-uri 'self'",

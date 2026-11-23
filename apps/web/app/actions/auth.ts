@@ -6,7 +6,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { authMode } from "@/lib/auth";
 import { emailKnown, inviteProblem, isOwnerEmail, noUsersYet } from "@/lib/data/users";
-import { appUrl, serverEnv } from "@/lib/env";
+import { appUrl, publicEnv, serverEnv } from "@/lib/env";
 import { inviteErrorCode } from "@/lib/invite";
 import { clientAddress, withinLimit } from "@/lib/rate-limit";
 import { supabaseServer } from "@/lib/supabase/server";
@@ -41,12 +41,25 @@ async function connectionWithinLimit(): Promise<boolean> {
 // a short wait of no fixed length, so an answer that needed no email takes about as long as one that did
 const pause = () => new Promise((done) => setTimeout(done, 300 + Math.random() * 500));
 
+// what the sign in form says when the cloudflare check has not been finished
+const CAPTCHA_MISSING = "Wait for the check that you are a person to finish, then try again.";
+
+// the answer to the cloudflare check from the form. undefined when the check is off, empty when it is on but was not done
+function captchaAnswer(form: FormData): string | undefined {
+  if (!publicEnv.NEXT_PUBLIC_TURNSTILE_SITE_KEY) return undefined;
+  const answer = form.get("captcha");
+  return typeof answer === "string" ? answer.trim().slice(0, 4096) : "";
+}
+
 // emails a sign in link
 export async function signInWithEmail(_previous: SignInState, form: FormData): Promise<SignInState> {
   if (authMode() === "local") return { error: "Sign in is not set up on this copy of the app." };
   const parsed = z.object({ email: z.email("That email does not look right."), invite: z.string().trim().max(60) }).safeParse({ email: form.get("email"), invite: form.get("invite") ?? "" });
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Check your email address." };
   const { email, invite } = parsed.data;
+  // with the cloudflare check on, the form has to carry its answer, which the sign in service checks with cloudflare
+  const captcha = captchaAnswer(form);
+  if (captcha === "") return { error: CAPTCHA_MISSING };
   // one connection only gets so many tries, whoever the email belongs to
   if (!(await connectionWithinLimit())) return { error: TOO_MANY };
 
@@ -68,7 +81,7 @@ export async function signInWithEmail(_previous: SignInState, form: FormData): P
   await rememberInvite(invite);
 
   const supabase = await supabaseServer();
-  const { error } = await supabase.auth.signInWithOtp({ email, options: { emailRedirectTo: `${appUrl()}/auth/callback` } });
+  const { error } = await supabase.auth.signInWithOtp({ email, options: { emailRedirectTo: `${appUrl()}/auth/callback`, ...(captcha ? { captchaToken: captcha } : {}) } });
   if (error) {
     console.error(`could not send a sign in email (${error.status ?? "no status"})`);
     if (quiet) return { sent: email };

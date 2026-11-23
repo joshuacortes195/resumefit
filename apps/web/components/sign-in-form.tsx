@@ -4,11 +4,13 @@ import { useActionState } from "react";
 import Link from "next/link";
 import { MailCheck } from "lucide-react";
 import { signInWithEmail, signInWithGoogle, type SignInState } from "@/app/actions/auth";
+import { Turnstile } from "@/components/turnstile";
 import { INPUT, PRIMARY_BUTTON, SECONDARY_BUTTON } from "@/components/ui/buttons";
 import { MINIMUM_AGE } from "@/lib/legal";
 
-// email link, and google when it is switched on, with the invite code for first timers
-export function SignInForm({ inviteOnly, google, error, invite }: { inviteOnly: boolean; google: boolean; error: string | null; invite: string }) {
+// email link, and google when it is switched on, with the invite code for first timers.
+// captcha is only passed when the cloudflare check is set up
+export function SignInForm({ inviteOnly, google, error, invite, captcha }: { inviteOnly: boolean; google: boolean; error: string | null; invite: string; captcha?: { siteKey: string; nonce: string } }) {
   const [state, action, pending] = useActionState<SignInState, FormData>(signInWithEmail, {});
 
   // once the link is on its way, say so instead of showing the form again
@@ -44,6 +46,8 @@ export function SignInForm({ inviteOnly, google, error, invite }: { inviteOnly: 
           <input name="invite" type="text" autoComplete="off" defaultValue={invite} className={`${INPUT} mt-1 font-normal uppercase`} />
         </label>
       )}
+      {/* the "are you a person" check, only there when it is set up */}
+      {captcha && <Turnstile siteKey={captcha.siteKey} nonce={captcha.nonce} retry={state} />}
       {problem && (
         <p role="alert" className="text-sm text-danger">
           {problem}

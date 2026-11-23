@@ -1,10 +1,11 @@
 import { Suspense } from "react";
+import { headers } from "next/headers";
 import Link from "next/link";
 import { Logo } from "@/components/logo";
 import { SignInForm } from "@/components/sign-in-form";
 import { PRIMARY_BUTTON } from "@/components/ui/buttons";
 import { authMode } from "@/lib/auth";
-import { serverEnv } from "@/lib/env";
+import { publicEnv, serverEnv } from "@/lib/env";
 import { SIGN_IN_ERRORS } from "@/lib/invite";
 
 export const metadata = { title: "Sign in" };
@@ -53,10 +54,14 @@ async function SignInBody({ searchParams }: { searchParams: Promise<{ error?: st
     );
   }
   const { INVITE_ONLY: inviteOnly, GOOGLE_SIGN_IN: google } = serverEnv();
+  // the cloudflare check is only handed to the form when its key is set, so without it the page is exactly as before.
+  // its script needs this request's code to get past the content policy
+  const siteKey = publicEnv.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
+  const captcha = siteKey ? { captcha: { siteKey, nonce: (await headers()).get("x-nonce") ?? "" } } : {};
   return (
     <>
       <p className="mt-1 text-sm text-muted">{inviteOnly ? "ResumeFit is invite only for now. New here? Enter the code you were given." : "No password needed. We email you a link."}</p>
-      <SignInForm inviteOnly={inviteOnly} google={google} invite={(invite ?? "").slice(0, 60)} error={error ? (SIGN_IN_ERRORS[error] ?? SIGN_IN_ERRORS.link ?? null) : null} />
+      <SignInForm inviteOnly={inviteOnly} google={google} invite={(invite ?? "").slice(0, 60)} error={error ? (SIGN_IN_ERRORS[error] ?? SIGN_IN_ERRORS.link ?? null) : null} {...captcha} />
     </>
   );
 }

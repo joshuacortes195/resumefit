@@ -76,6 +76,14 @@ test("every page tells the browser to stay on https and stay out of frames", asy
   }
 });
 
+// with no turnstile site key set, nothing from cloudflare is let in or loaded on the sign in page
+test("the cloudflare sign in check stays off without its key", async ({ request }) => {
+  const response = await request.get("/sign-in");
+  expect(response.headers()["content-security-policy"] ?? "").not.toContain("challenges.cloudflare.com");
+  expect(response.headers()["content-security-policy"] ?? "").not.toContain("frame-src");
+  expect(await response.text()).not.toContain("challenges.cloudflare.com");
+});
+
 // the file security researchers look for, served as plain text with where to report a problem
 test("the security contact file is there for anyone", async ({ request }) => {
   const response = await request.get("/.well-known/security.txt", { maxRedirects: 0 });
