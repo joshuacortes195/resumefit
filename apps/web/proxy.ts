@@ -4,11 +4,11 @@ import { fromAnotherSite } from "@/lib/same-origin";
 // the same settings the server side sign in client uses, so the session cookies cannot be read by scripts in the page and last 90 days
 import { SESSION_COOKIE, withSessionAge } from "@/lib/supabase/session-cookie";
 
-// pages anyone can open without signing in
-const PUBLIC = /^\/(sign-in|auth\/|privacy|terms|robots\.txt$|api\/ext\/|api\/health$|api\/cron\/feed$|scans\/sample)/;
+// pages anyone can open without signing in, the security contact file included
+const PUBLIC = /^\/(sign-in|auth\/|privacy|terms|robots\.txt$|\.well-known\/security\.txt$|api\/ext\/|api\/health$|api\/cron\/feed$|scans\/sample)/;
 
 // pages that are the same for everyone, so a shared cache may keep them. everything else is one person's own
-const SAME_FOR_EVERYONE = /^\/(sign-in|privacy|terms|scans\/sample)?$/;
+const SAME_FOR_EVERYONE = /^\/(sign-in|privacy|terms|scans\/sample|\.well-known\/security\.txt)?$/;
 
 // the last touches on every answer: the content policy, and a private mark on anything that depends on who is signed in,
 // so it is never kept by a cache that other people share

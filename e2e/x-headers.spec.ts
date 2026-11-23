@@ -75,3 +75,13 @@ test("every page tells the browser to stay on https and stay out of frames", asy
     expect(headers["content-security-policy"] ?? "", path).toContain("frame-ancestors 'none'");
   }
 });
+
+// the file security researchers look for, served as plain text with where to report a problem
+test("the security contact file is there for anyone", async ({ request }) => {
+  const response = await request.get("/.well-known/security.txt", { maxRedirects: 0 });
+  expect(response.status()).toBe(200);
+  expect(response.headers()["content-type"]).toContain("text/plain");
+  const text = await response.text();
+  expect(text).toContain("Contact: https://github.com/joshuacortes195/resumefit/security/advisories/new");
+  expect(text).toContain("Expires: 2027-11-22T00:00:00.000Z");
+});
