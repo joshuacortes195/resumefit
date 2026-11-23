@@ -357,6 +357,36 @@ Led 4 launches from 2019 – 2023.`;
     expect(redacted.restore(redacted.text)).toBe(tricky);
   });
 
+  // an email written out in plain words, with no brackets around at and dot
+  it("hides an email written as name at site dot com, and puts it back", () => {
+    const hits = [
+      "joshua at secretmail dot com",
+      "Email: joshua.cortes at secretmail dot co dot uk",
+      "Sam Rivera | sam_r at rivera-mail dot io | Austin",
+      "Write to JOSHUA AT SECRETMAIL DOT COM.",
+      "(sam at rivera dot dev)",
+    ];
+    for (const text of hits) {
+      const redacted = redact(text);
+      expect(redacted.text, text).toContain("[EMAIL_1]");
+      expect(redacted.text, text).not.toMatch(/secretmail|rivera-mail|rivera dot/i);
+      expect(redacted.restore(redacted.text)).toBe(text);
+    }
+  });
+
+  it("leaves ordinary sentences with at and dot in them alone", () => {
+    const plain = [
+      "I worked at Google dot com scale.",
+      "I worked at Google dot com.",
+      "We met at the office.",
+      "Shipped at Acme dot com, then moved to infra.",
+      "Arrived at noon and left at five.",
+      "Led growth at Acme dot com for three years",
+      "Grew it at a dot com startup",
+    ];
+    for (const text of plain) expect(redact(text).text, text).toBe(text);
+  });
+
   it("hides the email and phone the resume reader found, whatever shape they are in", () => {
     const redacted = redact("Call 555.0142.77 or write jo-at-home", { name: "Jo Park", email: "jo-at-home", phone: "555.0142.77" });
     expect(redacted.text).toBe("Call [PHONE_2] or write [EMAIL_1]");

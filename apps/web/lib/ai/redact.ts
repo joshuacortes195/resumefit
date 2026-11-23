@@ -40,6 +40,12 @@ const PO_BOX = /\bP\.? ?O\.? Box \d{1,8}\b/gi;
 // the endings a person's own site usually has. "Node.js" and "B.Sc" look like addresses too, and must stay readable
 const SITE_ENDINGS = new Set(["com", "dev", "io", "me", "net", "org", "co", "app", "xyz", "tech", "site", "page", "info", "ai", "us", "uk", "ca", "de", "fr", "in", "au", "design", "codes", "blog", "website", "online", "works", "studio", "cv", "link", "bio", "edu"]);
 
+// an email written out in plain words, like "name at site dot com". it has to end on a site ending, at the end of the line
+// or right before a separator, so a sentence like "worked at Google dot com scale" reads on as normal text
+const EMAIL_WORDS = new RegExp(`(?<![\\w.%+-])[A-Za-z0-9._%+-]{1,64} at [A-Za-z0-9-]{1,63}(?: dot [A-Za-z0-9-]{1,63}){0,3} dot (?:${[...SITE_ENDINGS, "gov", "mil"].join("|")})(?=[ \\t]*(?:$|[|•·)\\]>/]|[.,;:][ \\t]*$))`, "gim");
+// words that often come right before "at" in a sentence, so they are never taken for the name part of an email
+const NOT_AN_INBOX = new Set(["i", "we", "me", "us", "it", "is", "was", "were", "be", "been", "am", "are", "work", "worked", "works", "working", "intern", "interned", "interning", "lead", "led", "met", "live", "lived", "based", "located", "studied", "study", "employed", "hired", "started", "joined", "stayed", "arrived", "engineer", "developer", "manager", "analyst", "here", "there", "that", "this", "and", "or", "but", "then", "look", "looked", "find", "found", "reach", "contact", "email"]);
+
 // every skill name in lower case, made the first time it is needed. a skill like "ASP.NET" or "socket.io" is never hidden as a link
 let skillNames: Set<string> | null = null;
 function isSkill(text: string): boolean {
@@ -126,6 +132,8 @@ export function redactor(contact?: Partial<ResumeContact> | null): Redactor {
     for (const [found, label] of [[contact?.email, "EMAIL"], [contact?.phone, "PHONE"]] as const) if (found && found.trim().length > 5) result = swap(result, new RegExp(escaped(found.trim()), "g"), label);
     result = swap(result, EMAIL, "EMAIL");
     result = swap(result, EMAIL_SPELLED, "EMAIL");
+    // the name part is the word right before " at ", which must not be an everyday word
+    result = swap(result, EMAIL_WORDS, "EMAIL", (match) => !NOT_AN_INBOX.has(match.split(/ at /i)[0]?.toLowerCase() ?? ""));
     result = swap(result, BIRTH, "BIRTH");
     result = swap(result, ID_NUMBER, "ID");
     result = swap(result, PHONE, "PHONE", looksLikePhone);
