@@ -50,6 +50,16 @@ describe("the terms and privacy pages", () => {
     expect(privacy).toContain("When you leave the title empty, the most recent job title on your resume is searched for instead.");
   });
 
+  // the saved answers are locked and a deleted resume leaves its scans, and the policy has to say both
+  it("say saved answers are encrypted and what deleting a resume does to its scans", () => {
+    const profile = readFileSync(path.join(import.meta.dirname, "data/profile.ts"), "utf8");
+    const resumes = readFileSync(path.join(import.meta.dirname, "data/resumes.ts"), "utf8");
+    expect(profile).toContain("qaBank: sealQaBank(profile.qaBank, secret)");
+    expect(resumes).toContain("await forgetResumeInScans(userId, id);");
+    expect(privacy).toContain("your saved answers to application questions and the answers used on each application are encrypted before they are stored");
+    expect(privacy).toContain("takes its text and the details read from it out of the scans you ran with it");
+  });
+
   it("never use long dashes", () => {
     expect(privacy + terms).not.toMatch(/[—–]/);
   });

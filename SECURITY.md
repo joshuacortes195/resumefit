@@ -43,7 +43,7 @@ I will confirm the report within a few days, keep you updated while it is fixed 
 - Model output is only ever shown to the user or typed into a form field. It is never used to decide what the app does.
 
 **Stored secrets**
-- Work authorization, self identification answers, the answers used on each application and any API key a user adds are encrypted with AES-256-GCM before they are stored.
+- Work authorization, self identification answers, saved answers to application questions (including ones remembered from an application), the answers used on each application and any API key a user adds are encrypted with AES-256-GCM before they are stored.
 - Extension connection keys are stored only as a hash and expire after 90 days.
 
 **Browser extension**
@@ -52,7 +52,8 @@ I will confirm the report within a few days, keep you updated while it is fixed 
 - Submitting an application is off by default. When a user switches it on, it only happens on Greenhouse, Lever and Ashby forms, never on LinkedIn or Indeed, never past a captcha, and never more than the user's daily number. The daily number is counted by both the app and the extension.
 
 **Your data**
-- Anyone can download everything stored for them, or delete their account, from Settings. Deleting removes their files, every row of their data and their sign in record.
+- Anyone can download everything stored for them, or delete their account, from Settings. Deleting removes their files, every row of their data, their sign in record and the sign in counter kept under a hash of their email.
+- Deleting a resume also takes its text, and everything read from it, out of the scans run with it. The scans keep their score and report, and their AI Optimize drafts are deleted.
 
 ## Dependencies
 

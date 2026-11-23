@@ -161,7 +161,8 @@ export default function PrivacyPage() {
         <h2>7. How long we keep it</h2>
         <ul>
           <li>Your account and what you put into it are kept until you delete them or delete your account.</li>
-          <li>Deleting your account removes your files and every row of your data from the app&apos;s database and file storage straight away, along with your sign in record.</li>
+          <li>Deleting your account removes your files and every row of your data from the app&apos;s database and file storage straight away, along with your sign in record and the count of sign in emails sent to your address.</li>
+          <li>Deleting a resume removes it and its file, and takes its text and the details read from it out of the scans you ran with it. Those scans keep their score and report, and their AI Optimize drafts are deleted.</li>
           <li>Extension connection keys stop working after 90 days. Request counters are cleared after a day. Saved job search results, which are not tied to you, are cleared after a week.</li>
           <li>The skills read from a job description are kept, without the emails and phone numbers that were hidden, so the same posting does not have to be sent again.</li>
           <li>Our providers&apos; logs and backups are kept for a limited time under their own policies.</li>
@@ -214,7 +215,7 @@ export default function PrivacyPage() {
         <h2>10. Security</h2>
         <p>
           The site only runs over https. Sign in uses one time email links or Google, so there is no password to steal. Every request is checked against the signed in account, work authorization,
-          self identification answers and the answers used on each application are encrypted before they are stored, and API keys you add are encrypted too. No system is perfectly secure, so we
+          self identification answers, your saved answers to application questions and the answers used on each application are encrypted before they are stored, and API keys you add are encrypted too. No system is perfectly secure, so we
           cannot promise that nothing will ever go wrong. If you find a security problem, please tell us.
         </p>
       </section>
