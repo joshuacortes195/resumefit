@@ -1,4 +1,6 @@
 import { randomUUID } from "node:crypto";
+import { readFileSync } from "node:fs";
+import path from "node:path";
 import { eq, like } from "drizzle-orm";
 import JSZip from "jszip";
 import { describe, expect, it, vi } from "vitest";
@@ -11,12 +13,12 @@ import { recordApplication } from "@/lib/data/applications";
 import { createExtensionToken } from "@/lib/data/extension";
 import { addInterview, createJob, saveCoverLetter } from "@/lib/data/jobs";
 import { savePendingLinkedin } from "@/lib/data/practice";
-import { getProfile, saveProfile } from "@/lib/data/profile";
+import { getProfile, saveAnswer, saveProfile } from "@/lib/data/profile";
 import { saveResume } from "@/lib/data/resumes";
 import { createScan } from "@/lib/data/scans";
 import { corsHeaders } from "@/lib/ext-auth";
 import { SHIPPED_EXTENSION_ID } from "@/lib/extension-client";
-import { clientAddress, withinLimit } from "@/lib/rate-limit";
+import { clientAddress, signInCountKey, withinLimit } from "@/lib/rate-limit";
 import { webLink } from "@/lib/safe-link";
 import { fromAnotherSite } from "@/lib/same-origin";
 import { draftCookie } from "@/lib/builder/open-draft";
@@ -164,12 +166,15 @@ async function seedEverything(email: string) {
   await savePendingLinkedin(id, { headline: "Analyst", about: "", experience: "", skills: [] } as never);
   await createExtensionToken(id);
   await withinLimit(id, "scan");
+  // a sign in try, counted under a hash of the email the way the sign in action counts it
+  await withinLimit(signInCountKey(email), "sign-in-email");
+  await saveAnswer(id, { question: "Do you need any accommodations?", answer: "A quiet room please." });
   await db.insert(schema.optimizations).values({ userId: id, scanId: scan.id, originalText: "old" });
   await db.insert(schema.linkedinReports).values({ userId: id, profileText: { headline: "Analyst" } });
   await db.insert(schema.interviewSessions).values({ userId: id, jobId: job.id });
   await db.insert(schema.aiUsage).values({ userId: id, feature: "cover-letter", provider: "groq", model: "test" });
   await db.insert(schema.userAiKeys).values({ userId: id, provider: "gemini", encryptedKey: "sealed" });
-  return { id, job };
+  return { id, job, email };
 }
 
 // every table that has an owner column, found from the schema itself so a new table is checked without anyone remembering to
@@ -184,6 +189,9 @@ describe("leaving the app", () => {
     // the locked application answers come out readable, the way the person typed them
     expect(data.application.workAuthorization).toBe("US citizen");
     expect(data.applications[0].details.answers[0].label).toBe("Email");
+    // saved answers are stored locked but come out readable, in both copies of the profile
+    expect(data.application.qaBank).toEqual([{ question: "Do you need any accommodations?", answer: "A quiet room please." }]);
+    expect(data.profile.qaBank).toEqual(data.application.qaBank);
     expect(data.pendingLinkedin).not.toBeNull();
     expect(Object.keys(zip.files).some((name) => name.startsWith("files/") && name.endsWith(".pdf"))).toBe(true);
     // secrets stay out of the download
@@ -208,5 +216,16 @@ describe("leaving the app", () => {
     // and no setting is left that is keyed to them, locked answers and counters included
     expect(await db.select().from(schema.appSettings).where(like(schema.appSettings.key, `%${gone.id}%`))).toHaveLength(0);
     expect((await db.select().from(schema.appSettings).where(like(schema.appSettings.key, `%${stays.id}%`))).length).toBeGreaterThan(0);
+    // the sign in counter under a hash of their email goes right away, someone else's stays
+    expect(await db.select().from(schema.appSettings).where(like(schema.appSettings.key, `rate:${signInCountKey(gone.email)}:%`))).toHaveLength(0);
+    expect(await db.select().from(schema.appSettings).where(like(schema.appSettings.key, `rate:${signInCountKey(stays.email)}:%`))).toHaveLength(1);
+  });
+
+  it("hashes an email for the sign in counter the same way the sign in action does", () => {
+    // the sign in action keeps its own copy of the hash, so this catches the two drifting apart
+    const auth = readFileSync(path.join(import.meta.dirname, "../app/actions/auth.ts"), "utf8");
+    expect(auth).toContain('createHash("sha256").update(what.trim().toLowerCase()).digest("hex").slice(0, 32)');
+    expect(auth).toContain('withinLimit(countUnder(email), "sign-in-email"');
+    expect(signInCountKey(" Pat@Example.com ")).toBe(signInCountKey("pat@example.com"));
   });
 });

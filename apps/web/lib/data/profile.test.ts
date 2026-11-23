@@ -3,7 +3,7 @@ import { eq } from "drizzle-orm";
 import { getDb, schema } from "@/db";
 import { getCurrentUser } from "@/lib/auth";
 import { DECLINE, profileSchema, type ProfileInput } from "@/lib/profile";
-import { applicationAnswered, getProfile, profileReady, saveAnswer, saveProfile } from "./profile";
+import { applicationAnswered, getProfile, openQaBank, profileReady, QA_PREFIX, saveAnswer, saveProfile, sealQaBank } from "./profile";
 
 // a filled in form, the way the page sends it
 const FORM: ProfileInput = {
@@ -110,5 +110,40 @@ describe("application profile", () => {
     const { qaBank } = await getProfile(user.id);
     expect(qaBank.map((entry) => entry.question)).toEqual(["Why do you want this role?", "What are you proudest of?"]);
     expect(qaBank[0]?.answer).toBe("A newer answer.");
+  });
+
+  it("keeps saved answers locked in the database, remembered ones included", async () => {
+    const user = await getCurrentUser();
+    await saveProfile(user.id, profileSchema.parse(FORM));
+    await saveAnswer(user.id, { question: "Do you need any accommodations?", answer: "A standing desk for my back." });
+    const db = await getDb();
+    const [row] = await db.select({ qaBank: schema.profiles.qaBank }).from(schema.profiles).where(eq(schema.profiles.userId, user.id));
+    // one locked string with the version in front, none of the words readable
+    expect(typeof row?.qaBank).toBe("string");
+    expect(String(row?.qaBank).startsWith(QA_PREFIX)).toBe(true);
+    for (const secret of ["accommodations", "standing desk", "Why do you want", "building tools"]) expect(JSON.stringify(row)).not.toContain(secret);
+    // and it reads back the same as it went in
+    expect((await getProfile(user.id)).qaBank).toEqual([
+      { question: "Why do you want this role?", answer: "I like building tools people use every day." },
+      { question: "Do you need any accommodations?", answer: "A standing desk for my back." },
+    ]);
+  });
+
+  it("reads an open bank from before answers were locked, and locks it on that first read", async () => {
+    const user = await getCurrentUser();
+    const db = await getDb();
+    const old = [{ question: "Do you hold a clearance?", answer: "Secret, active until 2028." }];
+    await db.update(schema.profiles).set({ qaBank: old }).where(eq(schema.profiles.userId, user.id));
+    expect((await getProfile(user.id)).qaBank).toEqual(old);
+    const [row] = await db.select({ qaBank: schema.profiles.qaBank }).from(schema.profiles).where(eq(schema.profiles.userId, user.id));
+    expect(String(row?.qaBank).startsWith(QA_PREFIX)).toBe(true);
+    expect(JSON.stringify(row)).not.toContain("clearance");
+    expect((await getProfile(user.id)).qaBank).toEqual(old);
+  });
+
+  it("shows a bank it cannot unlock as empty instead of breaking", () => {
+    expect(openQaBank(`${QA_PREFIX}not.a.real.blob`)).toEqual({ entries: [], legacy: false });
+    expect(openQaBank(sealQaBank([{ question: "Why us?", answer: "Because." }], "some-other-secret-that-is-long-enough"))).toEqual({ entries: [], legacy: false });
+    expect(openQaBank([])).toEqual({ entries: [], legacy: false });
   });
 });

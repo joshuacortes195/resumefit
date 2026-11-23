@@ -61,6 +61,37 @@ async function getSealed(userId: string): Promise<{ answers: Partial<SealedAnswe
   return { answers: JSON.parse(opened) as Partial<SealedAnswers>, saved: true };
 }
 
+// saved answers are kept as one locked string with this in front, so a locked bank is easy to tell from an old open one
+export const QA_PREFIX = "enc:v1:";
+
+// locks the saved answers for the qa_bank column
+export function sealQaBank(entries: QaEntry[], secret: string): string {
+  return QA_PREFIX + encrypt(JSON.stringify(entries), secret);
+}
+
+// reads the qa_bank column back. legacy says it was still an open list from before answers were locked
+export function openQaBank(stored: unknown): { entries: QaEntry[]; legacy: boolean } {
+  if (Array.isArray(stored)) return { entries: stored as QaEntry[], legacy: stored.length > 0 };
+  if (typeof stored !== "string" || !stored.startsWith(QA_PREFIX)) return { entries: [], legacy: false };
+  const secret = encryptionSecret();
+  const opened = secret ? decrypt(stored.slice(QA_PREFIX.length), secret) : null;
+  if (opened === null) {
+    // the secret changed or is missing, so the saved answers show as empty instead of breaking the page
+    console.error("saved answers could not be unlocked, showing them as empty");
+    return { entries: [], legacy: false };
+  }
+  return { entries: JSON.parse(opened) as QaEntry[], legacy: false };
+}
+
+// writes the saved answers locked. with no secret to lock them with nothing is written, so they never sit in the open
+async function writeQaBank(userId: string, entries: QaEntry[]): Promise<void> {
+  const secret = encryptionSecret();
+  if (!secret) return;
+  const qaBank = sealQaBank(entries, secret);
+  const db = await getDb();
+  await db.insert(schema.profiles).values({ userId, qaBank }).onConflictDoUpdate({ target: schema.profiles.userId, set: { qaBank } });
+}
+
 // true once the application profile has been saved, which is when declining the self-identification questions counts as an answer
 export async function applicationAnswered(userId: string): Promise<boolean> {
   return (await getSealed(userId)).saved;
@@ -96,6 +127,9 @@ export async function getProfile(userId: string): Promise<Profile> {
   const db = await getDb();
   const [[row], { answers }] = await Promise.all([db.select().from(schema.profiles).where(eq(schema.profiles.userId, userId)).limit(1), getSealed(userId)]);
   if (!row) return { ...BLANK, ...answers };
+  const bank = openQaBank(row.qaBank);
+  // an open bank from before answers were locked gets locked now, the first time it is read
+  if (bank.legacy) await writeQaBank(userId, bank.entries);
   return {
     ...BLANK_SEALED,
     // rows written before these answers were locked still have them in their old columns
@@ -126,7 +160,7 @@ export async function getProfile(userId: string): Promise<Profile> {
     jobTypes: row.jobTypes as Profile["jobTypes"],
     preferredIndustries: row.preferredIndustries,
     remotePreference: row.remotePreference,
-    qaBank: (row.qaBank as QaEntry[]) ?? [],
+    qaBank: bank.entries,
   };
 }
 
@@ -139,8 +173,8 @@ export async function saveProfile(userId: string, profile: Profile): Promise<voi
   // the locked answers go into one sealed bundle, everything else has a column of its own
   const answers = Object.fromEntries(SEALED_KEYS.map((key) => [key, profile[key]]));
   const open = Object.fromEntries(Object.entries(profile).filter(([key]) => !sealedNames.includes(key))) as Omit<Profile, keyof SealedAnswers>;
-  // the old columns for the locked answers are wiped, so nothing about them is left readable in the table
-  const columns = { ...open, workAuthorization: null, needsSponsorship: null, eeoGender: DECLINE, eeoRace: DECLINE, eeoVeteran: DECLINE, eeoDisability: DECLINE };
+  // the old columns for the locked answers are wiped and the saved answers are locked too, so nothing about them is left readable in the table
+  const columns = { ...open, qaBank: sealQaBank(profile.qaBank, secret), workAuthorization: null, needsSponsorship: null, eeoGender: DECLINE, eeoRace: DECLINE, eeoVeteran: DECLINE, eeoDisability: DECLINE };
   const value = { sealed: encrypt(JSON.stringify(answers), secret) };
   await db.insert(schema.profiles).values({ userId, ...columns }).onConflictDoUpdate({ target: schema.profiles.userId, set: columns });
   await db.insert(schema.appSettings).values({ key: sealedKey(userId), value }).onConflictDoUpdate({ target: schema.appSettings.key, set: { value } });
@@ -150,9 +184,7 @@ export async function saveProfile(userId: string, profile: Profile): Promise<voi
 export async function saveAnswer(userId: string, entry: QaEntry): Promise<void> {
   const profile = await getProfile(userId);
   const same = (question: string) => question.trim().toLowerCase() === entry.question.trim().toLowerCase();
-  const qaBank = [...profile.qaBank.filter((saved) => !same(saved.question)), entry].slice(-100);
-  const db = await getDb();
-  await db.insert(schema.profiles).values({ userId, qaBank }).onConflictDoUpdate({ target: schema.profiles.userId, set: { qaBank } });
+  await writeQaBank(userId, [...profile.qaBank.filter((saved) => !same(saved.question)), entry].slice(-100));
 }
 
 // true once enough is filled in for Auto Apply to be useful

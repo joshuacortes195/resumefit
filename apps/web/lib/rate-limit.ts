@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { and, like, sql } from "drizzle-orm";
 import { getDb, schema } from "@/db";
 
@@ -79,6 +80,17 @@ export async function rateLimit(userId: string, bucket: RateBucket): Promise<voi
 export async function clearRateLimits(userId: string): Promise<void> {
   const db = await getDb();
   await db.delete(schema.appSettings).where(like(schema.appSettings.key, `rate:${userId}:%`));
+}
+
+// the short name sign in counts an email's tries under, the same hash the sign in action uses, so the email is never written down
+export function signInCountKey(email: string): string {
+  return createHash("sha256").update(email.trim().toLowerCase()).digest("hex").slice(0, 32);
+}
+
+// forgets the sign in tries counted for an email, used when that person's account is deleted
+export async function clearSignInLimits(email: string): Promise<void> {
+  const db = await getDb();
+  await db.delete(schema.appSettings).where(like(schema.appSettings.key, `rate:${signInCountKey(email)}:%`));
 }
 
 // counters nobody has touched in this long are finished, the longest window is a quarter of an hour

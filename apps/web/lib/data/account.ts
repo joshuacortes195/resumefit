@@ -4,7 +4,7 @@ import { getDb, schema } from "@/db";
 import { openDetails } from "@/lib/data/applications";
 import { getProfile } from "@/lib/data/profile";
 import { handOverAdmin, markClaimed } from "@/lib/data/users";
-import { clearRateLimits } from "@/lib/rate-limit";
+import { clearRateLimits, clearSignInLimits } from "@/lib/rate-limit";
 import { safeErrorText } from "@/lib/log";
 import { deleteFile, deleteFilesOf, loadFile } from "@/lib/storage";
 
@@ -22,7 +22,8 @@ async function everything(userId: string) {
   const jobIds = jobs.map((job) => job.id);
   return {
     account: user ? { email: user.email, name: user.name, createdAt: user.createdAt } : null,
-    profile: profile ?? null,
+    // the saved answers are stored locked, so the export carries the unlocked ones
+    profile: profile && application ? { ...profile, qaBank: application.qaBank } : null,
     application,
     resumes: await db.select().from(schema.resumes).where(own(schema.resumes)),
     jobs,
@@ -80,6 +81,9 @@ export async function deleteAccount(userId: string): Promise<{ filesLeft: boolea
   await db.delete(schema.appSettings).where(eq(schema.appSettings.key, `auto-submit:${userId}`));
   await db.delete(schema.appSettings).where(eq(schema.appSettings.key, `application:${userId}`));
   await clearRateLimits(userId);
+  // the sign in counter is kept under a hash of their email, so it goes now instead of waiting for the daily sweep
+  const [person] = await db.select({ email: schema.users.email }).from(schema.users).where(eq(schema.users.id, userId));
+  if (person?.email) await clearSignInLimits(person.email);
   // the app has had its first admin, so emptying it does not make the next stranger one
   await markClaimed();
   // if this was the only admin, someone else takes over
