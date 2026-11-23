@@ -9,6 +9,8 @@ Please report security problems privately, not in a public issue.
 - Use **Report a vulnerability** on the repository's Security tab (GitHub private vulnerability reporting), or
 - write to the contact address listed at the bottom of the [Privacy Policy](https://resumefit-three.vercel.app/privacy).
 
+The same details are in [`/.well-known/security.txt`](https://resumefit-three.vercel.app/.well-known/security.txt).
+
 Include what you found, the steps to reproduce it and what an attacker could do with it. Please do not access other people's data, run automated scans against the live site, or do anything that slows it down for others. Only test against your own account.
 
 I will confirm the report within a few days, keep you updated while it is fixed and credit you if you want. ResumeFit is a free personal project, so there is no bug bounty.
@@ -22,9 +24,12 @@ I will confirm the report within a few days, keep you updated while it is fixed 
 
 **Accounts and access**
 - Sign in is by one time email link or Google, so there are no passwords to steal. New accounts need an invite code while the app is invite only, and sign in attempts are rate limited per email and per connection.
+- The email sign in form can also show a Cloudflare Turnstile check. It is off unless its keys are set, and when it is on the sign in service checks the answer before any email is sent.
+- The admin can clear out sign in records that never got past the invite code once they are over a week old. It is a button on the admin page, never a scheduled job, and it never touches anyone who has an account in the app.
 - Every page, API route and server action works out the signed in user on the server and every query is scoped to that user. Ids from the browser are never trusted on their own. Tests check that one person can never read or change another person's data.
 - Row level security is on for every database table with no public policies, so the database cannot be read through the public Supabase API. The service role key is only read in server code.
-- Session cookies are `HttpOnly`, `Secure` and `SameSite=Lax`.
+- Session cookies are `HttpOnly`, `Secure` and `SameSite=Lax`, and run out after 90 days without a visit. The one time cookies used while signing in are cleared as soon as sign in finishes.
+- The admin page answers a plain 404 to anyone who is not the admin, the same as an address that does not exist.
 
 **Browser protections**
 - A strict Content Security Policy with a fresh nonce on every request, `frame-ancestors 'none'`, `X-Frame-Options: DENY`, HSTS, `nosniff`, a strict referrer policy, a locked down Permissions Policy and `Cross-Origin-Opener-Policy`. API answers also carry `Cross-Origin-Resource-Policy: same-origin`.
