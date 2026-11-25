@@ -45,9 +45,9 @@ const SHOWN = [
   },
   {
     title: "Scan from the dashboard",
-    text: "Upload a PDF or Word file, paste the text, or pick a resume you saved earlier. The dashboard has the scan form and your board together, so starting a scan for the next job takes a few seconds.",
+    text: "Upload a PDF or Word file, paste the text, or pick a resume you saved earlier. The dashboard shows where every application stands with the scan form right under it, so starting a scan for the next job takes a few seconds.",
     shot: dashboardShot,
-    alt: "The dashboard with the new scan form at the top and the application tracker below it",
+    alt: "The dashboard with a count of jobs tracked, applications sent, interviews and the latest match rate, a path from Saved to Offer, and the new scan form below",
   },
 ];
 
