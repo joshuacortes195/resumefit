@@ -62,7 +62,7 @@ export default function DashboardPage() {
         </Suspense>
       </section>
 
-      {/* the latest scan's skills drawn as a map around its score */}
+      {/* the latest scan's skills as a graded checklist */}
       <Suspense fallback={null}>
         <LatestSkillMap />
       </Suspense>
@@ -158,13 +158,13 @@ async function LatestScan() {
   );
 }
 
-// the skills map for the most recent scan, left out until there is one
+// the skills checklist for the most recent scan, left out until there is one
 async function LatestSkillMap() {
   const user = await getCurrentUser();
   const scan = await latestScan(user.id);
   if (!scan) return null;
   const skills = scan.report.hardSkills.length > 0 ? scan.report.hardSkills : scan.report.softSkills;
-  return <SkillMap skills={skills} score={scan.matchRate} kicker={`Latest scan / ${[scan.jobTitle, scan.company].filter(Boolean).join(", ") || "skills map"}`} />;
+  return <SkillMap skills={skills} score={scan.matchRate} title={[scan.jobTitle, scan.company].filter(Boolean).join(", ") || undefined} kicker="Latest scan / skills inspection" />;
 }
 
 // the latest linkedin score, or a nudge to get one

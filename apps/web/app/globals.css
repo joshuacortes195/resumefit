@@ -884,7 +884,7 @@ dialog[open]::backdrop {
   }
 }
 
-/* the skills map and the empty pages: chips pop in once, rings turn slowly, missing skills pulse a soft red ring */
+/* the skills checklist and the empty pages: tags pop in once and rings turn slowly */
 .spin-slow,
 .spin-slow-back {
   transform-box: fill-box;
@@ -901,10 +901,16 @@ dialog[open]::backdrop {
   .spin-slow-back {
     animation: spin 45s linear infinite reverse;
   }
-  .missing-chip {
-    animation:
-      pop-in 0.5s var(--ease-settle) both,
-      missing-ring 2.4s ease-in-out 1.5s infinite;
+  /* the hand drawn ticks and crosses on the skills checklist draw themselves in, one after another */
+  .tick-draw {
+    stroke-dasharray: 100;
+    animation: tick-draw 0.45s ease-out both;
+  }
+}
+
+@keyframes tick-draw {
+  from {
+    stroke-dashoffset: 100;
   }
 }
 
@@ -928,12 +934,3 @@ dialog[open]::backdrop {
   }
 }
 
-@keyframes missing-ring {
-  0%,
-  100% {
-    box-shadow: 0 0 0 0 rgb(255 138 122 / 0.45);
-  }
-  50% {
-    box-shadow: 0 0 0 7px rgb(255 138 122 / 0);
-  }
-}

@@ -1,104 +1,78 @@
 import type { CSSProperties } from "react";
 import type { SkillMatch } from "@resumefit/shared";
 
-// how many skills fit around the map before it gets crowded
+// how many skills the sheet lists before it gets long
 const MOST = 14;
 
-// how each kind of match looks: its bubble, the mark in front of its name and its line
-const LOOK = {
-  exact: { chip: "clay bg-[var(--clay-mint)]", mark: "✓", line: "var(--bp-line)", dash: undefined },
-  related: { chip: "clay bg-[var(--clay-butter)]", mark: "≈", line: "var(--bp-hot)", dash: "4 4" },
-  missing: { chip: "missing-chip border-2 border-dashed border-[#ff8a7a] bg-[var(--bp-deep)]/80 text-[#ffd2cb]", mark: "+", line: "#ff8a7a", dash: "2 5" },
-} as const;
+// a delay in seconds for one part of the sheet
+const at = (seconds: number) => ({ animationDelay: `${seconds}s` }) as CSSProperties;
 
-// the job's skills drawn as a map around your score: found ones in green, close ones in yellow, missing ones as dashed red outlines.
-// each one pops in on its own beat, yellow pulses run out to the ones you have, and the rings behind slowly turn
-export function SkillMap({ skills, score, kicker = "Fig. 2 / skills map" }: { skills: SkillMatch[]; score: number; kicker?: string }) {
+// the job's skills as a graded inspection sheet: the score circled by hand in yellow, then every skill ticked or crossed one by one
+export function SkillMap({ skills, score, title, kicker = "Inspection / skills" }: { skills: SkillMatch[]; score: number; title?: string; kicker?: string }) {
   // required skills first, then the nice to haves
   const shown = [...skills.filter((skill) => skill.importance === "required"), ...skills.filter((skill) => skill.importance === "preferred")].slice(0, MOST);
   if (shown.length === 0) return null;
   const found = shown.filter((skill) => skill.match !== "missing").length;
 
-  // where each skill sits on the oval around the score, as a percent of the box
-  const spots = shown.map((skill, index) => {
-    const angle = -Math.PI / 2 + (index / shown.length) * Math.PI * 2;
-    return { skill, x: 50 + 40 * Math.cos(angle), y: 50 + 38 * Math.sin(angle) };
-  });
-
   return (
-    <section aria-label="Skills map" className="blueprint blueprint-grid relative overflow-hidden rounded-2xl p-6 print:hidden">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
+    <section aria-label="Skills checklist" className="blueprint blueprint-grid overflow-hidden rounded-2xl p-6 sm:p-8 print:hidden">
+      {/* the top of the sheet: what it is, the job, and the score with a hand drawn circle around it */}
+      <div className="flex items-center justify-between gap-6 border-b-[1.5px] border-[var(--bp-line)]/60 pb-5">
+        <div className="min-w-0">
           <p className="font-drawing text-[11px] uppercase tracking-[0.1em] text-[var(--bp-hot)]">{kicker}</p>
-          <h2 className="mt-1 text-xl font-semibold">
+          {title && <p className="mt-1 truncate font-display text-2xl font-bold text-[var(--bp-text)]">{title}</p>}
+          <h2 className="mt-1 text-lg font-semibold">
             You have {found} of the {shown.length} skills this job names
           </h2>
         </div>
-        {/* what the colors mean */}
-        <p className="flex flex-wrap gap-4 font-drawing text-[11px] uppercase tracking-[0.08em] text-[var(--bp-muted)]">
-          <span className="text-[var(--clay-mint)]">✓ found</span>
-          <span className="text-[var(--clay-butter)]">≈ close</span>
-          <span className="text-[#ff8a7a]">+ missing</span>
-        </p>
-      </div>
-
-      {/* the map itself on wide screens */}
-      <div className="relative mt-4 hidden aspect-[2.2/1] md:block" aria-hidden>
-        <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="absolute inset-0 size-full" fill="none">
-          {/* the rings behind, turning slowly */}
-          <ellipse className="spin-slow" cx="50" cy="50" rx="40" ry="38" stroke="var(--bp-line)" strokeOpacity="0.35" strokeDasharray="1 2" vectorEffect="non-scaling-stroke" />
-          <ellipse className="spin-slow-back" cx="50" cy="50" rx="24" ry="23" stroke="var(--bp-line)" strokeOpacity="0.25" strokeDasharray="2 3" vectorEffect="non-scaling-stroke" />
-          {/* a line from the score to every skill */}
-          {spots.map(({ skill, x, y }, index) => {
-            const look = LOOK[skill.match];
-            const d = `M50 50 L${x} ${y}`;
-            return (
-              <g key={skill.name}>
-                <path d={d} stroke={look.line} strokeOpacity={skill.match === "missing" ? 0.55 : 0.8} strokeWidth="1.2" strokeDasharray={look.dash} vectorEffect="non-scaling-stroke" />
-                {/* a yellow pulse runs out to each skill you have */}
-                {skill.match !== "missing" && <path d={d} pathLength={1000} className="pulse" stroke="var(--bp-hot)" strokeWidth="3" strokeLinecap="round" vectorEffect="non-scaling-stroke" style={{ animationDelay: `${0.6 + index * 0.22}s` }} />}
-              </g>
-            );
-          })}
-        </svg>
-
-        {/* the score in the middle, counting up, with a ring that glows as the pulses leave */}
-        <div className="absolute left-1/2 top-1/2 grid size-32 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border-2 border-[var(--bp-line)] bg-[var(--bp-deep)] shadow-[0_0_0_8px_rgb(255_207_63/0.08)]">
+        <div className="relative grid size-24 shrink-0 place-items-center sm:size-28">
+          <svg viewBox="0 0 118 118" className="absolute inset-0 size-full" aria-hidden>
+            <path className="circle-grade" pathLength={420} d="M60 8 C95 6 112 34 110 62 C108 94 80 112 54 110 C24 108 6 86 8 58 C10 30 30 10 66 9" fill="none" stroke="var(--bp-hot)" strokeWidth="3" strokeLinecap="round" />
+          </svg>
           <span className="text-center">
-            <span className="block font-display text-4xl font-extrabold text-[var(--bp-hot)]">
-              <span className="count-up" style={{ "--to": score } as CSSProperties} />%
+            <span className="block font-display text-4xl font-extrabold leading-none text-[var(--bp-text)]">
+              <span aria-hidden className="count-up" style={{ "--to": score } as CSSProperties} />
+              <span className="sr-only">{score}</span>
             </span>
             <span className="font-drawing text-[10px] uppercase tracking-[0.1em] text-[var(--bp-muted)]">match</span>
           </span>
         </div>
-
-        {/* the skills, popping in one after another */}
-        {spots.map(({ skill, x, y }, index) => {
-          const look = LOOK[skill.match];
-          return (
-            <span
-              key={skill.name}
-              style={{ left: `${x}%`, top: `${y}%`, animationDelay: `${0.2 + index * 0.12}s` }}
-              className={`pop-in absolute -translate-x-1/2 -translate-y-1/2 whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-bold ${look.chip}`}
-            >
-              {look.mark} {skill.name}
-            </span>
-          );
-        })}
       </div>
 
-      {/* on a phone the same skills as a list of chips */}
-      <ul className="mt-4 flex flex-wrap gap-2 md:hidden">
-        {shown.map((skill, index) => (
-          <li key={skill.name} style={{ animationDelay: `${index * 0.08}s` }} className={`pop-in rounded-full px-3 py-1.5 text-xs font-bold ${LOOK[skill.match].chip}`}>
-            {LOOK[skill.match].mark} {skill.name}
-          </li>
-        ))}
+      {/* the ledger: each skill with a dotted line to its mark, ticked or crossed in turn */}
+      <ul className="mt-5 grid gap-x-10 gap-y-3 md:grid-cols-2">
+        {shown.map((skill, index) => {
+          const delay = 0.9 + index * 0.18;
+          const missing = skill.match === "missing";
+          return (
+            <li key={skill.name} className="flex items-end gap-3 text-[15px]">
+              <span className={missing ? "text-[var(--bp-muted)]" : "text-[var(--bp-text)]"}>{skill.name}</span>
+              {skill.importance === "preferred" && <span className="font-drawing text-[10px] uppercase tracking-[0.08em] text-[var(--bp-muted)]">nice to have</span>}
+              <span aria-hidden className="mb-1.5 min-w-6 flex-1 border-b-2 border-dotted border-[var(--bp-line)]/35" />
+              {/* the mark and its tag in a box of fixed width, so every mark lines up down the column */}
+              <span className="flex w-[4.5rem] shrink-0 items-center gap-2">
+                {/* the hand drawn mark: a tick for found, a wavy tick for close, a cross and a tag for missing */}
+                <svg viewBox="0 0 24 24" className="size-6 shrink-0" fill="none" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                  {skill.match === "exact" && <path className="tick-draw" style={at(delay)} pathLength={100} d="M3 13 C6 15 8 18 9 20 C12 13 16 7 21 3" stroke="var(--bp-good)" />}
+                  {skill.match === "related" && <path className="tick-draw" style={at(delay)} pathLength={100} d="M3 14 C5 15 7 17 8.5 19 C11 14 13 12 15 10 C17 8 19 6 21 5" stroke="var(--bp-hot)" />}
+                  {missing && <path className="tick-draw" style={at(delay)} pathLength={100} d="M5 5 L19 19 M19 5 L5 19" stroke="#ff8a7a" />}
+                </svg>
+                <span className="sr-only">{missing ? "missing" : skill.match === "related" ? "close match" : "found"}</span>
+                {missing && (
+                  <span aria-hidden style={at(delay + 0.2)} className="pop-in rounded-full border border-dashed border-[#ff8a7a] px-2 py-0.5 font-drawing text-[10px] uppercase tracking-[0.08em] text-[#ffb3a8]">
+                    add
+                  </span>
+                )}
+                {skill.match === "related" && (
+                  <span aria-hidden style={at(delay + 0.2)} className="pop-in font-drawing text-[10px] uppercase tracking-[0.08em] text-[var(--bp-hot)]">
+                    close
+                  </span>
+                )}
+              </span>
+            </li>
+          );
+        })}
       </ul>
-      {/* the same facts for screen readers */}
-      <p className="sr-only">
-        {shown.map((skill) => `${skill.name}: ${skill.match === "missing" ? "missing" : skill.match === "related" ? "close match" : "found"}`).join(". ")}
-      </p>
     </section>
   );
 }

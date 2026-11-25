@@ -172,9 +172,9 @@ export function Report({ data, resumes }: { data: ReportData; resumes: ResumeOpt
         </div>
       )}
 
-      {/* the job's skills drawn as a map around the score, animated */}
+      {/* the job's skills as a graded checklist, ticked off one by one */}
       <div className="mt-6">
-        <SkillMap skills={report.hardSkills.length > 0 ? report.hardSkills : allSkills} score={report.matchRate} />
+        <SkillMap skills={report.hardSkills.length > 0 ? report.hardSkills : allSkills} score={report.matchRate} title={title} />
       </div>
 
       <div className="mt-6 grid gap-6 lg:grid-cols-[17rem_1fr]">
