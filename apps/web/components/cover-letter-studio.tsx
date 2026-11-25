@@ -4,7 +4,7 @@ import { useRef, useState, useTransition } from "react";
 import { Check, Copy, Download, RefreshCw, Save, Sparkles, Upload } from "lucide-react";
 import { generateCoverLetter, saveLetterToJob } from "@/app/actions/writing";
 import { AiNotice } from "@/components/ai-notice";
-import { CARD, INPUT, PRIMARY_BUTTON, SECONDARY_BUTTON } from "@/components/ui/buttons";
+import { CARD, GREY_BUTTON, INPUT, SECONDARY_BUTTON } from "@/components/ui/buttons";
 import { LENGTHS, TONES, type Length, type Tone } from "@/lib/ai/prompts/letters";
 import { downloadExport } from "@/lib/download";
 
@@ -232,7 +232,7 @@ export function CoverLetterStudio({ resumes: savedResumes, scans, jobs, ai }: St
           </div>
 
           <div className="flex flex-wrap items-center gap-4">
-            <button type="button" disabled={!ready || pending || !ai.available} onClick={generate} className={PRIMARY_BUTTON}>
+            <button type="button" disabled={!ready || pending || !ai.available} onClick={generate} className={GREY_BUTTON}>
               <Sparkles className="size-4" aria-hidden />
               {pending ? "Writing your letter..." : "Generate cover letter"}
             </button>
@@ -299,7 +299,7 @@ export function CoverLetterStudio({ resumes: savedResumes, scans, jobs, ai }: St
                     setMessage(result.ok ? { ok: true, text: "Saved to the job's Cover Letter tab." } : { ok: false, text: result.error });
                   })
                 }
-                className={PRIMARY_BUTTON}
+                className={GREY_BUTTON}
               >
                 <Save className="size-4" aria-hidden />
                 Save to job

@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { Plus, Trash2, Upload, UserSearch } from "lucide-react";
 import type { LinkedinProfile } from "@resumefit/scoring";
 import { createLinkedinReport } from "@/app/actions/practice";
-import { CARD, INPUT, LINK_BUTTON, PRIMARY_BUTTON, SECONDARY_BUTTON } from "@/components/ui/buttons";
+import { GREY_BUTTON, INPUT, LINK_BUTTON, RAISED, SECONDARY_BUTTON } from "@/components/ui/buttons";
 
 type ProfileFields = { headline: string; about: string; experience: string; skills: string; url: string };
 
@@ -59,7 +59,7 @@ export function LinkedinForm({ imported, jobs }: LinkedinFormProps) {
 
   return (
     <form onSubmit={submit} className="space-y-6">
-      <section className={`${CARD} space-y-4 p-6`}>
+      <section className={`${RAISED} space-y-4 p-6`}>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 className="text-lg font-semibold">1. Your LinkedIn profile</h2>
           <button type="button" disabled={reading} onClick={() => fileRef.current?.click()} className={SECONDARY_BUTTON}>
@@ -121,7 +121,7 @@ export function LinkedinForm({ imported, jobs }: LinkedinFormProps) {
         </label>
       </section>
 
-      <section className={`${CARD} space-y-4 p-6`}>
+      <section className={`${RAISED} space-y-4 p-6`}>
         <div>
           <h2 className="text-lg font-semibold">2. The jobs you want</h2>
           <p className="mt-1 text-sm text-muted">Add one to three job descriptions. We look for the skills they share and check whether your profile shows them.</p>
@@ -172,7 +172,7 @@ export function LinkedinForm({ imported, jobs }: LinkedinFormProps) {
           {error}
         </p>
       )}
-      <button type="submit" disabled={pending} className={PRIMARY_BUTTON}>
+      <button type="submit" disabled={pending} className={GREY_BUTTON}>
         <UserSearch className="size-4" aria-hidden />
         {pending ? "Scoring your profile..." : "Score my profile"}
       </button>

@@ -2,7 +2,7 @@ import { Suspense } from "react";
 import Link from "next/link";
 import { LinkedinForm } from "@/components/linkedin-form";
 import { ScoreRing } from "@/components/score-ring";
-import { CARD } from "@/components/ui/buttons";
+import { RAISED } from "@/components/ui/buttons";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getCurrentUser } from "@/lib/auth";
 import { listJobs, getJob } from "@/lib/data/jobs";
@@ -52,7 +52,7 @@ async function History() {
   const reports = await listLinkedinReports(user.id);
   if (reports.length === 0) return null;
   return (
-    <section className={`${CARD} p-6`}>
+    <section className={`${RAISED} p-6`}>
       <h2 className="text-lg font-semibold">LinkedIn scan history</h2>
       <ul className="mt-3 divide-y divide-border">
         {reports.map((report) => (
