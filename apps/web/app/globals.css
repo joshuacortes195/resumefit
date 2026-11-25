@@ -1,57 +1,59 @@
 @import "tailwindcss";
 
-/* base colors: pale drafting paper, white sheets, navy ink for text, and a highlighter. each part of the app adds its own color on top */
+/* base colors: a dark blueprint night, navy sheets, pale ink for text, and a yellow highlighter. each part of the app adds its own color on top */
 :root {
-  --background: #eef3f9;
-  --surface: #ffffff;
-  --foreground: #0f1f38;
-  --muted: #4f5f78;
-  --border: #d4deeb;
+  /* tells the browser the page is dark, so scrollbars, date pickers and dropdowns match */
+  color-scheme: dark;
+  --background: #0b1c37;
+  --surface: #122a4d;
+  --foreground: #e6eefb;
+  --muted: #9cb0d0;
+  --border: #264372;
   /* the accent, used for links, buttons, active things and progress. the pages below swap it for their own */
-  --primary: #47515f;
-  --primary-soft: #e8eaee;
-  --on-primary: #ffffff;
-  --marker: #ffe45c;
+  --primary: #b7c8e6;
+  --primary-soft: #1d3760;
+  --on-primary: #0b1a33;
+  --marker: #ffcf3f;
   --on-marker: #2b2500;
-  --success: #2a7a4b;
-  --warning: #a86400;
-  --danger: #c2362b;
-  --card-shadow: 0 1px 2px rgb(15 31 56 / 0.06), 0 6px 20px rgb(15 31 56 / 0.04);
+  --success: #6fdaa0;
+  --warning: #f7bd57;
+  --danger: #ff8274;
+  --card-shadow: 0 1px 2px rgb(0 0 0 / 0.25), 0 8px 24px rgb(0 0 0 / 0.22);
   /* the faint grid lines on the paper behind every page */
-  --paper-line: rgb(18 61 122 / 0.055);
+  --paper-line: rgb(190 214 255 / 0.06);
 
-  /* one color per part of the app: a deep tone and a soft tint */
+  /* one color per part of the app: a light tone that reads on the dark paper, and a deep tint for soft fills */
   /* the dashboard and the pages outside the app wear the blueprint blue */
-  --c-dashboard: #123d7a;
-  --s-dashboard: #dce7f7;
-  --c-scans: #3a3eb5;
-  --s-scans: #e2e3fb;
-  --c-optimize: #6b30b0;
-  --s-optimize: #ecdffa;
-  --c-letter: #ad2d5b;
-  --s-letter: #fbdfe8;
-  --c-linkedin: #155ea6;
-  --s-linkedin: #dbeafb;
-  --c-tracker: #1c7439;
-  --s-tracker: #daf2e0;
-  --c-jobs: #0a677e;
-  --s-jobs: #d5eef4;
-  --c-builder: #835500;
-  --s-builder: #fbebc8;
-  --c-resumes: #ad372c;
-  --s-resumes: #fbe0dc;
-  --c-extension: #872c8a;
-  --s-extension: #f5ddf6;
-  --c-interview: #55650a;
-  --s-interview: #e8f0c9;
+  --c-dashboard: #8fb8ff;
+  --s-dashboard: #1c3a68;
+  --c-scans: #a6abff;
+  --s-scans: #262d66;
+  --c-optimize: #c8a6ff;
+  --s-optimize: #32275c;
+  --c-letter: #ff9ec2;
+  --s-letter: #4a2442;
+  --c-linkedin: #80c2ff;
+  --s-linkedin: #173c64;
+  --c-tracker: #7fe0a3;
+  --s-tracker: #173f35;
+  --c-jobs: #72d7ea;
+  --s-jobs: #143f4d;
+  --c-builder: #ffca6e;
+  --s-builder: #43351b;
+  --c-resumes: #ff9d8f;
+  --s-resumes: #4b2626;
+  --c-extension: #e69ef1;
+  --s-extension: #3f2449;
+  --c-interview: #c6e26f;
+  --s-interview: #333e18;
 }
 
 /* everything derived from the accent follows it, whichever page sets it */
 :root {
-  --primary-hover: color-mix(in srgb, var(--primary) 82%, black);
+  --primary-hover: color-mix(in srgb, var(--primary) 80%, white);
   --ink: var(--primary);
   --ink-hover: var(--primary-hover);
-  --on-ink: #ffffff;
+  --on-ink: #0b1a33;
 }
 
 /* each part of the app wears its own color. the html tag says which part we are in */
@@ -204,7 +206,7 @@ body {
   background-color: var(--background);
   background-image:
     linear-gradient(var(--paper-line) 1px, transparent 1px), linear-gradient(90deg, var(--paper-line) 1px, transparent 1px),
-    linear-gradient(rgb(18 61 122 / 0.025) 1px, transparent 1px), linear-gradient(90deg, rgb(18 61 122 / 0.025) 1px, transparent 1px);
+    linear-gradient(rgb(190 214 255 / 0.025) 1px, transparent 1px), linear-gradient(90deg, rgb(190 214 255 / 0.025) 1px, transparent 1px);
   background-size:
     100px 100px,
     100px 100px,
@@ -227,8 +229,17 @@ main h1 {
   letter-spacing: -0.03em;
 }
 
-/* printing never needs the grid */
+/* printing never needs the grid, and goes back to dark ink on white paper */
 @media print {
+  :root {
+    color-scheme: light;
+    --background: #ffffff;
+    --surface: #ffffff;
+    --foreground: #111111;
+    --muted: #555555;
+    --border: #dddddd;
+  }
+
   body {
     background-image: none;
   }
@@ -345,7 +356,7 @@ main h1 {
 
 /* grey blocks that stand in for loading content, with a slow sweep of light so the page looks busy and not stuck */
 .skeleton {
-  background: linear-gradient(100deg, transparent 30%, rgb(255 255 255 / 0.65) 50%, transparent 70%) color-mix(in srgb, var(--border) 70%, transparent);
+  background: linear-gradient(100deg, transparent 30%, rgb(190 214 255 / 0.1) 50%, transparent 70%) color-mix(in srgb, var(--border) 70%, transparent);
   background-size: 250% 100%;
   background-repeat: no-repeat;
   animation: shimmer 1.4s ease-in-out infinite;
@@ -437,7 +448,7 @@ dialog[open]::backdrop {
 .brand {
   --primary: var(--c-dashboard);
   --primary-soft: var(--s-dashboard);
-  --primary-hover: color-mix(in srgb, var(--primary) 82%, black);
+  --primary-hover: color-mix(in srgb, var(--primary) 80%, white);
   --ink: var(--primary);
   --ink-hover: var(--primary-hover);
 }

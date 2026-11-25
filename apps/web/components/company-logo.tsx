@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 
-// soft colors for the letter tile, picked by the company's name so each company always gets the same one
-const TILES = ["#d6f0eb", "#e2e3fb", "#fbdfe8", "#fde5d0", "#daf2e0", "#fbebc8", "#f5ddf6", "#dbeafb"];
+// deep tints for the letter tile on the dark pages, picked by the company's name so each company always gets the same one
+const TILES = ["var(--s-dashboard)", "var(--s-scans)", "var(--s-letter)", "var(--s-resumes)", "var(--s-tracker)", "var(--s-builder)", "var(--s-extension)", "var(--s-jobs)"];
 
 // a company's logo from its own website, or a tile with its first letter when there is none
 export function CompanyLogo({ company, domain, size = 36 }: { company: string; domain?: string; size?: number }) {

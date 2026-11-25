@@ -46,15 +46,15 @@ function ActiveBar({ active }: { active: boolean }) {
 function SidebarLinks({ collapsed = false, onNavigate, pathname }: SidebarProps & { pathname: string }) {
   return (
     <nav aria-label="Main" className="flex h-full flex-col gap-0.5 overflow-y-auto p-3">
-      {/* new scan button at the top, always in the blueprint blue and yellow whatever section is open. the plus turns a little on hover */}
+      {/* new scan button at the top, always the blueprint yellow whatever section is open, like the main button on the landing page. the plus turns a little on hover */}
       <Link
         href="/scans/new"
         onClick={onNavigate}
         title="New Scan"
-        className="group mb-3 flex items-center justify-center gap-2 rounded-md bg-(--c-dashboard) px-3 py-2.5 font-display text-sm font-bold text-white transition duration-150 hover:bg-[color-mix(in_srgb,var(--c-dashboard)_85%,black)] active:scale-[0.98]"
+        className="group mb-3 flex items-center justify-center gap-2 rounded-md bg-marker px-3 py-2.5 font-display text-sm font-bold text-on-marker transition duration-150 hover:bg-[color-mix(in_srgb,var(--marker)_85%,white)] active:scale-[0.98]"
       >
-        {/* the plus sits on a yellow dot, the same yellow as the logo's ring */}
-        <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-marker text-on-marker">
+        {/* the plus sits on a dark dot */}
+        <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-on-marker text-marker">
           <Plus className="size-3.5 transition-transform duration-200 group-hover:rotate-90" strokeWidth={3} aria-hidden />
         </span>
         {collapsed ? <span className="sr-only">New Scan</span> : <span>New Scan</span>}

@@ -8,8 +8,8 @@ import { sheetOf, type DrawingKey } from "@/lib/sheets";
 export function SheetStrip() {
   const sheet = sheetOf(usePathname());
   if (!sheet) return null;
-  // the bubble wears the page's own soft color
-  const bubble = { background: sheet.section ? `var(--s-${sheet.section})` : "var(--clay-cloud)" } as CSSProperties;
+  // the bubble wears the page's own light color, which reads as a pastel against the blue
+  const bubble = { background: sheet.section ? `var(--c-${sheet.section})` : "var(--clay-cloud)" } as CSSProperties;
   return (
     // keyed on the sheet so the drawing traces in again when you move to another page
     <div key={sheet.no} className="blueprint blueprint-grid relative overflow-hidden border-y border-[var(--bp-deep)] bg-[var(--bp-deep)]! print:hidden" aria-hidden>

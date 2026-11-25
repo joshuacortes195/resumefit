@@ -71,7 +71,7 @@ export function TemplateGallery() {
               {/* the page itself, small. it is a picture here, so screen readers go by the name and the line under it */}
               <span aria-hidden className="relative block overflow-hidden rounded-sm">
                 <ResumePreview laid={layOut(SAMPLE, template.id)} settings={{ ...defaultSettings(), template: template.id }} />
-                {template.popular && <span className="absolute right-2 top-2 rounded-full bg-primary px-2 py-0.5 text-[0.65rem] font-semibold text-white">Popular</span>}
+                {template.popular && <span className="absolute right-2 top-2 rounded-full bg-primary px-2 py-0.5 text-[0.65rem] font-semibold text-on-primary">Popular</span>}
               </span>
               <span className="mt-3 block font-semibold group-hover:text-primary">{busy === template.id ? "One moment..." : template.name}</span>
               <span className="mt-0.5 block text-xs text-muted">{template.blurb}</span>

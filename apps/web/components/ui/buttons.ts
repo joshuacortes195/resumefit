@@ -18,4 +18,4 @@ export const INPUT = "w-full rounded-lg border border-border bg-background px-3 
 export const CARD = "rounded-xl border border-border bg-surface shadow-card";
 
 // added to cards you can act on: they lift a little under the mouse
-export const LIFT = "transition-[transform,box-shadow] duration-200 ease-settle hover:-translate-y-0.5 hover:shadow-[0_2px_4px_rgb(15_31_56/0.06),0_12px_28px_rgb(15_31_56/0.08)]";
+export const LIFT = "transition-[transform,box-shadow] duration-200 ease-settle hover:-translate-y-0.5 hover:shadow-[0_2px_4px_rgb(0_0_0/0.25),0_12px_28px_rgb(0_0_0/0.3)]";
