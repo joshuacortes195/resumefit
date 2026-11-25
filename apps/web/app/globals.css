@@ -229,6 +229,11 @@ main h1 {
   letter-spacing: -0.03em;
 }
 
+/* and in the app they are written in the blueprint yellow, like the callouts on the landing page */
+.app-main h1 {
+  color: var(--marker);
+}
+
 /* printing never needs the grid, and goes back to dark ink on white paper */
 @media print {
   :root {
@@ -620,6 +625,10 @@ dialog[open]::backdrop {
   --s-extension: #f2d9f3;
   --c-interview: #55650a;
   --s-interview: #e4edc3;
+  /* the status colors deep enough to read on the light paper */
+  --success: #2a7a4b;
+  --warning: #a86400;
+  --danger: #c2362b;
   background-color: var(--background);
   /* the same faint grid as the paper on the landing page */
   background-image: linear-gradient(var(--paper-line) 1px, transparent 1px), linear-gradient(90deg, var(--paper-line) 1px, transparent 1px);

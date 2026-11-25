@@ -131,7 +131,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         )}
 
         {/* the page itself */}
-        <main className="min-w-0 flex-1">
+        <main className="app-main min-w-0 flex-1">
           {/* the page's own sheet number, drawing and tip, as a band across the top */}
           <SheetStrip />
           <div className="p-4 md:p-8">{children}</div>
