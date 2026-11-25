@@ -25,8 +25,8 @@ export const RAISED = "raised rounded-xl border";
 
 // a white outlined button with yellow words, used on the scan history page
 export const OUTLINE_BUTTON =
-  "inline-flex items-center justify-center gap-2 rounded-md border border-white/85 px-4 py-2.5 text-sm font-semibold text-marker transition duration-150 ease-out hover:bg-white/10 active:scale-[0.97] disabled:opacity-50 disabled:active:scale-100";
+  "outline-btn inline-flex items-center justify-center gap-2 rounded-md border border-white/85 px-4 py-2.5 text-sm font-semibold text-marker transition duration-150 ease-out hover:bg-white/10 active:scale-[0.97] disabled:opacity-50 disabled:active:scale-100";
 
-// a dark grey button with words in the page's own color, like the pink on the cover letter page
+// a light tile button with words in the page's own color in its deep tone, like the pink on the cover letter page
 export const GREY_BUTTON =
-  "inline-flex items-center justify-center gap-2 rounded-md border border-(--grey-border) bg-(--grey) px-4 py-2.5 text-sm font-semibold text-primary transition duration-150 ease-out hover:bg-(--grey-hover) active:scale-[0.97] disabled:opacity-50 disabled:active:scale-100";
+  "raised inline-flex items-center justify-center gap-2 rounded-md border px-4 py-2.5 text-sm font-semibold text-primary transition duration-150 ease-out hover:bg-(--grey-hover) active:scale-[0.97] disabled:opacity-50 disabled:active:scale-100";

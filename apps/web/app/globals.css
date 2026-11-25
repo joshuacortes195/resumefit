@@ -21,11 +21,11 @@
   --card-shadow: 0 1px 2px rgb(0 0 0 / 0.25), 0 8px 24px rgb(0 0 0 / 0.22);
   /* the faint grid lines on the paper behind every page */
   --paper-line: rgb(190 214 255 / 0.06);
-  /* a shaded beige, warm and a step lighter than the navy, for raised rows, columns and the beige button */
-  --grey: #4d473d;
-  --grey-hover: #575046;
-  --grey-border: #6b6356;
-  --grey-line: rgb(255 240 215 / 0.06);
+  /* the light tiles: like the sidebar paper but a few shades darker, so a lot of it is easy on the eyes */
+  --grey: #d3dae5;
+  --grey-hover: #dbe1ea;
+  --grey-border: #b8c3d3;
+  --grey-line: rgb(18 61 122 / 0.07);
 
   /* one color per part of the app: a light tone that reads on the dark paper, and a deep tint for soft fills */
   /* the dashboard and the pages outside the app wear the blueprint blue */
@@ -51,6 +51,19 @@
   --s-extension: #3f2449;
   --c-interview: #c6e26f;
   --s-interview: #333e18;
+
+  /* the same section colors in deep tones, for text and buttons on the light paper areas */
+  --d-dashboard: #123d7a;
+  --d-scans: #3a3eb5;
+  --d-optimize: #6b30b0;
+  --d-letter: #ad2d5b;
+  --d-linkedin: #155ea6;
+  --d-tracker: #1c7439;
+  --d-jobs: #0a677e;
+  --d-builder: #835500;
+  --d-resumes: #ad372c;
+  --d-extension: #872c8a;
+  --d-interview: #55650a;
 }
 
 /* everything derived from the accent follows it, whichever page sets it */
@@ -64,56 +77,67 @@
 /* each part of the app wears its own color. the html tag says which part we are in */
 html[data-section="dashboard"] {
   --primary: var(--c-dashboard);
+  --primary-deep: var(--d-dashboard);
   --primary-soft: var(--s-dashboard);
 }
 
 html[data-section="scans"] {
   --primary: var(--c-scans);
+  --primary-deep: var(--d-scans);
   --primary-soft: var(--s-scans);
 }
 
 html[data-section="optimize"] {
   --primary: var(--c-optimize);
+  --primary-deep: var(--d-optimize);
   --primary-soft: var(--s-optimize);
 }
 
 html[data-section="letter"] {
   --primary: var(--c-letter);
+  --primary-deep: var(--d-letter);
   --primary-soft: var(--s-letter);
 }
 
 html[data-section="linkedin"] {
   --primary: var(--c-linkedin);
+  --primary-deep: var(--d-linkedin);
   --primary-soft: var(--s-linkedin);
 }
 
 html[data-section="tracker"] {
   --primary: var(--c-tracker);
+  --primary-deep: var(--d-tracker);
   --primary-soft: var(--s-tracker);
 }
 
 html[data-section="jobs"] {
   --primary: var(--c-jobs);
+  --primary-deep: var(--d-jobs);
   --primary-soft: var(--s-jobs);
 }
 
 html[data-section="builder"] {
   --primary: var(--c-builder);
+  --primary-deep: var(--d-builder);
   --primary-soft: var(--s-builder);
 }
 
 html[data-section="resumes"] {
   --primary: var(--c-resumes);
+  --primary-deep: var(--d-resumes);
   --primary-soft: var(--s-resumes);
 }
 
 html[data-section="extension"] {
   --primary: var(--c-extension);
+  --primary-deep: var(--d-extension);
   --primary-soft: var(--s-extension);
 }
 
 html[data-section="interview"] {
   --primary: var(--c-interview);
+  --primary-deep: var(--d-interview);
   --primary-soft: var(--s-interview);
 }
 
@@ -243,6 +267,11 @@ main h1 {
 .app-main h2,
 .app-main thead th {
   color: color-mix(in srgb, var(--marker) 78%, var(--foreground));
+}
+
+/* on the light tiles the gold goes deep, so the headings still read */
+.app-main :is(.raised, .paper) h2 {
+  color: #7a5600;
 }
 
 /* printing never needs the grid, and goes back to dark ink on white paper */
@@ -603,51 +632,77 @@ dialog[open]::backdrop {
 }
 
 /* a light paper area inside the dark app, like the sidebar: the old light colors, switched on for whatever sits inside it */
-.paper {
+/* the light colors, switched on for whatever sits inside: the sidebar, the light tiles and the light table rows */
+.paper,
+.raised,
+.raised-rows tbody tr {
   color-scheme: light;
   --background: #e9eff8;
   --surface: #f6f9fd;
   --foreground: #0f1f38;
   --muted: #4f5f78;
   --border: #cdd8e8;
-  --primary: #123d7a;
+  /* links and buttons keep the page's own color, in its deep tone */
+  --primary: var(--primary-deep, var(--d-dashboard));
+  --primary-hover: color-mix(in srgb, var(--primary) 82%, black);
+  --ink: var(--primary);
+  --ink-hover: var(--primary-hover);
+  --on-ink: #ffffff;
   --primary-soft: #d7e3f5;
   --on-primary: #ffffff;
   --paper-line: rgb(18 61 122 / 0.07);
-  --c-dashboard: #123d7a;
+  --c-dashboard: var(--d-dashboard);
   --s-dashboard: #d7e3f5;
-  --c-scans: #3a3eb5;
+  --c-scans: var(--d-scans);
   --s-scans: #dfe0fa;
-  --c-optimize: #6b30b0;
+  --c-optimize: var(--d-optimize);
   --s-optimize: #e9dcf9;
-  --c-letter: #ad2d5b;
+  --c-letter: var(--d-letter);
   --s-letter: #f9dce6;
-  --c-linkedin: #155ea6;
+  --c-linkedin: var(--d-linkedin);
   --s-linkedin: #d8e8fa;
-  --c-tracker: #1c7439;
+  --c-tracker: var(--d-tracker);
   --s-tracker: #d5efdc;
-  --c-jobs: #0a677e;
+  --c-jobs: var(--d-jobs);
   --s-jobs: #d2ecf2;
-  --c-builder: #835500;
+  --c-builder: var(--d-builder);
   --s-builder: #f8e7c2;
-  --c-resumes: #ad372c;
+  --c-resumes: var(--d-resumes);
   --s-resumes: #f9dcd8;
-  --c-extension: #872c8a;
+  --c-extension: var(--d-extension);
   --s-extension: #f2d9f3;
-  --c-interview: #55650a;
+  --c-interview: var(--d-interview);
   --s-interview: #e4edc3;
   /* the status colors deep enough to read on the light paper */
   --success: #2a7a4b;
   --warning: #a86400;
   --danger: #c2362b;
+  color: var(--foreground);
+}
+
+/* inside the light tiles the cards and boxes sit a touch darker than pure paper, so nothing glares */
+.raised,
+.raised-rows tbody tr {
+  --surface: #e5eaf1;
+  --background: #ebeff5;
+}
+
+/* the white outlined button reads as ink on the light rows, with its words in a deep gold */
+.raised .outline-btn,
+.raised-rows .outline-btn {
+  border-color: #4f5f78;
+  color: #7a5600;
+}
+
+/* the sidebar and menus: pale paper with the faint grid */
+.paper {
   background-color: var(--background);
   /* the same faint grid as the paper on the landing page */
   background-image: linear-gradient(var(--paper-line) 1px, transparent 1px), linear-gradient(90deg, var(--paper-line) 1px, transparent 1px);
   background-size: 20px 20px;
-  color: var(--foreground);
 }
 
-/* a raised shaded beige tile: a little lighter and warmer than the navy cards, with the grid showing through. used for rows, columns and lists that should stand out without getting bright.
+/* a raised light tile, a shade darker than the sidebar paper, with the grid showing through. used for rows, columns and lists that should stand out without getting bright.
    it sits in the components layer so a utility like a highlight color can still win over it */
 @layer components {
   .raised {
@@ -658,7 +713,7 @@ dialog[open]::backdrop {
   }
 }
 
-/* tables whose rows are raised tiles: each row a little lighter than the page with the grid in it, a small gap between rows */
+/* tables whose rows are light tiles with the grid in them, a small gap between rows */
 @layer components {
   .raised-rows {
     border-collapse: separate;
