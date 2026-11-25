@@ -21,11 +21,11 @@
   --card-shadow: 0 1px 2px rgb(0 0 0 / 0.25), 0 8px 24px rgb(0 0 0 / 0.22);
   /* the faint grid lines on the paper behind every page */
   --paper-line: rgb(190 214 255 / 0.06);
-  /* a dark charcoal grey, a step lighter than the navy, for raised rows, columns and the grey button */
-  --grey: #2c3038;
-  --grey-hover: #353a44;
-  --grey-border: #474d58;
-  --grey-line: rgb(255 255 255 / 0.045);
+  /* a shaded beige, warm and a step lighter than the navy, for raised rows, columns and the beige button */
+  --grey: #4d473d;
+  --grey-hover: #575046;
+  --grey-border: #6b6356;
+  --grey-line: rgb(255 240 215 / 0.06);
 
   /* one color per part of the app: a light tone that reads on the dark paper, and a deep tint for soft fills */
   /* the dashboard and the pages outside the app wear the blueprint blue */
@@ -647,7 +647,7 @@ dialog[open]::backdrop {
   color: var(--foreground);
 }
 
-/* a raised dark grey tile: a little lighter than the navy cards, with the grid showing through. used for rows, columns and lists that should stand out without getting bright.
+/* a raised shaded beige tile: a little lighter and warmer than the navy cards, with the grid showing through. used for rows, columns and lists that should stand out without getting bright.
    it sits in the components layer so a utility like a highlight color can still win over it */
 @layer components {
   .raised {
