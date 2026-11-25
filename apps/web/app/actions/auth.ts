@@ -8,6 +8,7 @@ import { authMode } from "@/lib/auth";
 import { emailKnown, inviteProblem, isOwnerEmail, noUsersYet } from "@/lib/data/users";
 import { appUrl, publicEnv, serverEnv } from "@/lib/env";
 import { inviteErrorCode } from "@/lib/invite";
+import { finishSignIn } from "@/lib/finish-sign-in";
 import { clientAddress, withinLimit } from "@/lib/rate-limit";
 import { supabaseServer } from "@/lib/supabase/server";
 
@@ -88,6 +89,23 @@ export async function signInWithEmail(_previous: SignInState, form: FormData): P
     return { error: error.status === 429 ? TOO_MANY : "We could not send the email. Try again in a moment." };
   }
   return { sent: email };
+}
+
+// signs in with the code from the email, for when the link will not open in the right browser
+export async function signInWithCode(_previous: SignInState, form: FormData): Promise<SignInState> {
+  if (authMode() === "local") return { error: "Sign in is not set up on this copy of the app." };
+  const parsed = z
+    .object({ email: z.email(), code: z.string().transform((typed) => typed.replace(/\D/g, "")).pipe(z.string().regex(/^\d{6,10}$/, "Type the code from the email, it is only numbers.")) })
+    .safeParse({ email: form.get("email"), code: form.get("code") ?? "" });
+  const email = String(form.get("email") ?? "");
+  if (!parsed.success) return { sent: email, error: parsed.error.issues[0]?.message ?? "Check the code and try again." };
+  // a connection and an address only get so many guesses, so the code cannot be found by trying them all
+  if (!(await connectionWithinLimit()) || !(await withinLimit(countUnder(parsed.data.email), "sign-in-code", undefined, Date.now(), SIGN_IN_WINDOW_MS))) return { sent: email, error: TOO_MANY };
+
+  const supabase = await supabaseServer();
+  const { data, error } = await supabase.auth.verifyOtp({ email: parsed.data.email, token: parsed.data.code, type: "email" });
+  if (error) return { sent: email, error: "That code did not work. Use the code from the newest email, each one works once and expires in an hour." };
+  redirect(await finishSignIn(data.user));
 }
 
 // starts sign in with google

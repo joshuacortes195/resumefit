@@ -29,6 +29,8 @@ export const RATE_LIMITS = {
   // sign in emails one address can ask for, and sign in tries from one connection. these two are per quarter of an hour
   "sign-in-email": 5,
   "sign-in-ip": 20,
+  // tries at the code from a sign in email, per address, so nobody can try every number
+  "sign-in-code": 10,
 } as const;
 export type RateBucket = keyof typeof RATE_LIMITS;
 
