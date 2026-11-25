@@ -523,3 +523,54 @@ dialog[open]::backdrop {
     stroke-dashoffset: 420;
   }
 }
+
+/* the sign in drawing: yellow pulses ride the lines and the ring round the score glows as they arrive. still, the ring just sits there lit */
+.pulse {
+  stroke-dasharray: 60 1000;
+  stroke-dashoffset: 60;
+  opacity: 0;
+}
+
+.core-glow {
+  opacity: 0.6;
+}
+
+@media screen and (prefers-reduced-motion: no-preference) {
+  /* every pulse runs once per 3.2 second loop, each one starting on its own beat */
+  .pulse {
+    animation: pulse-run 3.2s ease-in-out infinite;
+  }
+  .core-glow {
+    animation: core-glow 3.2s ease-out infinite;
+  }
+}
+
+@keyframes pulse-run {
+  0% {
+    stroke-dashoffset: 60;
+    opacity: 1;
+  }
+  30% {
+    stroke-dashoffset: -1000;
+    opacity: 1;
+  }
+  31%,
+  100% {
+    stroke-dashoffset: -1000;
+    opacity: 0;
+  }
+}
+
+@keyframes core-glow {
+  0%,
+  18% {
+    opacity: 0;
+  }
+  30% {
+    opacity: 1;
+  }
+  70%,
+  100% {
+    opacity: 0;
+  }
+}

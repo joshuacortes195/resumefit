@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import { headers } from "next/headers";
 import Link from "next/link";
 import { Logo } from "@/components/logo";
+import { SignInDiagram } from "@/components/sign-in-diagram";
 import { SignInForm } from "@/components/sign-in-form";
 import { PRIMARY_BUTTON } from "@/components/ui/buttons";
 import { authMode } from "@/lib/auth";
@@ -10,68 +11,55 @@ import { SIGN_IN_ERRORS } from "@/lib/invite";
 
 export const metadata = { title: "Sign in" };
 
-// the clay tips floating around the sign in sheet on wide screens: what each says, its color and where it sits
-const BUBBLES = [
-  { text: "no password", color: "var(--clay-mint)", place: "left-[8%] top-[18%]" },
-  { text: "free, no credits", color: "var(--clay-butter)", place: "right-[9%] top-[26%]" },
-  { text: "a link or a code", color: "var(--clay-peach)", place: "left-[12%] bottom-[20%]" },
-];
+// what the app does, listed under the form on phones where the drawing is hidden
+const FEATURES = ["Match rate", "Rewrites", "Cover letters", "Tracker", "Find Jobs", "Interviews"];
 
-// sign in screen: a white sheet pinned on blueprint paper, with its title block along the bottom
+// sign in screen: a white sheet pinned on blueprint paper, next to a drawing of what the app does
 export default function SignInPage({ searchParams }: { searchParams: Promise<{ error?: string; invite?: string }> }) {
   return (
-    <main className="blueprint blueprint-grid brand relative flex min-h-screen items-center justify-center overflow-hidden p-4">
-      {/* the floating tips, hidden on phones where they would sit on the form */}
-      {BUBBLES.map((bubble) => (
-        <span key={bubble.text} aria-hidden style={{ background: bubble.color }} className={`clay float absolute hidden rounded-full px-4 py-2 text-sm font-semibold lg:block ${bubble.place}`}>
-          {bubble.text}
-        </span>
-      ))}
-
-      <div className="relative w-full max-w-sm animate-rise">
-        {/* the small print over the sheet */}
-        <p className="mb-3 font-drawing text-[11px] uppercase tracking-[0.1em] text-[var(--bp-hot)]">Sheet 00 / the way in</p>
-
-        {/* the sheet itself, back in normal light colors */}
-        <div className="rounded-xl bg-surface p-6 text-foreground shadow-[0_20px_50px_rgb(5_20_50/0.45)]">
-          <Logo />
-          <h1 className="mt-6 text-2xl font-extrabold tracking-tight">Sign in</h1>
-          <Suspense fallback={null}>
-            <SignInBody searchParams={searchParams} />
-          </Suspense>
-
-          {/* title block across the bottom, like the corner of a drawing */}
-          <dl className="-mx-6 -mb-6 mt-6 grid grid-cols-3 border-t border-border font-drawing text-[10px] uppercase tracking-[0.08em] text-muted">
-            <div className="px-3 py-2">
-              <dt>Dwg</dt>
-              <dd className="text-foreground">RF-00</dd>
-            </div>
-            <div className="border-l border-border px-3 py-2">
-              <dt>Price</dt>
-              <dd className="text-foreground">$0</dd>
-            </div>
-            <div className="border-l border-border px-3 py-2">
-              <dt>Rev</dt>
-              <dd className="text-foreground">B</dd>
-            </div>
-          </dl>
+    <main className="blueprint blueprint-grid brand flex min-h-screen items-center justify-center overflow-hidden p-4 sm:p-8">
+      <div className="grid w-full max-w-6xl items-center gap-12 lg:grid-cols-[1.25fr_1fr]">
+        {/* the drawing, wide screens only, it would push the form down on a phone */}
+        <div className="hidden lg:block">
+          <p className="font-drawing text-[11px] uppercase tracking-[0.1em] text-[var(--bp-hot)]">Fig. 1 / how it works</p>
+          <p className="mt-3 max-w-md font-display text-3xl font-extrabold leading-tight tracking-tight">
+            Your resume against the job, <span className="text-[var(--bp-hot)]">and everything after.</span>
+          </p>
+          <div className="mt-8 max-w-[560px]">
+            <SignInDiagram />
+          </div>
         </div>
 
-        <p className="mt-5 flex flex-wrap justify-center gap-x-4 gap-y-2 text-xs text-[var(--bp-muted)] [&_a:hover]:text-[var(--bp-text)]">
-          {/* for people who landed here without knowing what the app is */}
-          <Link href="/">
-            What is ResumeFit?
-          </Link>
-          <Link href="/scans/sample">
-            Sample scan
-          </Link>
-          <Link href="/privacy">
-            Privacy Policy
-          </Link>
-          <Link href="/terms">
-            Terms of Service
-          </Link>
-        </p>
+        <div className="mx-auto w-full max-w-sm animate-rise">
+          {/* the small print over the sheet */}
+          <p className="mb-3 font-drawing text-[11px] uppercase tracking-[0.1em] text-[var(--bp-hot)]">Sheet 00 / the way in</p>
+
+          {/* the sheet itself, back in normal light colors */}
+          <div className="rounded-xl bg-surface p-6 text-foreground shadow-[0_20px_50px_rgb(5_20_50/0.45)]">
+            <Logo />
+            <h1 className="mt-6 text-2xl font-extrabold tracking-tight">Sign in</h1>
+            <Suspense fallback={null}>
+              <SignInBody searchParams={searchParams} />
+            </Suspense>
+          </div>
+
+          {/* what the app does, as small clay chips, phones only */}
+          <ul className="mt-5 flex flex-wrap justify-center gap-2 lg:hidden" aria-label="What ResumeFit does">
+            {FEATURES.map((feature) => (
+              <li key={feature} className="clay rounded-full bg-[var(--clay-cloud)] px-3 py-1 text-xs font-semibold">
+                {feature}
+              </li>
+            ))}
+          </ul>
+
+          <p className="mt-5 flex flex-wrap justify-center gap-x-4 gap-y-2 text-xs text-[var(--bp-muted)] [&_a:hover]:text-[var(--bp-text)]">
+            {/* for people who landed here without knowing what the app is */}
+            <Link href="/">What is ResumeFit?</Link>
+            <Link href="/scans/sample">Sample scan</Link>
+            <Link href="/privacy">Privacy Policy</Link>
+            <Link href="/terms">Terms of Service</Link>
+          </p>
+        </div>
       </div>
     </main>
   );
