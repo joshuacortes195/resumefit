@@ -3,6 +3,7 @@ import Link from "next/link";
 import { ArrowRight, Briefcase, CalendarClock, Check, Minus, UserSearch, X } from "lucide-react";
 import { JOB_STATUSES } from "@resumefit/shared";
 import { DashboardHero } from "@/components/dashboard-hero";
+import { SkillMap } from "@/components/skill-map";
 import { ScanFormLoader } from "@/components/scan/scan-form-loader";
 import { RefreshOnFocus } from "@/components/refresh-on-focus";
 import { JobScore, ScoreRing } from "@/components/score-ring";
@@ -60,6 +61,11 @@ export default function DashboardPage() {
           <ScanFormLoader />
         </Suspense>
       </section>
+
+      {/* the latest scan's skills drawn as a map around its score */}
+      <Suspense fallback={null}>
+        <LatestSkillMap />
+      </Suspense>
 
       {/* the real tracker board, cards and all */}
       <section className={`${CARD} p-6`}>
@@ -150,6 +156,15 @@ async function LatestScan() {
       </ul>
     </Link>
   );
+}
+
+// the skills map for the most recent scan, left out until there is one
+async function LatestSkillMap() {
+  const user = await getCurrentUser();
+  const scan = await latestScan(user.id);
+  if (!scan) return null;
+  const skills = scan.report.hardSkills.length > 0 ? scan.report.hardSkills : scan.report.softSkills;
+  return <SkillMap skills={skills} score={scan.matchRate} kicker={`Latest scan / ${[scan.jobTitle, scan.company].filter(Boolean).join(", ") || "skills map"}`} />;
 }
 
 // the latest linkedin score, or a nudge to get one

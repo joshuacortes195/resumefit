@@ -22,6 +22,7 @@ import { CARD, INPUT, LINK_BUTTON, PRIMARY_BUTTON, SECONDARY_BUTTON } from "@/co
 import { Tabs } from "@/components/ui/tabs";
 import { Modal } from "@/components/ui/modal";
 import type { ReportData } from "@/lib/report-data";
+import { SkillMap } from "@/components/skill-map";
 
 // which pop up is open, if any
 type Dialog = "rename" | "target-title" | "education" | "rescan" | "edit-jd" | "add-hard" | "add-soft" | "ats" | null;
@@ -170,6 +171,11 @@ export function Report({ data, resumes }: { data: ReportData; resumes: ResumeOpt
           </button>
         </div>
       )}
+
+      {/* the job's skills drawn as a map around the score, animated */}
+      <div className="mt-6">
+        <SkillMap skills={report.hardSkills.length > 0 ? report.hardSkills : allSkills} score={report.matchRate} />
+      </div>
 
       <div className="mt-6 grid gap-6 lg:grid-cols-[17rem_1fr]">
         {/* left column that stays put while you scroll: score, bars and the tour link */}

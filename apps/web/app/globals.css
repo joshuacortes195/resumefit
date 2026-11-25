@@ -883,3 +883,57 @@ dialog[open]::backdrop {
     opacity: 0;
   }
 }
+
+/* the skills map and the empty pages: chips pop in once, rings turn slowly, missing skills pulse a soft red ring */
+.spin-slow,
+.spin-slow-back {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+@media screen and (prefers-reduced-motion: no-preference) {
+  .pop-in {
+    animation: pop-in 0.5s var(--ease-settle) both;
+  }
+  .spin-slow {
+    animation: spin 60s linear infinite;
+  }
+  .spin-slow-back {
+    animation: spin 45s linear infinite reverse;
+  }
+  .missing-chip {
+    animation:
+      pop-in 0.5s var(--ease-settle) both,
+      missing-ring 2.4s ease-in-out 1.5s infinite;
+  }
+}
+
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    scale: 0.5;
+  }
+  70% {
+    scale: 1.08;
+  }
+  to {
+    opacity: 1;
+    scale: 1;
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes missing-ring {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgb(255 138 122 / 0.45);
+  }
+  50% {
+    box-shadow: 0 0 0 7px rgb(255 138 122 / 0);
+  }
+}
