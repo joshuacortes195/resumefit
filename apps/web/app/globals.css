@@ -2,17 +2,19 @@
 
 /* base colors: warm paper, white sheets, ink for text, and a highlighter. each part of the app adds its own color on top */
 :root {
-  --background: #f7f6f2;
+  --background: #f6f2e9;
   --surface: #ffffff;
   --foreground: #1c1b18;
   --muted: #5f5e58;
-  --border: #e4e2da;
+  --border: #e3dccd;
   /* the accent, used for links, buttons, active things and progress. the pages below swap it for their own */
   --primary: #47515f;
   --primary-soft: #e8eaee;
   --on-primary: #ffffff;
   --marker: #ffe45c;
   --on-marker: #2b2500;
+  /* red pen, for the notes and underlines on the landing page */
+  --pen: #c23a1f;
   --success: #2a7a4b;
   --warning: #a86400;
   --danger: #c2362b;
@@ -129,6 +131,8 @@ html[data-section="interview"] {
   --color-danger: var(--danger);
   --font-sans: var(--font-body);
   --font-display: var(--font-heading);
+  --font-pen: var(--font-hand);
+  --color-pen: var(--pen);
 }
 
 /* the small animations used around the app */
@@ -205,7 +209,8 @@ body {
 h1,
 h2 {
   font-family: var(--font-display);
-  letter-spacing: -0.015em;
+  letter-spacing: -0.02em;
+  text-wrap: balance;
 }
 
 /* focus ring for keyboard users */
@@ -414,4 +419,68 @@ dialog[open]::backdrop {
   --primary-hover: color-mix(in srgb, var(--primary) 82%, black);
   --ink: var(--primary);
   --ink-hover: var(--primary-hover);
+}
+
+/* landing page: a red pen underline under a word */
+.pen-underline {
+  text-decoration-line: underline;
+  text-decoration-color: var(--pen);
+  text-decoration-thickness: 3px;
+  text-underline-offset: 0.12em;
+}
+
+/* landing page: a highlighter swiped across a word once the page opens */
+.marker-swipe {
+  background: linear-gradient(transparent 58%, var(--marker) 58%, var(--marker) 92%, transparent 92%) no-repeat;
+  background-size: 100% 100%;
+}
+
+/* the same highlight, sitting still, for the dark band */
+.marker-static {
+  background: linear-gradient(transparent 60%, color-mix(in srgb, var(--marker) 55%, transparent) 60%, color-mix(in srgb, var(--marker) 55%, transparent) 92%, transparent 92%) no-repeat;
+}
+
+/* landing page: the red line through a heading on the made up resume */
+.strike-through::after {
+  content: "";
+  position: absolute;
+  inset: 52% -2px auto;
+  height: 2px;
+  background: var(--pen);
+}
+
+/* landing page: a handwritten note in red pen */
+.pen-note {
+  position: absolute;
+  font-family: var(--font-pen);
+  font-weight: 600;
+  font-size: 1.3rem;
+  line-height: 1.1;
+  color: var(--pen);
+}
+
+/* the highlighter, the strike and the notes play once, starting from where they end so the still page is complete */
+@media screen and (prefers-reduced-motion: no-preference) {
+  .marker-swipe {
+    animation: marker-swipe 1.1s 0.5s cubic-bezier(0.6, 0, 0.2, 1) backwards;
+  }
+  .strike-through::after {
+    transform-origin: left;
+    animation: strike 0.5s 1.6s var(--ease-settle) backwards;
+  }
+  .pen-note {
+    animation: rise 0.5s var(--ease-settle) backwards;
+  }
+}
+
+@keyframes marker-swipe {
+  from {
+    background-size: 0 100%;
+  }
+}
+
+@keyframes strike {
+  from {
+    transform: scaleX(0);
+  }
 }

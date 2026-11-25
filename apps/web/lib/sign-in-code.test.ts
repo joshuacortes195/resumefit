@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 // the sign in service's check of a code or link hash, and the admit step after it
-const verify = vi.hoisted(() => vi.fn(async (_args: unknown) => ({ data: { user: { id: "u1", email: "member@example.com" } }, error: null as null | { message: string } })));
-const finish = vi.hoisted(() => vi.fn(async (_user: unknown) => "/dashboard"));
+const verify = vi.hoisted(() => vi.fn<(args: unknown) => Promise<{ data: { user: unknown }; error: null | { message: string } }>>(async () => ({ data: { user: { id: "u1", email: "member@example.com" } }, error: null })));
+const finish = vi.hoisted(() => vi.fn<(user: unknown) => Promise<string>>(async () => "/dashboard"));
 const limited = vi.hoisted(() => ({ ok: true }));
 
 // everything around sign in that needs a live request or a database
@@ -54,7 +54,7 @@ describe("signing in with the code from the email", () => {
   });
 
   it("says so when the code is wrong and stays on the code screen", async () => {
-    verify.mockResolvedValueOnce({ data: { user: null as never }, error: { message: "Token has expired or is invalid" } });
+    verify.mockResolvedValueOnce({ data: { user: null }, error: { message: "Token has expired or is invalid" } });
     const result = await typeCode("000000");
     expect(result.sent).toBe("member@example.com");
     expect(result.error).toMatch(/did not work/);
@@ -80,7 +80,7 @@ describe("the email link that works in any browser", () => {
   });
 
   it("sends a used or old link back to sign in with a message that says so", async () => {
-    verify.mockResolvedValueOnce({ data: { user: null as never }, error: { message: "Email link is invalid or has expired" } });
+    verify.mockResolvedValueOnce({ data: { user: null }, error: { message: "Email link is invalid or has expired" } });
     expect(await openLink("?token_hash=abc123&type=email")).toBe("/sign-in?error=used");
     expect(finish).not.toHaveBeenCalled();
   });
