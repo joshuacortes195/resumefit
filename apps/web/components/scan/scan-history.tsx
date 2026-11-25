@@ -6,7 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { Archive, ArchiveRestore, ChevronLeft, ChevronRight, History, Search, Trash2 } from "lucide-react";
 import { archiveScans, removeScans, setScanStatus, trackScan, type ActionResult } from "@/app/actions/scans";
 import { ScoreRing } from "@/components/score-ring";
-import { CARD, INPUT, LINK_BUTTON, PRIMARY_BUTTON, SECONDARY_BUTTON } from "@/components/ui/buttons";
+import { INPUT, LINK_BUTTON, OUTLINE_BUTTON } from "@/components/ui/buttons";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { LocalTime } from "@/components/local-time";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -85,7 +85,7 @@ export function ScanHistory({ items, total, page, pageSize, search, sort, archiv
             <option value="company">Company</option>
           </select>
         </label>
-        <button type="button" aria-pressed={archived} onClick={() => go({ archived: archived ? null : "1" })} className={`${SECONDARY_BUTTON} py-2 ${archived ? "border-primary bg-primary-soft text-primary" : ""}`}>
+        <button type="button" aria-pressed={archived} onClick={() => go({ archived: archived ? null : "1" })} className={`${OUTLINE_BUTTON} py-2 ${archived ? "bg-white/15" : ""}`}>
           <Archive className="size-4" aria-hidden />
           Archived
         </button>
@@ -115,14 +115,15 @@ export function ScanHistory({ items, total, page, pageSize, search, sort, archiv
           <EmptyState icon={Search} title={archived ? "Nothing archived" : "No scans match that search"} text={archived ? "Scans you archive show up here." : "Try a company name, a job title or a word from the job description."} />
         ) : (
           <EmptyState icon={History} title="No scans yet" text="Every scan you run is saved here with its score, so you can pick up where you left off.">
-            <Link href="/scans/new" className={PRIMARY_BUTTON}>
+            <Link href="/scans/new" className={OUTLINE_BUTTON}>
               Run your first scan
             </Link>
           </EmptyState>
         )
       ) : (
-        <div className={`${CARD} overflow-x-auto`}>
-          <table className="w-full min-w-[52rem] text-sm">
+        <div className="overflow-x-auto">
+          {/* each scan is a raised row */}
+          <table className="raised-rows w-full min-w-[52rem] text-sm">
             <thead>
               <tr className="border-b border-border text-left text-muted">
                 <th className="w-10 py-3 pl-4">
@@ -139,7 +140,7 @@ export function ScanHistory({ items, total, page, pageSize, search, sort, archiv
             </thead>
             <tbody>
               {items.map((item) => (
-                <tr key={item.id} className="border-b border-border transition-colors duration-150 last:border-0 hover:bg-background/60">
+                <tr key={item.id}>
                   <td className="py-3 pl-4">
                     <input
                       type="checkbox"
@@ -172,7 +173,7 @@ export function ScanHistory({ items, total, page, pageSize, search, sort, archiv
                         {item.jobArchived ? "Tracked (archived)" : "Tracked"}
                       </Link>
                     ) : (
-                      <button type="button" disabled={pending} onClick={() => run(() => trackScan(item.id))} className={`${SECONDARY_BUTTON} px-3 py-1.5`}>
+                      <button type="button" disabled={pending} onClick={() => run(() => trackScan(item.id))} className={`${OUTLINE_BUTTON} px-3 py-1.5`}>
                         Track
                       </button>
                     )}

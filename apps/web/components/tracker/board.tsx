@@ -77,8 +77,8 @@ function JobCard({ job, archived }: { job: BoardJob; archived: boolean }) {
 function Column({ status, jobs, archived, isOver }: { status: JobStatus; jobs: BoardJob[]; archived: boolean; isOver: boolean }) {
   const { setNodeRef } = useDroppable({ id: status });
   return (
-    // each column is a sheet of light paper on the dark board
-    <section aria-label={COLUMNS[status].label} className="paper flex min-w-0 flex-col rounded-2xl border border-border p-3 shadow-card">
+    // each column is a raised tile on the dark board, a shade lighter with the grid in it
+    <section aria-label={COLUMNS[status].label} className="raised flex min-w-0 flex-col rounded-2xl border p-3">
       <h2 className="flex items-center justify-between px-1 text-base font-semibold">
         {COLUMNS[status].label}
         {/* the key replays a little pop whenever a card arrives or leaves */}

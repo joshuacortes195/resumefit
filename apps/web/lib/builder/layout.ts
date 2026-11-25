@@ -50,9 +50,10 @@ export function layOut(data: BuilderData, templateId: string): LaidOut {
     name: profile.name.trim(),
     headline: profile.title.trim(),
     contact: clean([profile.location, profile.email, profile.phone, profile.linkedin, profile.website, ...profile.links]),
+    // a template can word a heading its own way, otherwise the standard name
     sections: getTemplate(templateId)
       .order.filter((key) => blocks[key].length > 0)
-      .map((key) => ({ key, title: SECTION_TITLES[key], blocks: blocks[key] })),
+      .map((key) => ({ key, title: getTemplate(templateId).titles?.[key] ?? SECTION_TITLES[key], blocks: blocks[key] })),
   };
 }
 

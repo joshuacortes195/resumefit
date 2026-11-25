@@ -19,3 +19,10 @@ export const CARD = "rounded-xl border border-border bg-surface shadow-card";
 
 // added to cards you can act on: they lift a little under the mouse
 export const LIFT = "transition-[transform,box-shadow] duration-200 ease-settle hover:-translate-y-0.5 hover:shadow-[0_2px_4px_rgb(0_0_0/0.25),0_12px_28px_rgb(0_0_0/0.3)]";
+
+// a raised dark tile with the grid behind it, for rows and columns that should stand out a little from the cards
+export const RAISED = "raised rounded-xl border";
+
+// a white outlined button with yellow words, used on the scan history page
+export const OUTLINE_BUTTON =
+  "inline-flex items-center justify-center gap-2 rounded-md border border-white/85 px-4 py-2.5 text-sm font-semibold text-marker transition duration-150 ease-out hover:bg-white/10 active:scale-[0.97] disabled:opacity-50 disabled:active:scale-100";

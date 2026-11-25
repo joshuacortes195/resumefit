@@ -23,7 +23,9 @@ export function ResumePreview({ laid, settings }: { laid: LaidOut; settings: Tem
         ? { textTransform: "uppercase", letterSpacing: "0.08em", fontSize: "0.95em" }
         : template.heading === "bar"
           ? { borderLeft: `0.3em solid ${accent}`, paddingLeft: "0.5em" }
-          : {};
+          : template.heading === "caps-rule"
+            ? { textTransform: "uppercase", letterSpacing: "0.06em", fontSize: "0.95em", borderBottom: `1px solid ${accent}`, paddingBottom: "0.1em" }
+            : {};
 
   const empty = !laid.name && laid.sections.length === 0;
 

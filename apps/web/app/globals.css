@@ -234,6 +234,12 @@ main h1 {
   color: var(--marker);
 }
 
+/* a softer gold for the smaller headings and the table headers, so the yellow runs through the app without shouting */
+.app-main h2,
+.app-main thead th {
+  color: color-mix(in srgb, var(--marker) 78%, var(--foreground));
+}
+
 /* printing never needs the grid, and goes back to dark ink on white paper */
 @media print {
   :root {
@@ -634,4 +640,186 @@ dialog[open]::backdrop {
   background-image: linear-gradient(var(--paper-line) 1px, transparent 1px), linear-gradient(90deg, var(--paper-line) 1px, transparent 1px);
   background-size: 20px 20px;
   color: var(--foreground);
+}
+
+/* a raised dark tile: a little lighter and greyer than the cards, with the grid showing through. used for rows, columns and lists that should stand out without getting bright.
+   it sits in the components layer so a utility like a highlight color can still win over it */
+@layer components {
+  .raised {
+    background-color: #1e3456;
+    background-image: linear-gradient(rgb(190 214 255 / 0.05) 1px, transparent 1px), linear-gradient(90deg, rgb(190 214 255 / 0.05) 1px, transparent 1px);
+    background-size: 20px 20px;
+    border-color: #34507a;
+  }
+}
+
+/* tables whose rows are raised tiles: each row a little lighter than the page with the grid in it, a small gap between rows */
+@layer components {
+  .raised-rows {
+    border-collapse: separate;
+    border-spacing: 0 6px;
+  }
+
+  .raised-rows tbody tr > * {
+    background-color: #1e3456;
+    background-image: linear-gradient(rgb(190 214 255 / 0.05) 1px, transparent 1px), linear-gradient(90deg, rgb(190 214 255 / 0.05) 1px, transparent 1px);
+    background-size: 20px 20px;
+    border-block: 1px solid #34507a;
+    transition: background-color 0.15s ease-out;
+  }
+
+  /* rounded ends on each row */
+  .raised-rows tbody tr > :first-child {
+    border-left: 1px solid #34507a;
+    border-radius: 0.75rem 0 0 0.75rem;
+  }
+
+  .raised-rows tbody tr > :last-child {
+    border-right: 1px solid #34507a;
+    border-radius: 0 0.75rem 0.75rem 0;
+  }
+
+  /* the row under the mouse lifts a shade */
+  .raised-rows tbody tr:hover > * {
+    background-color: #243e66;
+  }
+}
+
+/* the little drawings beside page titles: parts pop in, a scan line sweeps, marks swipe on, all on a 6 second loop.
+   still, every part is simply shown, and the before score and the typing dots step aside */
+.pop-loop,
+.mark-loop {
+  transform-box: fill-box;
+}
+
+.mark-loop {
+  transform-origin: left center;
+}
+
+.pop-loop {
+  transform-origin: center;
+}
+
+.fade-out-loop,
+.blink-loop {
+  opacity: 0;
+}
+
+@media screen and (prefers-reduced-motion: no-preference) {
+  .pop-loop {
+    animation: pop-loop 6s var(--ease-settle) infinite both;
+  }
+  .mark-loop {
+    animation: mark-loop 6s var(--ease-settle) infinite both;
+  }
+  .sweep-loop {
+    animation: sweep-loop 6s ease-in-out infinite;
+  }
+  .fade-out-loop {
+    animation: fade-out-loop 6s ease-in-out infinite;
+  }
+  .fade-in-loop {
+    animation: fade-in-loop 6s ease-in-out infinite;
+  }
+  .blink-loop {
+    animation: blink-loop 6s ease-in-out infinite both;
+  }
+}
+
+/* pops in a little too big, settles, stays for half the loop, then fades */
+@keyframes pop-loop {
+  0% {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+  5% {
+    opacity: 1;
+    transform: scale(1.08);
+  }
+  8% {
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+  }
+  56%,
+  100% {
+    opacity: 0;
+  }
+}
+
+/* a highlighter swipe from the left that stays, then clears for the next loop */
+@keyframes mark-loop {
+  0% {
+    transform: scaleX(0);
+    opacity: 1;
+  }
+  8% {
+    transform: scaleX(1);
+  }
+  55% {
+    opacity: 1;
+  }
+  62%,
+  100% {
+    transform: scaleX(1);
+    opacity: 0;
+  }
+}
+
+/* the scan line runs from the top of the page to the bottom, then disappears until the next pass */
+@keyframes sweep-loop {
+  0% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  65% {
+    transform: translateY(262px);
+    opacity: 1;
+  }
+  72%,
+  100% {
+    transform: translateY(262px);
+    opacity: 0;
+  }
+}
+
+/* the before score shows first, then hands over to the after score */
+@keyframes fade-out-loop {
+  0%,
+  50% {
+    opacity: 1;
+  }
+  58%,
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes fade-in-loop {
+  0%,
+  50% {
+    opacity: 0;
+  }
+  58%,
+  92% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+/* the typing dots show for a moment before the answer arrives */
+@keyframes blink-loop {
+  0% {
+    opacity: 1;
+  }
+  14% {
+    opacity: 0.35;
+  }
+  16%,
+  100% {
+    opacity: 0;
+  }
 }

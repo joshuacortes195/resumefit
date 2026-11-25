@@ -3,7 +3,7 @@ import Link from "next/link";
 import { ClipboardList, ExternalLink } from "lucide-react";
 import { AutoApplyButton } from "@/components/auto-apply-button";
 import { LocalTime } from "@/components/local-time";
-import { CARD, LINK_BUTTON, SECONDARY_BUTTON } from "@/components/ui/buttons";
+import { LINK_BUTTON, SECONDARY_BUTTON } from "@/components/ui/buttons";
 import { EmptyState } from "@/components/ui/empty-state";
 import { TableSkeleton } from "@/components/ui/skeleton";
 import { runLabel, type RunLabel } from "@/lib/application-status";
@@ -59,9 +59,9 @@ async function Runs() {
     {setup}
     {/* what is waiting on the person comes first */}
     {flags.autoApply && <NeedsYou runs={waiting} />}
-    <div className={CARD}>
-      {/* on a phone the form and date columns step aside, so the table never runs off the screen */}
-      <table className="w-full table-fixed text-sm sm:table-auto">
+    <div>
+      {/* on a phone the form and date columns step aside, so the table never runs off the screen. each row is a raised tile */}
+      <table className="raised-rows w-full table-fixed text-sm sm:table-auto">
         <thead>
           <tr className="border-b border-border text-left text-muted">
             <th scope="col" className="px-4 py-3 font-medium">Job</th>
@@ -77,7 +77,7 @@ async function Runs() {
           {runs.map((run) => {
             const label = runLabel(run);
             return (
-              <tr key={run.id} className="border-b border-border transition-colors duration-150 last:border-0 hover:bg-background/60">
+              <tr key={run.id}>
                 <th scope="row" className="break-words px-4 py-3 text-left font-normal">
                   {/* the tracker card when there is one, otherwise just where the form was */}
                   {run.jobId ? (

@@ -23,7 +23,9 @@ export async function builderPdf(data: BuilderData, settings: TemplateSettings):
         ? { textTransform: "uppercase" as const, letterSpacing: 0.8, fontSize: size }
         : template.heading === "bar"
           ? { borderLeftWidth: 3, borderLeftColor: accent, paddingLeft: 6 }
-          : {};
+          : template.heading === "caps-rule"
+            ? { textTransform: "uppercase" as const, letterSpacing: 0.6, fontSize: size, borderBottomWidth: 0.75, borderBottomColor: accent, paddingBottom: 1 }
+            : {};
 
   // one bullet line, with the mark hanging to the left of the text
   const bullet = (text: string, key: number) => (

@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import Link from "next/link";
 import { ArrowRight, Briefcase, CalendarClock, Check, Minus, UserSearch, X } from "lucide-react";
 import { JOB_STATUSES } from "@resumefit/shared";
+import { DashboardHero } from "@/components/dashboard-hero";
 import { ScanFormLoader } from "@/components/scan/scan-form-loader";
 import { RefreshOnFocus } from "@/components/refresh-on-focus";
 import { JobScore, ScoreRing } from "@/components/score-ring";
@@ -37,10 +38,10 @@ export default function DashboardPage() {
   return (
     <div className="mx-auto max-w-5xl space-y-6">
       <RefreshOnFocus />
-      <div>
-        <h1 className="text-3xl font-semibold sm:text-4xl">Welcome to ResumeFit</h1>
-        <p className="mt-2 max-w-xl text-muted">See how well your resume fits a job, fix what is missing and keep every application in one place.</p>
-      </div>
+      {/* the greeting, your numbers and your pipeline, drawn on blueprint paper */}
+      <Suspense fallback={<Skeleton className="h-72 rounded-2xl" />}>
+        <DashboardHero />
+      </Suspense>
 
       {/* applications that are filled in and waiting on one answer */}
       <Suspense fallback={null}>
@@ -179,12 +180,12 @@ async function TrackerSummary() {
   const [jobs, interview] = await Promise.all([listJobs(user.id), nextInterview(user.id)]);
   return (
     <>
-      {/* one column per stage, each a sheet of light paper with the cards that are in it */}
+      {/* one column per stage, each a raised tile with the cards that are in it */}
       <div className="stagger mt-5 grid grid-cols-[repeat(auto-fit,minmax(min(100%,13rem),1fr))] gap-3">
         {JOB_STATUSES.map((status) => {
           const cards = jobs.filter((job) => job.status === status);
           return (
-            <section key={status} aria-label={`${COLUMNS[status].label} jobs`} className="paper rounded-xl border border-border p-3">
+            <section key={status} aria-label={`${COLUMNS[status].label} jobs`} className="raised rounded-xl border p-3">
               <h3 className="flex items-center gap-2 text-sm font-semibold">
                 <span aria-hidden className="size-2 rounded-full" style={{ background: COLUMNS[status].dot }} />
                 {COLUMNS[status].label}

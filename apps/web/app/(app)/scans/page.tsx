@@ -2,7 +2,7 @@ import { Suspense } from "react";
 import Link from "next/link";
 import { Plus } from "lucide-react";
 import { ScanHistory } from "@/components/scan/scan-history";
-import { PRIMARY_BUTTON } from "@/components/ui/buttons";
+import { OUTLINE_BUTTON } from "@/components/ui/buttons";
 import { TableSkeleton } from "@/components/ui/skeleton";
 import { getCurrentUser } from "@/lib/auth";
 import { listScans } from "@/lib/data/scans";
@@ -23,7 +23,7 @@ export default function ScanHistoryPage({ searchParams }: { searchParams: Search
           <h1 className="text-3xl font-semibold">Scan History</h1>
           <p className="mt-1 text-muted">All your past scans and where each job stands.</p>
         </div>
-        <Link href="/scans/new" className={PRIMARY_BUTTON}>
+        <Link href="/scans/new" className={OUTLINE_BUTTON}>
           <Plus className="size-4" aria-hidden />
           New Scan
         </Link>

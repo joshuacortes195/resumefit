@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import Link from "next/link";
 import { Sparkles } from "lucide-react";
+import { DrawingPanel, RewriteDrawing } from "@/components/app-drawings";
 import { ScanFormLoader } from "@/components/scan/scan-form-loader";
 import { ScoreRing } from "@/components/score-ring";
 import { CARD, SECONDARY_BUTTON } from "@/components/ui/buttons";
@@ -14,12 +15,13 @@ export const metadata = { title: "AI Optimize" };
 export default function OptimizeHomePage() {
   return (
     <div className="mx-auto max-w-5xl space-y-6">
-      <div>
+      {/* the title beside a drawing of lines being rewritten and the score going up */}
+      <DrawingPanel drawing={<RewriteDrawing />}>
         <h1 className="text-3xl font-semibold sm:text-4xl">Tailor your resume without starting over</h1>
-        <p className="mt-2 max-w-2xl text-muted">
+        <p className="mt-2 max-w-xl text-[var(--bp-muted)]">
           Get rewrites for the lines that matter for one job, accept the ones that are true for you, and watch your match rate move as you go. Nothing is added to your resume unless you say so.
         </p>
-      </div>
+      </DrawingPanel>
 
       <section className={`${CARD} p-6`}>
         <h2 className="mb-4 text-lg font-semibold">Start from a new scan</h2>

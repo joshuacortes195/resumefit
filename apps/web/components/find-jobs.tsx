@@ -1,14 +1,14 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Briefcase, ExternalLink, ScanSearch, Search, Send } from "lucide-react";
+import { Briefcase, ChevronLeft, ChevronRight, ExternalLink, ScanSearch, Search, Send } from "lucide-react";
 import { findJobs, readJob, saveFoundJob } from "@/app/actions/find-jobs";
 import { CompanyLogo } from "@/components/company-logo";
 import { FitBadge } from "@/components/fit-badge";
 import type { ResumeOption } from "@/components/scan-form";
-import { CARD, INPUT, LINK_BUTTON, PRIMARY_BUTTON, SECONDARY_BUTTON } from "@/components/ui/buttons";
+import { CARD, INPUT, LINK_BUTTON, PRIMARY_BUTTON, RAISED, SECONDARY_BUTTON } from "@/components/ui/buttons";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
 import { startAutoApply } from "@/lib/extension-client";
@@ -38,6 +38,15 @@ export function FindJobs({ resumes, autoApply = false }: { resumes: ResumeOption
   const [results, setResults] = useState<JobResult[] | null>(null);
   const [summary, setSummary] = useState<string | null>(null);
   const [selected, setSelected] = useState<JobResult | null>(null);
+  // the sideways list and the details panel under it
+  const list = useRef<HTMLUListElement>(null);
+  const detail = useRef<HTMLElement>(null);
+
+  // slides the list one screenful left or right
+  function slide(direction: 1 | -1) {
+    const el = list.current;
+    if (el) el.scrollBy({ left: direction * el.clientWidth, behavior: "smooth" });
+  }
   const [description, setDescription] = useState<string | null>(null);
   const [saved, setSaved] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
@@ -82,6 +91,8 @@ export function FindJobs({ resumes, autoApply = false }: { resumes: ResumeOption
   // opens one result in the detail pane and loads its description
   function open(job: JobResult) {
     setSelected(job);
+    // bring the job's details into view under the list
+    requestAnimationFrame(() => detail.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
     setDescription(null);
     setError(null);
     startRead(async () => {
@@ -224,43 +235,59 @@ export function FindJobs({ resumes, autoApply = false }: { resumes: ResumeOption
 
       {/* while the first search runs */}
       {results === null && (
-        <div className="grid gap-4 lg:grid-cols-[24rem_1fr]" role="status" aria-label="Finding jobs">
-          <div className="space-y-2">
-            {Array.from({ length: 6 }, (_, index) => (
-              <Skeleton key={index} className="h-20" />
-            ))}
-          </div>
-          <Skeleton className="hidden h-96 lg:block" />
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3" role="status" aria-label="Finding jobs">
+          {Array.from({ length: 6 }, (_, index) => (
+            <Skeleton key={index} className="h-24" />
+          ))}
         </div>
       )}
 
       {results !== null && results.length === 0 && !error && <EmptyState icon={Search} title="No jobs match that search" text="Try fewer words, a wider location or a longer time span." />}
 
       {results !== null && results.length > 0 && (
-        <div className="grid gap-4 lg:grid-cols-[24rem_1fr]">
-          {/* the list */}
-          <ul className="stagger max-h-[75vh] space-y-2 overflow-y-auto pr-1">
-            {results.map((job) => (
-              <li key={job.id}>
-                <button type="button" onClick={() => open(job)} aria-pressed={selected?.id === job.id} className={`${CARD} flex w-full items-start gap-3 p-3.5 text-left transition-colors duration-150 ${selected?.id === job.id ? "border-primary bg-primary-soft" : "hover:border-primary/50"}`}>
-                  <CompanyLogo company={job.company} domain={job.domain} />
-                  <span className="min-w-0 flex-1">
-                    <span className="block font-semibold leading-snug">{job.title}</span>
-                    <span className="mt-0.5 block truncate text-sm text-muted">{[job.company, job.location].filter(Boolean).join(", ")}</span>
-                    <span className="mt-1.5 flex flex-wrap items-center gap-2 text-xs text-muted">
-                      <FitBadge fit={job.fit} />
-                      {/* matched most of the words typed, not all of them */}
-                      {job.close && <span className="rounded-full border border-border px-2 py-0.5 text-xs text-muted">Close match</span>}
-                      {[age(job.postedAt), job.remote ? "Remote" : ""].filter(Boolean).join(", ")}
+        <div className="space-y-4">
+          {/* the list, three across and two down, scrolling sideways for the rest */}
+          {/* the box measures itself, so each card can be exactly a third of its width */}
+          <div className="[container-type:inline-size]">
+            <ul
+              ref={list}
+              className="grid snap-x snap-mandatory auto-cols-[calc((100cqw-1.5rem)/3)] grid-flow-col grid-rows-2 gap-3 overflow-x-auto pb-3 max-lg:auto-cols-[calc((100cqw-0.75rem)/2)] max-sm:auto-cols-[85cqw]"
+            >
+              {results.map((job) => (
+                <li key={job.id} className="snap-start">
+                  <button type="button" onClick={() => open(job)} aria-pressed={selected?.id === job.id} className={`${RAISED} flex h-full w-full items-start gap-3 p-3.5 text-left transition-colors duration-150 ${selected?.id === job.id ? "border-primary bg-primary-soft" : "hover:border-primary/60"}`}>
+                    <CompanyLogo company={job.company} domain={job.domain} />
+                    <span className="min-w-0 flex-1">
+                      <span className="block font-semibold leading-snug">{job.title}</span>
+                      <span className="mt-0.5 block truncate text-sm text-muted">{[job.company, job.location].filter(Boolean).join(", ")}</span>
+                      <span className="mt-1.5 flex flex-wrap items-center gap-2 text-xs text-muted">
+                        <FitBadge fit={job.fit} />
+                        {/* matched most of the words typed, not all of them */}
+                        {job.close && <span className="rounded-full border border-border px-2 py-0.5 text-xs text-muted">Close match</span>}
+                        {[age(job.postedAt), job.remote ? "Remote" : ""].filter(Boolean).join(", ")}
+                      </span>
                     </span>
-                  </span>
-                </button>
-              </li>
-            ))}
-          </ul>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* arrows to slide the list a page at a time, and the line that points at the details below */}
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-sm text-muted">{selected ? "Reading the job you picked below." : "Pick a job from the list to read it here."}</p>
+            <div className="flex gap-2">
+              <button type="button" aria-label="Earlier jobs" onClick={() => slide(-1)} className={`${SECONDARY_BUTTON} px-2.5`}>
+                <ChevronLeft className="size-4" aria-hidden />
+              </button>
+              <button type="button" aria-label="More jobs" onClick={() => slide(1)} className={`${SECONDARY_BUTTON} px-2.5`}>
+                <ChevronRight className="size-4" aria-hidden />
+              </button>
+            </div>
+          </div>
 
           {/* the job that was clicked */}
-          <section className={`${CARD} self-start p-6`}>
+          <section ref={detail} className={`${CARD} scroll-mt-20 p-6`}>
             {selected ? (
               <>
                 <div className="flex items-start gap-4">
@@ -320,7 +347,7 @@ export function FindJobs({ resumes, autoApply = false }: { resumes: ResumeOption
                 <div className="mt-4 max-h-[50vh] overflow-y-auto whitespace-pre-wrap border-t border-border pt-4 text-sm leading-6">{description ?? (error ? "" : "Loading the description...")}</div>
               </>
             ) : (
-              <p className="text-sm text-muted">Pick a job from the list to read it here.</p>
+              <p className="text-sm text-muted">The job you pick shows here, with its description and buttons to scan it, save it or open it.</p>
             )}
           </section>
         </div>

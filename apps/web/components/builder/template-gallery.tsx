@@ -28,6 +28,8 @@ export function TemplateGallery() {
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [, startTransition] = useTransition();
+  // a sideways row by default, every template laid out at once after See all
+  const [all, setAll] = useState(false);
   // popular ones lead, the rest keep their own order
   const ordered = [...TEMPLATES].sort((a, b) => Number(b.popular ?? false) - Number(a.popular ?? false));
 
@@ -49,18 +51,24 @@ export function TemplateGallery() {
 
   return (
     <section id="templates" aria-labelledby="templates-title" className="mt-10 scroll-mt-20">
-      <h2 id="templates-title" className="text-2xl font-semibold">
-        Or start from a template
-      </h2>
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <h2 id="templates-title" className="text-2xl font-semibold">
+          Or start from a template
+        </h2>
+        {/* switches between the sideways row and the full grid */}
+        <button type="button" onClick={() => setAll((value) => !value)} aria-expanded={all} className="text-sm font-semibold text-primary underline-offset-2 hover:underline">
+          {all ? "Show fewer" : `See all ${ordered.length}`}
+        </button>
+      </div>
       <p className="mt-1 max-w-2xl text-muted">Every one is a single column that scanners read cleanly. You can switch template at any time without losing what you typed.</p>
       {error && (
         <p role="alert" className="mt-3 text-sm text-danger">
           {error}
         </p>
       )}
-      <ul className="mt-5 grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
+      <ul className={all ? "mt-5 grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4" : "mt-5 flex snap-x snap-mandatory gap-4 overflow-x-auto pb-3"}>
         {ordered.map((template) => (
-          <li key={template.id}>
+          <li key={template.id} className={all ? "" : "w-[min(15rem,70vw)] shrink-0 snap-start"}>
             <button
               type="button"
               disabled={busy !== null}
@@ -74,6 +82,8 @@ export function TemplateGallery() {
                 {template.popular && <span className="absolute right-2 top-2 rounded-full bg-primary px-2 py-0.5 text-[0.65rem] font-semibold text-on-primary">Popular</span>}
               </span>
               <span className="mt-3 block font-semibold group-hover:text-primary">{busy === template.id ? "One moment..." : template.name}</span>
+              {/* the major it was made for, in the soft gold */}
+              {template.field && <span className="mt-0.5 block font-drawing text-[10px] uppercase tracking-[0.08em] text-[color-mix(in_srgb,var(--marker)_78%,var(--foreground))]">{template.field}</span>}
               <span className="mt-0.5 block text-xs text-muted">{template.blurb}</span>
             </button>
           </li>

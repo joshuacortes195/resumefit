@@ -7,7 +7,7 @@ import { ChevronLeft, ChevronRight, Copy, Download, Eye, Files, LayoutTemplate, 
 import { deleteResumeAction, duplicateResumeAction, makeBaseResume, renameResumeAction } from "@/app/actions/resumes";
 import type { ActionResult } from "@/app/actions/scans";
 import { Dropzone } from "@/components/scan/dropzone";
-import { CARD, INPUT, PRIMARY_BUTTON, SECONDARY_BUTTON } from "@/components/ui/buttons";
+import { INPUT, PRIMARY_BUTTON, SECONDARY_BUTTON } from "@/components/ui/buttons";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { LocalTime } from "@/components/local-time";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -101,9 +101,9 @@ export function ResumeManager({ resumes }: { resumes: ManagedResume[] }) {
       ) : shown.length === 0 ? (
         <EmptyState icon={Search} title="No resumes match that search" text="Try part of the resume name or the job it was made for." />
       ) : (
-        <div className={`${CARD} overflow-x-auto`}>
-          {/* the two date columns give way first as the window narrows, so the actions never slide out of view */}
-          <table className="w-full min-w-[38rem] text-sm">
+        <div className="overflow-x-auto">
+          {/* the two date columns give way first as the window narrows, so the actions never slide out of view. each resume is a raised row */}
+          <table className="raised-rows w-full min-w-[38rem] text-sm">
             <thead>
               <tr className="border-b border-border text-left text-muted">
                 <th className="w-14 py-3 pl-4 font-medium">Base</th>
@@ -119,7 +119,7 @@ export function ResumeManager({ resumes }: { resumes: ManagedResume[] }) {
             </thead>
             <tbody>
               {shown.map((resume) => (
-                <tr key={resume.id} className="border-b border-border transition-colors duration-150 last:border-0 hover:bg-background/60">
+                <tr key={resume.id}>
                   {/* the star picks the base resume, the one new scans start from */}
                   <td className="py-2 pl-4">
                     <button

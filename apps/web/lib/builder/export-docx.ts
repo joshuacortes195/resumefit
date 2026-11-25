@@ -23,11 +23,13 @@ export async function builderDocx(data: BuilderData, settings: TemplateSettings)
   ];
 
   for (const section of laid.sections) {
-    const caps = template.heading === "caps";
+    // capital letters for the caps looks, a line under for the rule looks
+    const caps = template.heading === "caps" || template.heading === "caps-rule";
+    const ruled = template.heading === "rule" || template.heading === "caps-rule";
     children.push(
       new Paragraph({
         spacing: { ...spacing, before: 240, after: 80 },
-        border: template.heading === "rule" ? { bottom: { style: "single", size: 6, color: accent } } : template.heading === "bar" ? { left: { style: "single", size: 24, color: accent, space: 6 } } : undefined,
+        border: ruled ? { bottom: { style: "single", size: 6, color: accent } } : template.heading === "bar" ? { left: { style: "single", size: 24, color: accent, space: 6 } } : undefined,
         children: [new TextRun({ text: caps ? section.title.toUpperCase() : section.title, bold: true, size: 24, color: accent })],
       }),
     );
