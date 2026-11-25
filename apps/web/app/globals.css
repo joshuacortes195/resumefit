@@ -585,3 +585,44 @@ dialog[open]::backdrop {
     opacity: 0;
   }
 }
+
+/* a light paper area inside the dark app, like the sidebar: the old light colors, switched on for whatever sits inside it */
+.paper {
+  color-scheme: light;
+  --background: #e9eff8;
+  --surface: #f6f9fd;
+  --foreground: #0f1f38;
+  --muted: #4f5f78;
+  --border: #cdd8e8;
+  --primary: #123d7a;
+  --primary-soft: #d7e3f5;
+  --on-primary: #ffffff;
+  --paper-line: rgb(18 61 122 / 0.07);
+  --c-dashboard: #123d7a;
+  --s-dashboard: #d7e3f5;
+  --c-scans: #3a3eb5;
+  --s-scans: #dfe0fa;
+  --c-optimize: #6b30b0;
+  --s-optimize: #e9dcf9;
+  --c-letter: #ad2d5b;
+  --s-letter: #f9dce6;
+  --c-linkedin: #155ea6;
+  --s-linkedin: #d8e8fa;
+  --c-tracker: #1c7439;
+  --s-tracker: #d5efdc;
+  --c-jobs: #0a677e;
+  --s-jobs: #d2ecf2;
+  --c-builder: #835500;
+  --s-builder: #f8e7c2;
+  --c-resumes: #ad372c;
+  --s-resumes: #f9dcd8;
+  --c-extension: #872c8a;
+  --s-extension: #f2d9f3;
+  --c-interview: #55650a;
+  --s-interview: #e4edc3;
+  background-color: var(--background);
+  /* the same faint grid as the paper on the landing page */
+  background-image: linear-gradient(var(--paper-line) 1px, transparent 1px), linear-gradient(90deg, var(--paper-line) 1px, transparent 1px);
+  background-size: 20px 20px;
+  color: var(--foreground);
+}

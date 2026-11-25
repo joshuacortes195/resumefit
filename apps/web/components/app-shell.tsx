@@ -75,7 +75,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <UserRound className="size-5" aria-hidden />
             </button>
             {menuOpen && (
-              <div role="menu" className="absolute right-0 mt-2 w-44 origin-top-right animate-pop rounded-xl border border-border bg-surface p-1 text-foreground shadow-lg">
+              <div role="menu" className="paper absolute right-0 mt-2 w-44 origin-top-right animate-pop rounded-xl border border-border p-1 shadow-lg">
                 {ACCOUNT_LINKS.map((link) => (
                   <Link
                     key={link.label}
@@ -100,9 +100,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </header>
 
       <div className="flex flex-1">
-        {/* desktop sidebar */}
+        {/* desktop sidebar, on light paper beside the dark page */}
         <aside
-          className={`sticky top-14 hidden h-[calc(100vh-3.5rem)] shrink-0 border-r border-border bg-background/90 transition-[width] duration-200 ease-settle md:block print:hidden ${
+          className={`paper sticky top-14 hidden h-[calc(100vh-3.5rem)] shrink-0 border-r border-border transition-[width] duration-200 ease-settle md:block print:hidden ${
             collapsed ? "w-16" : "w-60"
           }`}
         >
@@ -113,7 +113,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         {drawerOpen && (
           <div className="fixed inset-0 z-40 md:hidden" role="dialog" aria-modal="true" aria-label="Menu">
             <button type="button" aria-label="Close menu" onClick={() => setDrawerOpen(false)} className="absolute inset-0 animate-fade bg-black/50" />
-            <aside className="relative flex h-full w-64 animate-drawer flex-col bg-surface shadow-xl">
+            <aside className="paper relative flex h-full w-64 animate-drawer flex-col shadow-xl">
               <div className="flex h-14 items-center justify-between border-b border-border px-3">
                 <Logo />
                 <button

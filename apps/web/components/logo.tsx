@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-// app logo, the mark is a little resume page with one line highlighted. its lines are dark on the light page, and on blue paper the colors can be swapped
+// app logo, the mark is a little resume page with one line highlighted. its lines take the background color so the mark reads on dark pages and on light paper
 export function Logo({ showName = true }: { showName?: boolean }) {
   return (
     <Link href="/dashboard" className="flex items-center gap-2 font-semibold tracking-tight">
@@ -8,8 +8,8 @@ export function Logo({ showName = true }: { showName?: boolean }) {
         {/* the page */}
         <rect x="5" y="2" width="22" height="28" rx="5" fill="var(--logo-page, var(--c-dashboard))" />
         {/* plain lines of the resume */}
-        <rect x="10" y="8" width="8" height="2.5" rx="1.25" fill="var(--logo-line, #0b1a33)" opacity="0.85" />
-        <rect x="10" y="21.5" width="10" height="2.5" rx="1.25" fill="var(--logo-line, #0b1a33)" opacity="0.85" />
+        <rect x="10" y="8" width="8" height="2.5" rx="1.25" fill="var(--logo-line, var(--background))" opacity="0.85" />
+        <rect x="10" y="21.5" width="10" height="2.5" rx="1.25" fill="var(--logo-line, var(--background))" opacity="0.85" />
         {/* the line that matched, marked in yellow */}
         <rect x="9" y="13" width="14" height="6" rx="2" fill="var(--marker)" />
       </svg>
