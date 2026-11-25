@@ -5,6 +5,7 @@ import Link, { useLinkStatus } from "next/link";
 import { usePathname } from "next/navigation";
 import { Plus } from "lucide-react";
 import { NAV_ITEMS } from "@/lib/nav";
+import { sheetOf } from "@/lib/sheets";
 
 type SidebarProps = {
   // collapsed shows icons only
@@ -45,12 +46,12 @@ function ActiveBar({ active }: { active: boolean }) {
 function SidebarLinks({ collapsed = false, onNavigate, pathname }: SidebarProps & { pathname: string }) {
   return (
     <nav aria-label="Main" className="flex h-full flex-col gap-0.5 overflow-y-auto p-3">
-      {/* new scan button at the top, always in the logo's green and yellow whatever section is open. the plus turns a little on hover */}
+      {/* new scan button at the top, always in the blueprint blue and yellow whatever section is open. the plus turns a little on hover */}
       <Link
         href="/scans/new"
         onClick={onNavigate}
         title="New Scan"
-        className="group mb-3 flex items-center justify-center gap-2 rounded-lg bg-(--c-dashboard) px-3 py-2.5 text-sm font-semibold text-white transition duration-150 hover:bg-[color-mix(in_srgb,var(--c-dashboard)_85%,black)] active:scale-[0.98]"
+        className="group mb-3 flex items-center justify-center gap-2 rounded-md bg-(--c-dashboard) px-3 py-2.5 font-display text-sm font-bold text-white transition duration-150 hover:bg-[color-mix(in_srgb,var(--c-dashboard)_85%,black)] active:scale-[0.98]"
       >
         {/* the plus sits on a yellow dot, the same yellow as the logo's ring */}
         <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-marker text-on-marker">
@@ -59,8 +60,13 @@ function SidebarLinks({ collapsed = false, onNavigate, pathname }: SidebarProps 
         {collapsed ? <span className="sr-only">New Scan</span> : <span>New Scan</span>}
       </Link>
 
+      {/* small print over the list, the pages are the sheets in the set */}
+      {!collapsed && <p className="mb-1 px-3 font-drawing text-[10px] uppercase tracking-[0.12em] text-muted">Sheets</p>}
+
       {/* one link per page, the current page is highlighted */}
       {NAV_ITEMS.map((item) => {
+        // each page's sheet number, shown at the end of its link
+        const sheetNo = sheetOf(item.href)?.no;
         const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
         const Icon = item.icon;
         return (
@@ -79,6 +85,11 @@ function SidebarLinks({ collapsed = false, onNavigate, pathname }: SidebarProps 
             <ActiveBar active={active} />
             <Icon className="size-5 shrink-0" aria-hidden />
             {collapsed ? <span className="sr-only">{item.label}</span> : <span className="truncate">{item.label}</span>}
+            {!collapsed && sheetNo && (
+              <span aria-hidden className="ml-auto font-drawing text-[10px] text-muted">
+                {sheetNo}
+              </span>
+            )}
           </Link>
         );
       })}

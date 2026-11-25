@@ -67,7 +67,7 @@ export function Landing({ inviteOnly }: { inviteOnly: boolean }) {
     <div className="blueprint blueprint-grid min-h-screen overflow-x-hidden">
       {/* top bar: the logo, the sample and the way in */}
       <header className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-5 sm:px-6">
-        <span className="[&_a]:text-[var(--bp-text)]">
+        <span className="[--logo-line:var(--bp)] [--logo-page:var(--bp-text)] [&_a]:text-[var(--bp-text)]">
           <Logo />
         </span>
         <nav className="flex items-center gap-5 text-sm">

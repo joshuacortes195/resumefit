@@ -1,12 +1,12 @@
 @import "tailwindcss";
 
-/* base colors: warm paper, white sheets, ink for text, and a highlighter. each part of the app adds its own color on top */
+/* base colors: pale drafting paper, white sheets, navy ink for text, and a highlighter. each part of the app adds its own color on top */
 :root {
-  --background: #f7f6f2;
+  --background: #eef3f9;
   --surface: #ffffff;
-  --foreground: #1c1b18;
-  --muted: #5f5e58;
-  --border: #e4e2da;
+  --foreground: #0f1f38;
+  --muted: #4f5f78;
+  --border: #d4deeb;
   /* the accent, used for links, buttons, active things and progress. the pages below swap it for their own */
   --primary: #47515f;
   --primary-soft: #e8eaee;
@@ -16,11 +16,14 @@
   --success: #2a7a4b;
   --warning: #a86400;
   --danger: #c2362b;
-  --card-shadow: 0 1px 2px rgb(28 27 24 / 0.05), 0 6px 20px rgb(28 27 24 / 0.04);
+  --card-shadow: 0 1px 2px rgb(15 31 56 / 0.06), 0 6px 20px rgb(15 31 56 / 0.04);
+  /* the faint grid lines on the paper behind every page */
+  --paper-line: rgb(18 61 122 / 0.055);
 
   /* one color per part of the app: a deep tone and a soft tint */
-  --c-dashboard: #0a6960;
-  --s-dashboard: #d6f0eb;
+  /* the dashboard and the pages outside the app wear the blueprint blue */
+  --c-dashboard: #123d7a;
+  --s-dashboard: #dce7f7;
   --c-scans: #3a3eb5;
   --s-scans: #e2e3fb;
   --c-optimize: #6b30b0;
@@ -196,9 +199,17 @@ html[data-section="interview"] {
   }
 }
 
-/* page background and text, the same on every page */
+/* page background and text, the same on every page: drafting paper with big and small squares */
 body {
-  background: var(--background);
+  background-color: var(--background);
+  background-image:
+    linear-gradient(var(--paper-line) 1px, transparent 1px), linear-gradient(90deg, var(--paper-line) 1px, transparent 1px),
+    linear-gradient(rgb(18 61 122 / 0.025) 1px, transparent 1px), linear-gradient(90deg, rgb(18 61 122 / 0.025) 1px, transparent 1px);
+  background-size:
+    100px 100px,
+    100px 100px,
+    20px 20px,
+    20px 20px;
   color: var(--foreground);
 }
 
@@ -208,6 +219,19 @@ h2 {
   font-family: var(--font-display);
   letter-spacing: -0.015em;
   text-wrap: balance;
+}
+
+/* page titles inside the app are set heavier and tighter, like the landing page */
+main h1 {
+  font-weight: 750;
+  letter-spacing: -0.03em;
+}
+
+/* printing never needs the grid */
+@media print {
+  body {
+    background-image: none;
+  }
 }
 
 /* focus ring for keyboard users */
@@ -409,7 +433,7 @@ dialog[open]::backdrop {
   }
 }
 
-/* pages outside the app, like the landing page, wear the logo's green */
+/* pages outside the app, like the landing page, wear the blueprint blue */
 .brand {
   --primary: var(--c-dashboard);
   --primary-soft: var(--s-dashboard);

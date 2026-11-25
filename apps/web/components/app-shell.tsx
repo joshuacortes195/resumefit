@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Menu, PanelLeft, UserRound, X } from "lucide-react";
 import { signOut } from "@/app/actions/auth";
 import { Logo } from "@/components/logo";
+import { SheetStrip } from "@/components/sheet-strip";
 import { Sidebar } from "@/components/sidebar";
 
 // links inside the avatar menu
@@ -34,14 +35,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex min-h-screen flex-col">
-      {/* top bar */}
-      <header className="sticky top-0 z-30 flex h-14 items-center gap-2 border-b border-border bg-background/85 px-3 backdrop-blur print:hidden">
+      {/* top bar, drawn on blueprint paper like the landing page */}
+      <header className="blueprint blueprint-grid sticky top-0 z-30 flex h-14 items-center gap-2 border-b border-[var(--bp-deep)] px-3 print:hidden [--logo-line:var(--bp)] [--logo-page:var(--bp-text)] [&>a]:text-[var(--bp-text)]">
         {/* hamburger, phones only */}
         <button
           type="button"
           aria-label="Open menu"
           onClick={() => setDrawerOpen(true)}
-          className="rounded-lg p-2 text-muted hover:bg-primary-soft hover:text-foreground md:hidden"
+          className="rounded-lg p-2 text-[var(--bp-muted)] hover:bg-white/10 hover:text-[var(--bp-text)] md:hidden"
         >
           <Menu className="size-5" aria-hidden />
         </button>
@@ -52,7 +53,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
           aria-pressed={collapsed}
           onClick={() => setCollapsed((value) => !value)}
-          className="hidden rounded-lg p-2 text-muted hover:bg-primary-soft hover:text-foreground md:block"
+          className="hidden rounded-lg p-2 text-[var(--bp-muted)] hover:bg-white/10 hover:text-[var(--bp-text)] md:block"
         >
           <PanelLeft className="size-5" aria-hidden />
         </button>
@@ -69,12 +70,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               aria-haspopup="menu"
               aria-expanded={menuOpen}
               onClick={() => setMenuOpen((value) => !value)}
-              className="flex size-9 items-center justify-center rounded-full border border-border bg-surface text-foreground transition-transform duration-150 active:scale-95"
+              className="flex size-9 items-center justify-center rounded-full border border-[var(--bp-line)]/40 bg-white/10 text-[var(--bp-text)] transition-transform duration-150 hover:bg-white/20 active:scale-95"
             >
               <UserRound className="size-5" aria-hidden />
             </button>
             {menuOpen && (
-              <div role="menu" className="absolute right-0 mt-2 w-44 origin-top-right animate-pop rounded-xl border border-border bg-surface p-1 shadow-lg">
+              <div role="menu" className="absolute right-0 mt-2 w-44 origin-top-right animate-pop rounded-xl border border-border bg-surface p-1 text-foreground shadow-lg">
                 {ACCOUNT_LINKS.map((link) => (
                   <Link
                     key={link.label}
@@ -101,7 +102,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <div className="flex flex-1">
         {/* desktop sidebar */}
         <aside
-          className={`sticky top-14 hidden h-[calc(100vh-3.5rem)] shrink-0 border-r border-border bg-background transition-[width] duration-200 ease-settle md:block print:hidden ${
+          className={`sticky top-14 hidden h-[calc(100vh-3.5rem)] shrink-0 border-r border-border bg-background/90 transition-[width] duration-200 ease-settle md:block print:hidden ${
             collapsed ? "w-16" : "w-60"
           }`}
         >
@@ -130,7 +131,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         )}
 
         {/* the page itself */}
-        <main className="min-w-0 flex-1 p-4 md:p-8">{children}</main>
+        <main className="min-w-0 flex-1">
+          {/* the page's own sheet number, drawing and tip, as a band across the top */}
+          <SheetStrip />
+          <div className="p-4 md:p-8">{children}</div>
+        </main>
       </div>
     </div>
   );

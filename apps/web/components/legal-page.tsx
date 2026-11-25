@@ -5,10 +5,21 @@ import { CONTACT_EMAIL, CONTACT_IS_EMAIL, LEGAL_UPDATED } from "@/lib/legal";
 // shared frame for the privacy and terms pages
 export function LegalPage({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <main className="mx-auto max-w-2xl px-4 py-10">
+    <main className="brand mx-auto max-w-2xl px-4 py-10">
       <Logo />
-      <h1 className="mt-8 text-3xl font-semibold">{title}</h1>
-      <p className="mt-1 text-sm text-muted">Last updated {LEGAL_UPDATED}</p>
+      {/* drawn like a spec sheet: the title and a ruled title block with the date */}
+      <p className="mt-10 font-drawing text-[11px] uppercase tracking-[0.1em] text-primary">Spec sheet / {title}</p>
+      <h1 className="mt-2 text-4xl font-extrabold tracking-tight">{title}</h1>
+      <dl className="mt-5 grid grid-cols-2 border border-border bg-surface font-drawing text-[11px] uppercase tracking-[0.08em] text-muted sm:w-max">
+        <div className="px-3 py-2">
+          <dt>Last updated</dt>
+          <dd className="text-foreground">{LEGAL_UPDATED}</dd>
+        </div>
+        <div className="border-l border-border px-3 py-2">
+          <dt>Applies to</dt>
+          <dd className="text-foreground">ResumeFit</dd>
+        </div>
+      </dl>
       {/* plain reading text, with space between the parts */}
       <div className="mt-8 space-y-6 leading-7 [&_h2]:mb-2 [&_h2]:text-lg [&_h2]:font-semibold [&_h3]:mt-3 [&_h3]:font-semibold [&_li]:ml-5 [&_li]:list-disc [&_ul]:space-y-1">{children}</div>
       <p className="mt-10 flex flex-wrap gap-6 border-t border-border pt-6 text-sm">
