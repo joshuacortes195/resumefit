@@ -42,14 +42,17 @@ test("add a job, drag it, fill in its card and scan from it", async ({ page }) =
   const card = page.getByRole("link", { name: /Data Analyst/ });
   await expect(column(page, "Saved").getByText("Data Analyst")).toBeVisible();
 
-  // drag the card from saved to applied
+  // drag the card from saved to applied. other tests leave jobs in saved, so the card can sit below the fold, scroll it on screen first
+  await card.scrollIntoViewIfNeeded();
   const from = await card.boundingBox();
   const to = await column(page, "Applied").boundingBox();
   if (!from || !to) throw new Error("card or column not on screen");
+  // drops level with the card, kept inside the applied column
+  const dropY = Math.min(Math.max(from.y + from.height / 2, to.y + 60), to.y + to.height - 20);
   await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
   await page.mouse.down();
   await page.mouse.move(from.x + from.width / 2 + 20, from.y + from.height / 2, { steps: 5 });
-  await page.mouse.move(to.x + to.width / 2, to.y + 140, { steps: 15 });
+  await page.mouse.move(to.x + to.width / 2, dropY, { steps: 15 });
   await page.mouse.up();
   await expect(column(page, "Applied").getByText("Data Analyst")).toBeVisible();
 
